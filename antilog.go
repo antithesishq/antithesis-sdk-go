@@ -199,17 +199,23 @@ func Sometimes(text string, cond bool, details any) {
   // 1 frame back will be here 
   // 2 frames back is the caller of this function  
   location_info := NewLocationInfo(2) 
+
+  var err error
   if cond {
       if tracker_entry.PassCount == 0 {
-          emit_sometimes(text, cond, details, location_info)
+          err = emit_sometimes(text, cond, details, location_info)
       }
-      tracker_entry.PassCount++
+      if err == nil {
+          tracker_entry.PassCount++
+      }
       return
   }
   if tracker_entry.FailCount == 0 {
-      emit_sometimes(text, cond, details, location_info)
+      err = emit_sometimes(text, cond, details, location_info)
   }
-  tracker_entry.FailCount++
+  if err == nil {
+      tracker_entry.FailCount++
+  }
 }
 
 func Expect(message string, classname string, funcname string, filename string, line int) {

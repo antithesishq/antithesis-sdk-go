@@ -2,7 +2,7 @@
 # antilog
 
 Provides Always() Somtimes() and Assert() functions used to
-specify Antithesis assertions used in a go module.  
+specify Antithesis assertions used in a Go module.  
 
 ### Using exigen
 The antilog module also contains the exigen command, used to 
