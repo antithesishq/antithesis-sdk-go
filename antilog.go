@@ -2,6 +2,7 @@ package antilog
 
 import (
   "encoding/json"
+  "errors"
   "path"
   "runtime"
   "strings"
@@ -237,8 +238,19 @@ func emit_always(message string, condition bool, values any, location_info *Loca
       return err
   }
   payload := string(data)
-  JSONData(payload)
-  return nil
+  if err = json_data(payload); errors.Is(err, DSOError) {
+      local_info := LocalLogAlwaysInfo{
+        LocalLogInfo: *NewLocalLogInfo("", ""),
+        AlwaysInfo: emit_info,
+      }
+      if data, err = json.Marshal(local_info); err != nil {
+          return err
+      }
+      payload = string(data)
+      local_output.emit(payload)
+      err = nil
+  }
+  return err
 }
 
 func emit_sometimes(message string, condition bool, values any, location_info *LocationInfo) error {
@@ -251,8 +263,19 @@ func emit_sometimes(message string, condition bool, values any, location_info *L
       return err
   }
   payload := string(data)
-  JSONData(payload)
-  return nil
+  if err = json_data(payload); errors.Is(err, DSOError) {
+      local_info := LocalLogSometimesInfo{
+        LocalLogInfo: *NewLocalLogInfo("", ""),
+        SometimesInfo: emit_info,
+      }
+      if data, err = json.Marshal(local_info); err != nil {
+          return err
+      }
+      payload = string(data)
+      local_output.emit(payload)
+      err = nil
+  }
+  return err
 }
 
 
@@ -266,19 +289,49 @@ func emit_expect(message string, location_info *LocationInfo) error {
       return err
   }
   payload := string(data)
-  JSONData(payload)
-  return nil
+  if err = json_data(payload); errors.Is(err, DSOError) {
+      local_info := LocalLogExpectInfo{
+        LocalLogInfo: *NewLocalLogInfo("", ""),
+        ExpectInfo: emit_info,
+      }
+      if data, err = json.Marshal(local_info); err != nil {
+          return err
+      }
+      payload = string(data)
+      local_output.emit(payload)
+      err = nil
+  }
+  return err
 }
+
 
 // --------------------------------------------------------------------------------
 // Text output 
 // --------------------------------------------------------------------------------
 func OutputText(text string) {
+  // Try the DSO first
+  if err := info_message(text); err != nil {
+     log_text(text, "info")
+  }
 }
 
 func ErrorText(text string) {
+  // Try the DSO first
+  if err := error_message(text); err != nil {
+     log_text(text, "err")
+  }
 }
 
-func SetSource(text string) {
+// --------------------------------------------------------------------------------
+// Setting the source name
+// --------------------------------------------------------------------------------
+func SetSourceName(name string) {
+  var err error
+
+  // Try the DSO first
+  if err = set_source_name(name); err != nil {
+     local_output.set_source_name(name)
+  }
+  return
 }
 
