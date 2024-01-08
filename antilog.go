@@ -237,7 +237,7 @@ func emit_always(message string, condition bool, values any, location_info *Loca
       return err
   }
   payload := string(data)
-  Emit(payload)
+  JSONData(payload)
   return nil
 }
 
@@ -251,7 +251,7 @@ func emit_sometimes(message string, condition bool, values any, location_info *L
       return err
   }
   payload := string(data)
-  Emit(payload)
+  JSONData(payload)
   return nil
 }
 
@@ -266,6 +266,19 @@ func emit_expect(message string, location_info *LocationInfo) error {
       return err
   }
   payload := string(data)
-  Emit(payload)
+  JSONData(payload)
   return nil
 }
+
+// --------------------------------------------------------------------------------
+// Text output 
+// --------------------------------------------------------------------------------
+func OutputText(text string) {
+}
+
+func ErrorText(text string) {
+}
+
+func SetSource(text string) {
+}
+
