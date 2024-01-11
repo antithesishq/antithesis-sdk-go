@@ -3,66 +3,15 @@ package antilog
 import (
   "encoding/json"
   "errors"
-  "path"
-  "runtime"
-  "strings"
+  "fmt"
 )
 
-// --------------------------------------------------------------------------------
-// EmitTracker
-// --------------------------------------------------------------------------------
-type TrackerInfo struct {
-    PassCount int
-    FailCount int
-}
-
-type EmitTracker map[string]*TrackerInfo
-
-var always_tracker EmitTracker = nil
-var sometimes_tracker EmitTracker = nil
-
-func NewTrackerInfo() *TrackerInfo {
-    tracker_info := TrackerInfo {
-        PassCount: 0,
-        FailCount: 0,
-    }
-    return &tracker_info
-}
-
-// --------------------------------------------------------------------------------
-// LocationInfo
-// --------------------------------------------------------------------------------
-type LocationInfo struct {
-    Classname string `json:"classname"`
-    Funcname string `json:"function"`
-    Filename string `json:"filename"`
-    Line int `json:"line"`
-}
-
-func NewLocationInfo(nframes int) *LocationInfo {
-  // Get location info and add to details
-  funcname := "*function*"
-  classname := "*classname*"
-  pc, filename, line, ok := runtime.Caller(nframes)
-  if !ok {
-    filename = "*filename*"
-    line = 0
-  } else {
-      if this_func := runtime.FuncForPC(pc); this_func != nil {
-          fullname := this_func.Name()
-          funcname = path.Ext(fullname)
-          classname, _ = strings.CutSuffix(fullname, funcname)
-          funcname = funcname[1:]
-      }
-  }
-  return &LocationInfo{classname, funcname, filename, line}
-}
-
-
-// --------------------------------------------------------------------------------
-// DirectiveInfo
-// --------------------------------------------------------------------------------
-type DirectiveInfo struct {
+type AssertInfo struct {
+    Hit bool `json:"hit"`
+    MustHit bool `json:"must_hit"`
+    ExpectType string `json:"expect_type"`
+    Expecting bool `json:"expecting"`
+    Category string `json:"category"`
     Message string `json:"message"`
     Condition bool `json:"condition"`
     Id string `json:"id"`
@@ -70,178 +19,137 @@ type DirectiveInfo struct {
     Details map[string]any `json:"details"`
 }
 
-type AlwaysInfo struct {
-    Directive *DirectiveInfo `json:"ant_always"`
+type WrappedAssertInfo struct {
+    A *AssertInfo `json:"ant_assert"`
 }
 
-type SometimesInfo struct {
-    Directive *DirectiveInfo `json:"ant_sometimes"`
+type JSONDataInfo struct {
+    Any any `json:"."`
 }
 
-func NewDirective(message string, condition bool, values any, location_info *LocationInfo) *DirectiveInfo {
+// --------------------------------------------------------------------------------
+// Version
+// --------------------------------------------------------------------------------
+func Version() string {
+  return "0.2.0"
+}
+
+
+// --------------------------------------------------------------------------------
+// Assertions
+// --------------------------------------------------------------------------------
+const was_hit = true
+const must_be_hit = true
+const optionally_hit = false
+const expecting_true = true
+const expecting_false = false
+
+const universal_test = "every"
+const existential_test = "some"
+// const reachability_check "none"
+
+// AlwaysTrue asserts that when this is evaluated
+// the condition will always be true, and that this is evaluated at least once.
+// Alternative name is Always()
+func AlwaysTrue(text string, cond bool, values any) {
+  location_info := NewLocationInfo(OffsetAPICaller) 
+  AssertImpl(text, cond, values, location_info, was_hit, must_be_hit, expecting_true, universal_test)
+}
+
+// AlwaysTrueIfOccurs asserts that when this is evaluated
+// the condition will always be true, or that this is never evaluated.
+// Alternative name is UnreachableOrAlways()
+func AlwaysTrueIfOccurs(text string, cond bool, values any) {
+  location_info := NewLocationInfo(OffsetAPICaller) 
+  AssertImpl(text, cond, values, location_info, was_hit, optionally_hit, expecting_true, universal_test)
+}
+
+// SometimesTrue asserts that when this is evaluated
+// the condition will sometimes be true, and that this is evaluated at least once.
+// Alternative name is Sometimes()
+func SometimesTrue(text string, cond bool, values any) {
+  location_info := NewLocationInfo(OffsetAPICaller) 
+  AssertImpl(text, cond, values, location_info, was_hit, must_be_hit, expecting_true, existential_test)
+}
+
+// NeverOccurs asserts that this is never evaluated.
+// This assertion will fail if it is evaluated.
+// Alternative name is Unreachable()
+func NeverOccurs(values any) {
+  location_info := NewLocationInfo(OffsetAPICaller) 
+  AssertImpl("", false, values, location_info, was_hit, optionally_hit, expecting_true, universal_test)
+}
+
+// SometimesOccurs asserts that this is evaluated at least once.
+// This assertion will fail if it is not evaluated, and otherwise will pass.
+// Alternative name is Reachable()
+func SometimesOccurs(values any) {
+  location_info := NewLocationInfo(OffsetAPICaller) 
+  AssertImpl("", true, values, location_info, was_hit, must_be_hit, expecting_true, existential_test)
+}
+
+func AssertImpl(text string, cond bool, values any, loc *LocationInfo, hit bool, must_hit bool, expecting bool, expect_type string) {
+  message_key := makeKey(loc)
+  tracker_entry := assert_tracker.get_tracker_entry(message_key)
+  details_map := struct_to_map(values)
+
+  assertInfo := AssertInfo{
+      Hit: hit,
+      MustHit: must_hit,
+      ExpectType: expect_type,
+      Expecting: expecting,
+      Category: "",
+      Message: text,
+      Condition: cond,
+      Id: message_key,
+      Location: loc,
+      Details: details_map,
+  }
+  tracker_entry.emit(&assertInfo)
+}
+
+
+func makeKey(loc *LocationInfo) string {
+    return fmt.Sprintf("%s|%d|%d", loc.Filename, loc.Line, loc.Column)
+}
+
+func struct_to_map(values any) map[string]any {
+
+  var details_map map[string]any
 
   // Validate and format the details
   var data []byte = nil
   var err error
   if values != nil {
       if data, err = json.Marshal(values); err != nil {
-          data = nil
+          return details_map
       }
   }
 
-  var details_map map[string]any
-  
-  if data != nil {
-      details_map = make(map[string]any)
-      if err = json.Unmarshal(data, &details_map); err != nil {
-          details_map = nil
-      }
+  details_map = make(map[string]any)
+  if err = json.Unmarshal(data, &details_map); err != nil {
+      details_map = nil
   }
-
-  common_info := DirectiveInfo {
-      Message: message,
-      Condition: condition,
-      Id: "*id*",
-      Location: location_info,
-      Details: details_map,
-  }
-  return &common_info
-}
-
-
-
-// --------------------------------------------------------------------------------
-// BuildTimeInfo
-// --------------------------------------------------------------------------------
-type BuildTimeInfo struct {
-    Message string `json:"message"`
-    Id string `json:"id"`
-    Location *LocationInfo `json:"location"`
-}
-
-type ExpectInfo struct {
-    BuildTime *BuildTimeInfo `json:"ant_expect"`
-}
-
-func NewBuildTime(message string, location_info *LocationInfo) *BuildTimeInfo {
-
-  info := BuildTimeInfo {
-      Message: message,
-      Id: "*id*",
-      Location: location_info,
-  }
-  return &info
-}
-
-
-// --------------------------------------------------------------------------------
-// Version
-// --------------------------------------------------------------------------------
-func Version() string {
-  return "0.0.3"
-}
-
-
-// --------------------------------------------------------------------------------
-// Version
-// --------------------------------------------------------------------------------
-func Always(text string, cond bool, details any) {
-  if always_tracker == nil {
-      always_tracker = make(EmitTracker)
-  }
-  message_key := text
-
-  var tracker_entry *TrackerInfo
-  var ok bool
-
-  if tracker_entry, ok = always_tracker[message_key]; !ok {
-      tracker_entry = NewTrackerInfo()
-      always_tracker[message_key] = tracker_entry
-  }
-
-  // 0 frames back will be NewLocationInfo()
-  // 1 frame back will be here 
-  // 2 frames back is the caller of this function  
-  location_info := NewLocationInfo(2) 
-
-  var err error
-  if cond {
-      if tracker_entry.PassCount == 0 {
-          err = emit_always(text, cond, details, location_info)
-      }
-      if err == nil {
-          tracker_entry.PassCount++
-      }
-      return
-  }
-  if tracker_entry.FailCount == 0 {
-      err = emit_always(text, cond, details, location_info)
-  }
-  if err == nil {
-      tracker_entry.FailCount++
-  }
-}
-
-func Sometimes(text string, cond bool, details any) {
-  if sometimes_tracker == nil {
-      sometimes_tracker = make(EmitTracker)
-  }
-  message_key := text
-
-  var tracker_entry *TrackerInfo
-  var ok bool
-
-  if tracker_entry, ok = sometimes_tracker[message_key]; !ok {
-      tracker_entry = NewTrackerInfo()
-      sometimes_tracker[message_key] = tracker_entry
-  }
-
-  // 0 frames back will be NewLocationInfo()
-  // 1 frame back will be here 
-  // 2 frames back is the caller of this function  
-  location_info := NewLocationInfo(2) 
-
-  var err error
-  if cond {
-      if tracker_entry.PassCount == 0 {
-          err = emit_sometimes(text, cond, details, location_info)
-      }
-      if err == nil {
-          tracker_entry.PassCount++
-      }
-      return
-  }
-  if tracker_entry.FailCount == 0 {
-      err = emit_sometimes(text, cond, details, location_info)
-  }
-  if err == nil {
-      tracker_entry.FailCount++
-  }
-}
-
-func Expect(message string, classname string, funcname string, filename string, line int) {
-  location_info := &LocationInfo{classname, funcname, filename, line}
-  emit_expect(message, location_info)
+  return details_map
 }
 
 
 // --------------------------------------------------------------------------------
 // Emit JSON structured payloads
 // --------------------------------------------------------------------------------
-func emit_always(message string, condition bool, values any, location_info *LocationInfo) error {
+func emit_assert(assert_info *AssertInfo) error {
   var data []byte = nil
   var err error
 
-  common_info := NewDirective(message, condition, values, location_info)
-  emit_info := AlwaysInfo{common_info}
-  if data, err = json.Marshal(emit_info); err != nil {
+  wrapped_assert := WrappedAssertInfo{assert_info}
+  if data, err = json.Marshal(wrapped_assert); err != nil {
       return err
   }
   payload := string(data)
   if err = json_data(payload); errors.Is(err, DSOError) {
-      local_info := LocalLogAlwaysInfo{
+      local_info := LocalLogAssertInfo{
         LocalLogInfo: *NewLocalLogInfo("", ""),
-        AlwaysInfo: emit_info,
+        WrappedAssertInfo: wrapped_assert,
       }
       if data, err = json.Marshal(local_info); err != nil {
           return err
@@ -252,86 +160,3 @@ func emit_always(message string, condition bool, values any, location_info *Loca
   }
   return err
 }
-
-func emit_sometimes(message string, condition bool, values any, location_info *LocationInfo) error {
-  var data []byte = nil
-  var err error
-
-  common_info := NewDirective(message, condition, values, location_info)
-  emit_info := SometimesInfo{common_info}
-  if data, err = json.Marshal(emit_info); err != nil {
-      return err
-  }
-  payload := string(data)
-  if err = json_data(payload); errors.Is(err, DSOError) {
-      local_info := LocalLogSometimesInfo{
-        LocalLogInfo: *NewLocalLogInfo("", ""),
-        SometimesInfo: emit_info,
-      }
-      if data, err = json.Marshal(local_info); err != nil {
-          return err
-      }
-      payload = string(data)
-      local_output.emit(payload)
-      err = nil
-  }
-  return err
-}
-
-
-func emit_expect(message string, location_info *LocationInfo) error {
-  var data []byte = nil
-  var err error
-
-  info := NewBuildTime(message, location_info)
-  emit_info := ExpectInfo{info}
-  if data, err = json.Marshal(emit_info); err != nil {
-      return err
-  }
-  payload := string(data)
-  if err = json_data(payload); errors.Is(err, DSOError) {
-      local_info := LocalLogExpectInfo{
-        LocalLogInfo: *NewLocalLogInfo("", ""),
-        ExpectInfo: emit_info,
-      }
-      if data, err = json.Marshal(local_info); err != nil {
-          return err
-      }
-      payload = string(data)
-      local_output.emit(payload)
-      err = nil
-  }
-  return err
-}
-
-
-// --------------------------------------------------------------------------------
-// Text output 
-// --------------------------------------------------------------------------------
-func OutputText(text string) {
-  // Try the DSO first
-  if err := info_message(text); err != nil {
-     log_text(text, "info")
-  }
-}
-
-func ErrorText(text string) {
-  // Try the DSO first
-  if err := error_message(text); err != nil {
-     log_text(text, "err")
-  }
-}
-
-// --------------------------------------------------------------------------------
-// Setting the source name
-// --------------------------------------------------------------------------------
-func SetSourceName(name string) {
-  var err error
-
-  // Try the DSO first
-  if err = set_source_name(name); err != nil {
-     local_output.set_source_name(name)
-  }
-  return
-}
-

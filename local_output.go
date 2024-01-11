@@ -30,6 +30,11 @@ func (pout *LocalOutput) get_ticks() int64 {
     return duration.Nanoseconds()
 }
 
+func (pout *LocalOutput) get_time() string {
+    utc := time.Now().UTC()
+    return utc.Format(time.RFC3339Nano)
+}
+
 func (pout *LocalOutput) get_source_name() string {
     return pout.source_name
 }
@@ -91,29 +96,26 @@ func (pout *LocalOutput) open_output_file() error {
 // --------------------------------------------------------------------------------
 type LocalLogInfo struct {
     Ticks int64 `json:"ticks"`
+    TimeUTC string `json:"time"`
     Source string `json:"source"`
     Stream string `json:"stream"`
     OutputText string `json:"output_text"`
 }
 
-type LocalLogAlwaysInfo struct {
+type LocalLogAssertInfo struct {
     LocalLogInfo
-    AlwaysInfo
+    WrappedAssertInfo
 }
 
-type LocalLogSometimesInfo struct {
+type LocalLogJSONDataInfo struct {
     LocalLogInfo
-    SometimesInfo
-}
-
-type LocalLogExpectInfo struct {
-    LocalLogInfo
-    ExpectInfo
+    JSONDataInfo
 }
 
 func NewLocalLogInfo(stream string, text string) *LocalLogInfo {
     log_info := LocalLogInfo{
         Ticks: local_output.get_ticks(),
+        TimeUTC: local_output.get_time(),
         Source: local_output.get_source_name(),
         Stream: stream,
         OutputText: text,
