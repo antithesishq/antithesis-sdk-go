@@ -5,6 +5,7 @@ import (
   "fmt"
   "os"
   "unsafe"
+  "unicode/utf8"
 )
 
  // --------------------------------------------------------------------------------
@@ -17,15 +18,9 @@ import (
  // #cgo LDFLAGS: -ldl
  //
  // #include <dlfcn.h>
+ // #include <stdbool.h>
+ // #include <stdint.h>
  // #include <stdlib.h>
- //
- // typedef void (*go_fuzz_error_message_fn)(const char *message);
- //
- // typedef const char * (*go_version_fn)();
- // const char *
- // go_version(void *f) {
- //   return ((go_version_fn)f)();
- // }
  //
  // typedef void (*go_fuzz_json_data_fn)(const char *data, size_t size);
  // void
@@ -50,6 +45,36 @@ import (
  // go_fuzz_error_message(void *f, const char *message) {
  //   ((go_fuzz_error_message_fn)f)(message);
  // }
+ //
+ // typedef int (*go_fuzz_getchar_fn)(void);
+ // int
+ // go_fuzz_getchar(void *f) {
+ //   return ((go_fuzz_getchar_fn)f)();
+ // }
+ //
+ // typedef int (*go_fuzz_putchar_fn)(char c);
+ // int
+ // go_fuzz_putchar(void *f, char c) {
+ //   return ((go_fuzz_putchar_fn)f)(c);
+ // }
+ //
+ // typedef void (*go_fuzz_flush_fn)(void);
+ // void
+ // go_fuzz_flush(void *f) {
+ //   ((go_fuzz_flush_fn)f)();
+ // }
+ //
+ // typedef uint64_t (*go_fuzz_get_random_fn)(void);
+ // uint64_t
+ // go_fuzz_get_random(void *f) {
+ //   return ((go_fuzz_get_random_fn)f)();
+ // }
+ //
+ // typedef bool (*go_fuzz_coin_flip_fn)(void);
+ // bool
+ // go_fuzz_coin_flip(void *f) {
+ //   return ((go_fuzz_coin_flip_fn)f)();
+ // }
  import "C"
 
  type EmitInfo struct {
@@ -58,6 +83,11 @@ import (
    set_source_name_handle unsafe.Pointer
    info_message_handle unsafe.Pointer
    error_message_handle unsafe.Pointer
+   getchar_handle unsafe.Pointer
+   putchar_handle unsafe.Pointer
+   flush_handle unsafe.Pointer
+   get_random_handle unsafe.Pointer
+   coin_flip_handle unsafe.Pointer
  }
 
  var emitter = EmitInfo {
@@ -66,6 +96,11 @@ import (
    set_source_name_handle: nil,
    info_message_handle: nil,
    error_message_handle: nil,
+   getchar_handle: nil,
+   putchar_handle: nil,
+   flush_handle: nil,
+   get_random_handle: nil,
+   coin_flip_handle: nil,
  }
 
  var DSOError error = errors.New("No DSO Available")
@@ -109,6 +144,51 @@ import (
    C.go_fuzz_set_source_name(emitter.set_source_name_handle, cstr_name)
    C.free(unsafe.Pointer(cstr_name))
    return nil
+ }
+
+ func getchar() (r rune, err error) {
+   if emitter.dso_handle == nil {
+       return 0, DSOError
+   }
+   retval := C.go_fuzz_getchar(emitter.getchar_handle)
+   return rune(retval), nil
+ }
+
+ func putchar(r rune) (r2 rune, err error) {
+   if emitter.dso_handle == nil {
+       return 0, DSOError
+   }
+   var retval C.int
+
+   if utf8.RuneLen(r) == 1 {
+       c := uint8(r)
+      retval = C.go_fuzz_putchar(emitter.putchar_handle, C.char(c))
+   }
+   return rune(retval), nil
+ }
+
+ func flush() error {
+   if emitter.dso_handle == nil {
+       return DSOError
+   }
+   C.go_fuzz_flush(emitter.flush_handle)
+   return nil
+ }
+
+ func get_random() (v uint64, err error) {
+   if emitter.dso_handle == nil {
+       return 0, DSOError
+   }
+   retval := C.go_fuzz_get_random(emitter.get_random_handle)
+   return uint64(retval), nil
+ }
+
+ func coin_flip() (b bool, err error){
+   if emitter.dso_handle == nil {
+       return false, DSOError
+   }
+   retval := C.go_fuzz_coin_flip(emitter.coin_flip_handle)
+   return bool(retval), nil
  }
 
  func try_shared_lib(lib_path string) bool {
@@ -173,12 +253,57 @@ import (
         event_logger_error("Can not access fuzz_error_message")
      }
      
+     // Get a character
+     cstr_func_name = C.CString("fuzz_getchar")
+     var getchar_handle unsafe.Pointer = C.dlsym(dso_handle, cstr_func_name)
+     C.free(unsafe.Pointer(cstr_func_name))
+     if getchar_handle == nil {
+        event_logger_error("Can not access fuzz_getchar")
+     }
+     
+     // Put a character
+     cstr_func_name = C.CString("fuzz_putchar")
+     var putchar_handle unsafe.Pointer = C.dlsym(dso_handle, cstr_func_name)
+     C.free(unsafe.Pointer(cstr_func_name))
+     if putchar_handle == nil {
+        event_logger_error("Can not access fuzz_putchar")
+     }
+     
+     // Flush pending output
+     cstr_func_name = C.CString("fuzz_flush")
+     var flush_handle unsafe.Pointer = C.dlsym(dso_handle, cstr_func_name)
+     C.free(unsafe.Pointer(cstr_func_name))
+     if flush_handle == nil {
+        event_logger_error("Can not access fuzz_flush")
+     }
+
+     // Get a random uint64
+     cstr_func_name = C.CString("fuzz_get_random")
+     var get_random_handle unsafe.Pointer = C.dlsym(dso_handle, cstr_func_name)
+     C.free(unsafe.Pointer(cstr_func_name))
+     if get_random_handle == nil {
+        event_logger_error("Can not access fuzz_get_random")
+     }
+
+     // Get a coin flip bool
+     cstr_func_name = C.CString("fuzz_coin_flip")
+     var coin_flip_handle unsafe.Pointer = C.dlsym(dso_handle, cstr_func_name)
+     C.free(unsafe.Pointer(cstr_func_name))
+     if coin_flip_handle == nil {
+        event_logger_error("Can not access fuzz_coin_flip")
+     }
+     
      // Save all handles for later dispatch
      emitter.dso_handle = dso_handle
      emitter.json_data_handle = json_data_handle
      emitter.set_source_name_handle = set_source_name_handle
      emitter.info_message_handle = info_message_handle
      emitter.error_message_handle = error_message_handle
+     emitter.getchar_handle = getchar_handle
+     emitter.putchar_handle = putchar_handle
+     emitter.flush_handle = flush_handle
+     emitter.get_random_handle = get_random_handle
+     emitter.coin_flip_handle = coin_flip_handle
      return dso_handle != nil
  }
 
@@ -191,6 +316,11 @@ import (
    emitter.set_source_name_handle = nil
    emitter.info_message_handle = nil
    emitter.error_message_handle = nil
+   emitter.getchar_handle = nil
+   emitter.putchar_handle = nil
+   emitter.flush_handle = nil
+   emitter.get_random_handle = nil
+   emitter.coin_flip_handle = nil
  }
 
  func event_logger_error(what string) {

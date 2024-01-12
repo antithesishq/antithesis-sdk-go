@@ -24,6 +24,8 @@ const (
     OffsetAPICallersCaller
 )
 
+// LocationInfo represents the attributes known at instrumentation time
+// for each Antithesis assertion discovered
 type LocationInfo struct {
     Classname string `json:"classname"`
     Funcname string `json:"function"`
@@ -32,12 +34,12 @@ type LocationInfo struct {
     Column int `json:"column"`
 }
 
+// ColumnUnknown is used when the column associated with
+// a LocationInfo is not available
 const ColumnUnknown = 0 
 
-func NewLocInfo(classname, funcname, filename string, line int) *LocationInfo {
-  return &LocationInfo{classname, funcname, filename, line, ColumnUnknown}
-}
-
+// NewLocationInfo creates a LocationInfo directly from
+// the current execution context
 func NewLocationInfo(nframes StackFrameOffset) *LocationInfo {
   // Get location info and add to details
   funcname := "*function*"
@@ -56,3 +58,10 @@ func NewLocationInfo(nframes StackFrameOffset) *LocationInfo {
   }
   return &LocationInfo{classname, funcname, filename, line, ColumnUnknown}
 }
+
+// NewLocInfo creates a LocationInfo from values known outside of the
+// current execution context
+func NewLocInfo(classname, funcname, filename string, line int) *LocationInfo {
+  return &LocationInfo{classname, funcname, filename, line, ColumnUnknown}
+}
+

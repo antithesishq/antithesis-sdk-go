@@ -1,49 +1,79 @@
 package antilog
 
 import (
+  "bufio"
+  "crypto/rand"
   "encoding/json"
   "errors"
   "fmt"
+  "golang.org/x/term"
+  "math"
+  "math/big"
   "os"
   "time"
+  "unicode/utf8"
 )
 
 // --------------------------------------------------------------------------------
-// Local Output
+// Local Handling
 // --------------------------------------------------------------------------------
-type LocalOutput struct {
+type LocalHandling struct {
    out_f *os.File
    can_be_opened bool
    start_time time.Time
    source_name string
 }
 
-var local_output = &LocalOutput {
+var local_handler = &LocalHandling {
     out_f: nil,
     can_be_opened: true,
     start_time: time.Now(),
     source_name: "",
 }
 
-func (pout *LocalOutput) get_ticks() int64 {
+func (pout *LocalHandling) get_ticks() int64 {
     duration := time.Since(pout.start_time)
     return duration.Nanoseconds()
 }
 
-func (pout *LocalOutput) get_time() string {
+func (pout *LocalHandling) get_time() string {
     utc := time.Now().UTC()
     return utc.Format(time.RFC3339Nano)
 }
 
-func (pout *LocalOutput) get_source_name() string {
+func (pout *LocalHandling) get_source_name() string {
     return pout.source_name
 }
 
-func (pout *LocalOutput) set_source_name(name string) {
-     local_output.source_name = name
+func (pout *LocalHandling) set_source_name(name string) {
+     local_handler.source_name = name
 }
 
-func (pout *LocalOutput) emit(payload string) {
+func (pout *LocalHandling) getchar() (r rune, err error) {
+    return local_fuzz_getchar() 
+}
+
+func (pout *LocalHandling) putchar(r rune) rune {
+    return local_fuzz_putchar(r) 
+}
+
+func (pout *LocalHandling) flush() {
+    local_fuzz_flush() 
+}
+
+func (pout *LocalHandling) get_random() uint64 {
+    return local_fuzz_get_random() 
+}
+
+func (pout *LocalHandling) coin_flip() bool {
+    return local_fuzz_coin_flip() 
+}
+
+func (pout *LocalHandling) log_text(text string, stream string) {
+    local_log_text(text, stream) 
+}
+
+func (pout *LocalHandling) emit(payload string) {
   var err error
   if !pout.can_be_opened {
       return
@@ -58,7 +88,7 @@ func (pout *LocalOutput) emit(payload string) {
   return 
 }
 
-func (pout *LocalOutput) open_output_file() error {
+func (pout *LocalHandling) open_output_file() error {
   var file *os.File
   var err error
 
@@ -92,6 +122,74 @@ func (pout *LocalOutput) open_output_file() error {
 
 
 // --------------------------------------------------------------------------------
+// Local Handling for SDK functions - not assertion related
+// --------------------------------------------------------------------------------
+
+// sbuf is a static buffer for getchar/putchar
+var s_data [4096]byte
+var sbuf []byte = s_data[:0]
+
+func local_fuzz_getchar() (r rune, err error) {
+    local_fuzz_flush()
+    var state *term.State
+    var stdin = int(os.Stdin.Fd())
+    if state, err = term.MakeRaw(stdin); err != nil {
+      return 0, err 
+    }
+    defer func() {
+        if err = term.Restore(stdin, state); err != nil {
+            fmt.Fprintln(os.Stderr, "warning, failed to restore terminal:", err)
+        }
+    }()
+
+    in := bufio.NewReader(os.Stdin)
+    r, _, err = in.ReadRune()
+    return r, err
+}
+
+func local_fuzz_putchar(r rune) rune {
+    len_buf := len(sbuf)
+    cap_buf := cap(sbuf)
+    if len_buf == cap_buf {
+        local_fuzz_flush()
+        len_buf = 0
+    }
+    rune_len := 0
+    if rune_len = utf8.RuneLen(r); rune_len == -1 {
+        return 0
+    }
+
+    if room_avail := cap_buf - len_buf; room_avail < rune_len {
+        local_fuzz_flush()
+    }
+    utf8.AppendRune(sbuf, r)
+    return r
+}
+
+func local_fuzz_flush() {
+    s := string(sbuf)
+    OutputText(s)
+    sbuf = s_data[:0]
+}
+
+func local_fuzz_get_random() uint64 {
+    var err error
+    var randInt *big.Int
+    max := big.NewInt(math.MaxInt64)
+    if randInt, err = rand.Int(rand.Reader, max); err != nil {
+        return 0
+    }
+    return randInt.Uint64()
+}
+
+func local_fuzz_coin_flip() bool {
+    n := local_fuzz_get_random()
+    return ((n % 2) == 0)
+}
+
+
+
+// --------------------------------------------------------------------------------
 // Local Logging
 // --------------------------------------------------------------------------------
 type LocalLogInfo struct {
@@ -114,16 +212,16 @@ type LocalLogJSONDataInfo struct {
 
 func NewLocalLogInfo(stream string, text string) *LocalLogInfo {
     log_info := LocalLogInfo{
-        Ticks: local_output.get_ticks(),
-        TimeUTC: local_output.get_time(),
-        Source: local_output.get_source_name(),
+        Ticks: local_handler.get_ticks(),
+        TimeUTC: local_handler.get_time(),
+        Source: local_handler.get_source_name(),
         Stream: stream,
         OutputText: text,
     }
     return &log_info
   }
 
-func log_text(text string, stream string) {
+func local_log_text(text string, stream string) {
   var err error
   var data []byte = nil
 
@@ -133,7 +231,7 @@ func log_text(text string, stream string) {
       return
   }
   payload := string(data)
-  local_output.emit(payload)
+  local_handler.emit(payload)
   err = nil
 }
 

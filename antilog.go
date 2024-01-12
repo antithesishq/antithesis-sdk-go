@@ -155,7 +155,7 @@ func emit_assert(assert_info *AssertInfo) error {
           return err
       }
       payload = string(data)
-      local_output.emit(payload)
+      local_handler.emit(payload)
       err = nil
   }
   return err

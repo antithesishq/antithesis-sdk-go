@@ -3,61 +3,18 @@ package antilog
 import (
   "encoding/json"
   "errors"
-)
-
+  )
 
 // --------------------------------------------------------------------------------
-// Text output 
+// JSON and general text output 
 // --------------------------------------------------------------------------------
-const TopLevelKey = "."
-type AnyContainer struct {
-    Any any `json:"."`
-}
-
-
 func LogEvent(name string, event any) {
-  if event == nil {
-      return
-  }
-
-  var event_map map[string]any = make(map[string]any,10) 
   var data []byte = nil
   var err error
 
-  switch val := event.(type) {
-  case int, int64:
-      event_map[name] = val
-  case int8:
-      event_map[name] = int(val)
-  case int16:
-      event_map[name] = int(val)
-  case int32:
-      event_map[name] = int(val)
-  case float64:
-      event_map[name] = val
-  case float32:
-      event_map[name] = float64(val)
-  case bool:
-      event_map[name] = val
-  case uint8:
-      event_map[name] = uint(val)
-  case uint16:
-      event_map[name] = uint(val)
-  case uint32:
-      event_map[name] = uint(val)
-  case uint, uint64:
-      event_map[name] = val
-  default:
-      any_container := AnyContainer{event}
-      if data, err = json.Marshal(any_container); err == nil {
-        if err = json.Unmarshal(data, &event_map); err == nil {
-            event_map[name] = event_map[TopLevelKey] 
-            delete(event_map, TopLevelKey)
-        }
-      }
-  }
+  event_map := to_jsonable_map(name, event)
 
-  // Check for an empty map
+  // Make sure JSON Marshaling delivered something useful
   if len(event_map) == 0 {
       return
   }
@@ -68,46 +25,28 @@ func LogEvent(name string, event any) {
   }
   text := string(data)
 
-  // Try the DSO first
+  // Try the DSO first, then revert to local_output (if it was enabled)
   if err := json_data(text); errors.Is(err, DSOError) {
       local_info := LocalLogJSONDataInfo{
         LocalLogInfo: *NewLocalLogInfo("", ""),
         JSONDataInfo: JSONDataInfo{event_map},
       }
-      payload := JSONWithRenaming(local_info, ".", name)
-     local_output.emit(payload)
+      payload := json_with_renaming(local_info, ".", name)
+     local_handler.emit(payload)
   }
-}
-
-func JSONWithRenaming(anything any, old_name string, new_name string) string {
-  var temp_map map[string]any = make(map[string]any,10) 
-  var data []byte = nil
-  var err error
-
-      if data, err = json.Marshal(anything); err == nil {
-        if err = json.Unmarshal(data, &temp_map); err == nil {
-            temp_map[new_name] = temp_map[old_name] 
-            delete(temp_map, old_name)
-        }
-      }
-
-  if data, err = json.Marshal(temp_map); err != nil {
-      return ""
-  }
-  return string(data)
 }
 
 func OutputText(text string) {
-  // Try the DSO first
+  // Try the DSO first, then revert to local_output (if it was enabled)
   if err := info_message(text); err != nil {
-     log_text(text, "info")
+     local_handler.log_text(text, "info")
   }
 }
 
 func ErrorText(text string) {
-  // Try the DSO first
+  // Try the DSO first, then revert to local_output (if it was enabled)
   if err := error_message(text); err != nil {
-     log_text(text, "err")
+     local_handler.log_text(text, "err")
   }
 }
 
@@ -117,10 +56,66 @@ func ErrorText(text string) {
 func SetSourceName(name string) {
   var err error
 
-  // Try the DSO first
+  // Try the DSO first, then update the source name for local output.
   if err = set_source_name(name); err != nil {
-     local_output.set_source_name(name)
+     local_handler.set_source_name(name)
   }
   return
+}
+
+
+// --------------------------------------------------------------------------------
+// Console I/O
+// --------------------------------------------------------------------------------
+func Getchar() (r rune, err error) {
+
+  // Try the DSO first, then use the local getchar
+  if r, err = getchar(); err != nil {
+     r, err = local_handler.getchar()
+  }
+  return r, err
+}
+
+func Putchar(r rune) rune {
+  var err error
+  var r2 rune
+
+  // Try the DSO first, then use the local putchar
+  if r2, err = putchar(r); err != nil {
+     r2 = local_handler.putchar(r)
+  }
+  return r2
+}
+
+func Flush() {
+  var err error
+
+  // Try the DSO first, then use the local flush
+  if err = flush(); err != nil {
+     local_handler.flush()
+  }
+  return
+}
+
+func GetRandom() uint64 {
+    var err error
+    var v uint64
+
+  // Try the DSO first, then use the local get_random
+  if v, err = get_random(); err != nil {
+     v = local_handler.get_random()
+  }
+  return v
+}
+
+func CoinFlip() bool {
+    var err error
+    var b bool
+
+  // Try the DSO first, then use the local coin_flip
+  if b, err = coin_flip(); err != nil {
+     b = local_handler.coin_flip()
+  }
+  return b
 }
 

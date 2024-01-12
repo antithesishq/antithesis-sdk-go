@@ -10,7 +10,24 @@ type TrackerInfo struct {
 
 type EmitTracker map[string]*TrackerInfo
 
+// assert_tracker (global) keeps track of the unique asserts evaluated
 var assert_tracker EmitTracker = make(EmitTracker)
+
+func (tracker EmitTracker) get_tracker_entry(message_key string) *TrackerInfo {
+  var tracker_entry *TrackerInfo
+  var ok bool
+
+  if (tracker == nil) {
+      return nil
+  }
+
+  if tracker_entry, ok = tracker[message_key]; !ok {
+      tracker_entry = NewTrackerInfo()
+      tracker[message_key] = tracker_entry
+  }
+  return tracker_entry
+}
+
 
 func NewTrackerInfo() *TrackerInfo {
     tracker_info := TrackerInfo {
@@ -21,6 +38,10 @@ func NewTrackerInfo() *TrackerInfo {
 }
 
 func (ti *TrackerInfo) emit(ai *AssertInfo) {
+  if ti == nil || ai == nil {
+      return
+  }
+
   var err error
   cond := ai.Condition
 
@@ -40,16 +61,3 @@ func (ti *TrackerInfo) emit(ai *AssertInfo) {
       ti.FailCount++
   }
 }
-
-func (tracker EmitTracker) get_tracker_entry(message_key string) *TrackerInfo {
-  var tracker_entry *TrackerInfo
-  var ok bool
-
-  if tracker_entry, ok = tracker[message_key]; !ok {
-      tracker_entry = NewTrackerInfo()
-      tracker[message_key] = tracker_entry
-  }
-  return tracker_entry
-}
-
-
