@@ -20,8 +20,8 @@ import (
 var s_data [4096]byte
 var sbuf []byte = s_data[:0]
 
-func Local_fuzz_getchar() (r rune, err error) {
-    Local_fuzz_flush()
+func Fuzz_getchar() (r rune, err error) {
+    Fuzz_flush()
     var state *term.State
     var stdin = int(os.Stdin.Fd())
     if state, err = term.MakeRaw(stdin); err != nil {
@@ -38,11 +38,11 @@ func Local_fuzz_getchar() (r rune, err error) {
     return r, err
 }
 
-func Local_fuzz_putchar(r rune) rune {
+func Fuzz_putchar(r rune) rune {
     len_buf := len(sbuf)
     cap_buf := cap(sbuf)
     if len_buf == cap_buf {
-        Local_fuzz_flush()
+        Fuzz_flush()
         len_buf = 0
     }
     rune_len := 0
@@ -51,19 +51,20 @@ func Local_fuzz_putchar(r rune) rune {
     }
 
     if room_avail := cap_buf - len_buf; room_avail < rune_len {
-        Local_fuzz_flush()
+        Fuzz_flush()
     }
     utf8.AppendRune(sbuf, r)
     return r
 }
 
-func Local_fuzz_flush() {
+func Fuzz_flush() {
     s := string(sbuf)
-    OutputText(s)
+    // OutputText(s)
+    Log_text(s, "info")
     sbuf = s_data[:0]
 }
 
-func Local_fuzz_get_random() uint64 {
+func Fuzz_get_random() uint64 {
     var err error
     var randInt *big.Int
     max := big.NewInt(math.MaxInt64)
@@ -73,8 +74,8 @@ func Local_fuzz_get_random() uint64 {
     return randInt.Uint64()
 }
 
-func Local_fuzz_coin_flip() bool {
-    n := Local_fuzz_get_random()
+func Fuzz_coin_flip() bool {
+    n := Fuzz_get_random()
     return ((n % 2) == 0)
 }
 

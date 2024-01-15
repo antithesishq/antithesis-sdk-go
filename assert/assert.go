@@ -5,7 +5,7 @@ import (
   "errors"
   "fmt"
   "github.com/antithesishq/antilog/internal"
-  "github.com/antithesishq/antilog/io"
+  "github.com/antithesishq/antilog/local"
 )
 
 type AssertInfo struct {
@@ -26,7 +26,7 @@ type WrappedAssertInfo struct {
 }
 
 type LocalLogAssertInfo struct {
-    io.LocalLogInfo
+    local.LocalLogInfo
     WrappedAssertInfo
 }
 
@@ -151,14 +151,14 @@ func emit_assert(assert_info *AssertInfo) error {
   payload := string(data)
   if err = internal.Json_data(payload); errors.Is(err, internal.DSOError) {
       local_info := LocalLogAssertInfo{
-        LocalLogInfo: *io.NewLocalLogInfo("", ""),
+        LocalLogInfo: *local.NewLogInfo("", ""),
         WrappedAssertInfo: wrapped_assert,
       }
       if data, err = json.Marshal(local_info); err != nil {
           return err
       }
       payload = string(data)
-      io.Local_emit(payload)
+      local.Emit(payload)
       err = nil
   }
   return err

@@ -20,9 +20,32 @@ var local_handler = &LocalHandling {
     source_name: "",
 }
 
-func Local_emit(payload string) {
+func Get_ticks() int64 {
+    return local_handler.get_ticks()
+}
+
+func Get_time() string {
+    return local_handler.get_time()
+}
+
+func Get_source_name() string {
+    return local_handler.get_source_name()
+}
+
+func Set_source_name(name string) {
+     local_handler.set_source_name(name)
+}
+
+func Log_text(text string, stream string) {
+    if payload := format_log_text(text, stream); payload != "" {
+        Emit(payload)
+    }
+}
+
+func Emit(payload string) {
     local_handler.emit(payload)
 }
+
 
 // --------------------------------------------------------------------------------
 // Local Handler (carries state to support local output)
@@ -43,12 +66,12 @@ func (pout *LocalHandling) get_source_name() string {
 }
 
 func (pout *LocalHandling) set_source_name(name string) {
-     local_handler.source_name = name
+     pout.source_name = name
 }
 
-func (pout *LocalHandling) log_text(text string, stream string) {
-    local_log_text(text, stream) 
-}
+// func (pout *LocalHandling) log_text(text string, stream string) {
+//     emit_log_text(text, stream) 
+// }
 
 func (pout *LocalHandling) emit(payload string) {
   var err error
@@ -96,4 +119,3 @@ func (pout *LocalHandling) open_output_file() error {
 
   return err
 }
-
