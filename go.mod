@@ -1,8 +1,8 @@
-module github.com/antithesishq/antilog
+module github.com/antithesishq/antithesis-sdk-go
 
 go 1.20
 
-replace github.com/antithesishq/antilog => ../antilog
+// replace github.com/antithesishq/antithesis-sdk-go => ../antithesis-sdk-go
 
 require golang.org/x/tools v0.16.1
 

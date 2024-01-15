@@ -2,7 +2,7 @@ package main
 
 import (
     "fmt"
-    ant "github.com/antithesishq/antilog"
+    ant "github.com/antithesishq/antithesis-sdk-go"
 )
 
 func main() {

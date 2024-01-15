@@ -103,7 +103,7 @@ var func_name string
 var receiver string
 var package_name string
 
-const ANTILOG_PACKAGE = "github.com/antithesishq/antilog/assert"
+const ANTILOG_PACKAGE = "github.com/antithesishq/antithesis-sdk-go/assert"
 const NAME_NOT_AVAILABLE = "anonymous"
 const GENERATED_SUFFIX = "_exigen.go"
 
@@ -324,7 +324,7 @@ package for the specified module-name
 
 Example added to file main.go for module "{{.mod_name}}"
 
-  //go:generate go run ../antilog/cmd/{{.gen_name}}.go -v {{.mod_name}}
+  //go:generate go run ../antithesis-sdk-go/cmd/{{.gen_name}}.go -v {{.mod_name}}
 
 Supported flags:
   -v    verbose messages to stdout

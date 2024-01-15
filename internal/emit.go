@@ -201,7 +201,7 @@ import (
  }
 
  func open_failed_handler() {
-      fmt.Printf("\n    [* antilog *] Will handle events locally ---\n\n")
+      fmt.Printf("\n    [* antithesis-sdk-go *] Will handle events locally ---\n\n")
  }
 
 
@@ -325,7 +325,7 @@ import (
 
  func event_logger_error(what string) {
    err_txt := C.GoString(C.dlerror())
-   fmt.Fprintf(os.Stderr, "\n    [* antilog *] %s =->  %s\n\n", what, err_txt)
+   fmt.Fprintf(os.Stderr, "\n    [* antithesis-sdk-go *] %s =->  %s\n\n", what, err_txt)
  }
 
  func init() {

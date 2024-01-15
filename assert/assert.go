@@ -4,8 +4,8 @@ import (
   "encoding/json"
   "errors"
   "fmt"
-  "github.com/antithesishq/antilog/internal"
-  "github.com/antithesishq/antilog/local"
+  "github.com/antithesishq/antithesis-sdk-go/internal"
+  "github.com/antithesishq/antithesis-sdk-go/local"
 )
 
 type AssertInfo struct {
@@ -36,7 +36,6 @@ type LocalLogAssertInfo struct {
 func Version() string {
   return "0.2.0"
 }
-
 
 // --------------------------------------------------------------------------------
 // Assertions

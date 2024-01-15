@@ -3,8 +3,8 @@ package io
 import (
   "encoding/json"
   "errors"
-  "github.com/antithesishq/antilog/internal"
-  "github.com/antithesishq/antilog/local"
+  "github.com/antithesishq/antithesis-sdk-go/internal"
+  "github.com/antithesishq/antithesis-sdk-go/local"
   )
 
 type JSONDataInfo struct {
