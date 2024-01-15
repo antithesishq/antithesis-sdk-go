@@ -19,7 +19,7 @@ general form is like this:
 
 Example:
 
-`//go:generate go run /home/adk/go/tools/antilog/cmd/exigen.go github.com/synadia/nats-cluster`
+`//go:generate go run /home/src/antithesis-sdk-go/cmd/exigen.go github.com/synadia/nats-cluster`
 
 A good place to add this directive is in the top-level
 driver for an executable (often this is `main.go`)
