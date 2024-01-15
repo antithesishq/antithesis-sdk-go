@@ -1,14 +1,13 @@
 
-# antilog
+# antithesis-sdk-go
 
-Provides Always() Somtimes() and Assert() functions used to
-specify Antithesis assertions used in a Go module.  
+Provides functions enabling Go programs to include non-fatal Assertions and structured IO.
 
 ### Using exigen
-The antilog module also contains the exigen command, used to 
-discover existential assertions in a Go module, and to generate
-Assert() calls in an init() function for that module.  exigen
-can run from source, or it can be installed in a dev 
+The antithesis-sdk-go module also contains the exigen command, used to 
+identify assertions that were added to a Go module, and to generate
+corresponding function calls in an init() function to register these
+assertions.  exigen can run from source, or it can be installed in a dev 
 environment.  The notes here describe a run-from-source
 use case.
 
@@ -33,21 +32,21 @@ process.  When exigen runs, it will scan for packages in the specified
 module indicated in the corresponding //go:generate directive.  
 
 All of the files in each package of the module will be scanned for 
-existential assertions, and result in one Expect() call to be created
-for each existential assertion that was scanned.  The Expect() calls 
+assertions, and result in a regsitration call to be created
+for each assertion that was scanned.  These registrations 
 will be written to a new file whose name is derived from the name of the file that
 contains the //go:generate directive.  
 
 If the file containing the //go:generate directive is `main.go`  then the 
 derived file will be `main_exigen.go` and will include an init() function 
-containing the Expect() calls that were created.
+containing the registration calls that were created.
 
 After running `go generate <path>` run `go build <path>` and the
 module source, along with the newly generated `main_exigen.go` file
 will be compiled and linked.
 
-### Building antilog
-When building antilog, make sure to specify clang and to set CGO_ENABLED
+### Building antithesis-sdk-go
+When building antithesis-sdk-go, make sure to specify clang and to set CGO_ENABLED
   
 Example:
 
