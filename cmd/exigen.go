@@ -103,7 +103,7 @@ var func_name string
 var receiver string
 var package_name string
 
-const ANTILOG_PACKAGE = "github.com/antithesishq/antilog"
+const ANTILOG_PACKAGE = "github.com/antithesishq/antilog/assert"
 const NAME_NOT_AVAILABLE = "anonymous"
 const GENERATED_SUFFIX = "_exigen.go"
 
@@ -464,7 +464,7 @@ const expector =
 // -----------------------------------
 
 import (
-  ant "{{.ExpectPackageName}}"
+  "{{.ExpectPackageName}}"
 )
 
 func init() {
@@ -481,7 +481,7 @@ func init() {
    const existential_test = "some"
 
    var no_values map[string]any = nil
-   var loc_info *ant.LocationInfo
+   var loc_info *assert.LocationInfo
    
    {{- range .ExpectedVals }}
    {{- $cond := cond_repr .AssertionFuncInfo.Condition -}}
@@ -490,8 +490,8 @@ func init() {
    {{- $expecting := expecting_repr .AssertionFuncInfo.Expecting -}}
    {{- $expect_type := expect_type_repr .AssertionFuncInfo.ExpectType}}
 
-   loc_info = ant.NewLocInfo("{{.Classname}}", "{{.Funcname}}", "{{.Filename}}", {{.Line}})
-   ant.AssertImpl("{{.Message}}", {{$cond}}, no_values, loc_info, {{$did_hit}}, {{$must_hit}}, {{$expecting}}, {{$expect_type}})
+   loc_info = assert.NewLocInfo("{{.Classname}}", "{{.Funcname}}", "{{.Filename}}", {{.Line}})
+   assert.AssertImpl("{{.Message}}", {{$cond}}, no_values, loc_info, {{$did_hit}}, {{$must_hit}}, {{$expecting}}, {{$expect_type}})
    {{- end}}
 }
 `
