@@ -1,4 +1,4 @@
-package antilog
+package internal
 
 import (
   "encoding/json"
@@ -12,7 +12,7 @@ type AnyContainer struct {
     Any any `json:"."`
 }
 
-func to_jsonable_map(name string, item any) map[string]any {
+func ToJsonableMap(name string, item any) map[string]any {
   var item_map map[string]any = make(map[string]any) 
   if item == nil {
       return item_map
@@ -56,7 +56,7 @@ func to_jsonable_map(name string, item any) map[string]any {
   return item_map
 }
 
-func json_with_renaming(anything any, old_name string, new_name string) string {
+func JsonWithRenaming(anything any, old_name string, new_name string) string {
   var temp_map map[string]any = make(map[string]any,10) 
   var data []byte = nil
   var err error

@@ -1,4 +1,4 @@
-package antilog
+package internal
 
 import (
   "errors"
@@ -105,7 +105,7 @@ import (
 
  var DSOError error = errors.New("No DSO Available")
 
- func json_data(payload string) error {
+ func Json_data(payload string) error {
    if emitter.dso_handle == nil {
        return DSOError
    }
@@ -116,7 +116,7 @@ import (
    return nil
  }
 
- func info_message(message string) error {
+ func Info_message(message string) error {
    if emitter.dso_handle == nil {
        return DSOError
    }
@@ -126,7 +126,7 @@ import (
    return nil
  }
 
- func error_message(message string) error {
+ func Error_message(message string) error {
    if emitter.dso_handle == nil {
        return DSOError
    }
@@ -136,7 +136,7 @@ import (
    return nil
  }
 
- func set_source_name(name string) error {
+ func Set_source_name(name string) error {
    if emitter.dso_handle == nil {
        return DSOError
    }
@@ -146,7 +146,7 @@ import (
    return nil
  }
 
- func getchar() (r rune, err error) {
+ func Getchar() (r rune, err error) {
    if emitter.dso_handle == nil {
        return 0, DSOError
    }
@@ -154,7 +154,7 @@ import (
    return rune(retval), nil
  }
 
- func putchar(r rune) (r2 rune, err error) {
+ func Putchar(r rune) (r2 rune, err error) {
    if emitter.dso_handle == nil {
        return 0, DSOError
    }
@@ -167,7 +167,7 @@ import (
    return rune(retval), nil
  }
 
- func flush() error {
+ func Flush() error {
    if emitter.dso_handle == nil {
        return DSOError
    }
@@ -175,7 +175,7 @@ import (
    return nil
  }
 
- func get_random() (v uint64, err error) {
+ func Get_random() (v uint64, err error) {
    if emitter.dso_handle == nil {
        return 0, DSOError
    }
@@ -183,7 +183,7 @@ import (
    return uint64(retval), nil
  }
 
- func coin_flip() (b bool, err error){
+ func Coin_flip() (b bool, err error){
    if emitter.dso_handle == nil {
        return false, DSOError
    }

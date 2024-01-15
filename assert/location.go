@@ -1,4 +1,4 @@
-package antilog
+package assert
 
 import (
   "path"

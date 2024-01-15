@@ -1,9 +1,11 @@
-package antilog
+package assert
 
 import (
   "encoding/json"
   "errors"
   "fmt"
+  "github.com/antithesishq/antilog/internal"
+  "github.com/antithesishq/antilog/io"
 )
 
 type AssertInfo struct {
@@ -23,8 +25,9 @@ type WrappedAssertInfo struct {
     A *AssertInfo `json:"ant_assert"`
 }
 
-type JSONDataInfo struct {
-    Any any `json:"."`
+type LocalLogAssertInfo struct {
+    io.LocalLogInfo
+    WrappedAssertInfo
 }
 
 // --------------------------------------------------------------------------------
@@ -146,16 +149,16 @@ func emit_assert(assert_info *AssertInfo) error {
       return err
   }
   payload := string(data)
-  if err = json_data(payload); errors.Is(err, DSOError) {
+  if err = internal.Json_data(payload); errors.Is(err, internal.DSOError) {
       local_info := LocalLogAssertInfo{
-        LocalLogInfo: *NewLocalLogInfo("", ""),
+        LocalLogInfo: *io.NewLocalLogInfo("", ""),
         WrappedAssertInfo: wrapped_assert,
       }
       if data, err = json.Marshal(local_info); err != nil {
           return err
       }
       payload = string(data)
-      local_handler.emit(payload)
+      io.Local_emit(payload)
       err = nil
   }
   return err

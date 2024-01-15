@@ -1,9 +1,14 @@
-package antilog
+package io
 
 import (
   "encoding/json"
   "errors"
+  "github.com/antithesishq/antilog/internal"
   )
+
+type JSONDataInfo struct {
+    Any any `json:"."`
+}
 
 // --------------------------------------------------------------------------------
 // JSON and general text output 
@@ -12,7 +17,7 @@ func LogEvent(name string, event any) {
   var data []byte = nil
   var err error
 
-  event_map := to_jsonable_map(name, event)
+  event_map := internal.ToJsonableMap(name, event)
 
   // Make sure JSON Marshaling delivered something useful
   if len(event_map) == 0 {
@@ -26,26 +31,26 @@ func LogEvent(name string, event any) {
   text := string(data)
 
   // Try the DSO first, then revert to local_output (if it was enabled)
-  if err := json_data(text); errors.Is(err, DSOError) {
+  if err := internal.Json_data(text); errors.Is(err, internal.DSOError) {
       local_info := LocalLogJSONDataInfo{
         LocalLogInfo: *NewLocalLogInfo("", ""),
         JSONDataInfo: JSONDataInfo{event_map},
       }
-      payload := json_with_renaming(local_info, ".", name)
+      payload := internal.JsonWithRenaming(local_info, ".", name)
      local_handler.emit(payload)
   }
 }
 
 func OutputText(text string) {
   // Try the DSO first, then revert to local_output (if it was enabled)
-  if err := info_message(text); err != nil {
+  if err := internal.Info_message(text); err != nil {
      local_handler.log_text(text, "info")
   }
 }
 
 func ErrorText(text string) {
   // Try the DSO first, then revert to local_output (if it was enabled)
-  if err := error_message(text); err != nil {
+  if err := internal.Error_message(text); err != nil {
      local_handler.log_text(text, "err")
   }
 }
@@ -57,7 +62,7 @@ func SetSourceName(name string) {
   var err error
 
   // Try the DSO first, then update the source name for local output.
-  if err = set_source_name(name); err != nil {
+  if err = internal.Set_source_name(name); err != nil {
      local_handler.set_source_name(name)
   }
   return
@@ -70,8 +75,8 @@ func SetSourceName(name string) {
 func Getchar() (r rune, err error) {
 
   // Try the DSO first, then use the local getchar
-  if r, err = getchar(); err != nil {
-     r, err = local_handler.getchar()
+  if r, err = internal.Getchar(); err != nil {
+     r, err = Local_fuzz_getchar()
   }
   return r, err
 }
@@ -81,8 +86,8 @@ func Putchar(r rune) rune {
   var r2 rune
 
   // Try the DSO first, then use the local putchar
-  if r2, err = putchar(r); err != nil {
-     r2 = local_handler.putchar(r)
+  if r2, err = internal.Putchar(r); err != nil {
+     r2 = Local_fuzz_putchar(r)
   }
   return r2
 }
@@ -91,8 +96,8 @@ func Flush() {
   var err error
 
   // Try the DSO first, then use the local flush
-  if err = flush(); err != nil {
-     local_handler.flush()
+  if err = internal.Flush(); err != nil {
+     Local_fuzz_flush()
   }
   return
 }
@@ -102,8 +107,8 @@ func GetRandom() uint64 {
     var v uint64
 
   // Try the DSO first, then use the local get_random
-  if v, err = get_random(); err != nil {
-     v = local_handler.get_random()
+  if v, err = internal.Get_random(); err != nil {
+     v = Local_fuzz_get_random()
   }
   return v
 }
@@ -113,8 +118,8 @@ func CoinFlip() bool {
     var b bool
 
   // Try the DSO first, then use the local coin_flip
-  if b, err = coin_flip(); err != nil {
-     b = local_handler.coin_flip()
+  if b, err = internal.Coin_flip(); err != nil {
+     b = Local_fuzz_coin_flip()
   }
   return b
 }
