@@ -69,10 +69,6 @@ func (pout *LocalHandling) set_source_name(name string) {
      pout.source_name = name
 }
 
-// func (pout *LocalHandling) log_text(text string, stream string) {
-//     emit_log_text(text, stream) 
-// }
-
 func (pout *LocalHandling) emit(payload string) {
   var err error
   if !pout.can_be_opened {

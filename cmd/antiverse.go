@@ -2,9 +2,9 @@ package main
 
 import (
     "fmt"
-    ant "github.com/antithesishq/antithesis-sdk-go"
+    "github.com/antithesishq/antithesis-sdk-go/assert"
 )
 
 func main() {
-    fmt.Printf(ant.Version())
+    fmt.Printf(assert.Version())
 }
