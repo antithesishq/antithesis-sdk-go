@@ -6,6 +6,8 @@ import (
   "fmt"
   "github.com/antithesishq/antithesis-sdk-go/internal"
   "github.com/antithesishq/antithesis-sdk-go/local"
+  "os"
+  "strings"
 )
 
 type AssertInfo struct {
@@ -53,49 +55,49 @@ const existential_test = "some"
 // AlwaysTrue asserts that when this is evaluated
 // the condition will always be true, and that this is evaluated at least once.
 // Alternative name is Always()
-func AlwaysTrue(text string, cond bool, values any) {
+func AlwaysTrue(text string, cond bool, values any, options ...string) {
   location_info := NewLocationInfo(OffsetAPICaller) 
-  AssertImpl(text, cond, values, location_info, was_hit, must_be_hit, expecting_true, universal_test)
+  AssertImpl(text, cond, values, location_info, was_hit, must_be_hit, expecting_true, universal_test, options...)
 }
 
 // AlwaysTrueIfOccurs asserts that when this is evaluated
 // the condition will always be true, or that this is never evaluated.
 // Alternative name is UnreachableOrAlways()
-func AlwaysTrueIfOccurs(text string, cond bool, values any) {
+func AlwaysTrueIfOccurs(text string, cond bool, values any, options ...string) {
   location_info := NewLocationInfo(OffsetAPICaller) 
-  AssertImpl(text, cond, values, location_info, was_hit, optionally_hit, expecting_true, universal_test)
+  AssertImpl(text, cond, values, location_info, was_hit, optionally_hit, expecting_true, universal_test, options...)
 }
 
 // SometimesTrue asserts that when this is evaluated
 // the condition will sometimes be true, and that this is evaluated at least once.
 // Alternative name is Sometimes()
-func SometimesTrue(text string, cond bool, values any) {
+func SometimesTrue(text string, cond bool, values any, options ...string) {
   location_info := NewLocationInfo(OffsetAPICaller) 
-  AssertImpl(text, cond, values, location_info, was_hit, must_be_hit, expecting_true, existential_test)
+  AssertImpl(text, cond, values, location_info, was_hit, must_be_hit, expecting_true, existential_test, options...)
 }
 
 // NeverOccurs asserts that this is never evaluated.
 // This assertion will fail if it is evaluated.
 // Alternative name is Unreachable()
-func NeverOccurs(values any) {
+func NeverOccurs(text string, values any, options ...string) {
   location_info := NewLocationInfo(OffsetAPICaller) 
-  AssertImpl("", false, values, location_info, was_hit, optionally_hit, expecting_true, universal_test)
+  AssertImpl(text, false, values, location_info, was_hit, optionally_hit, expecting_true, universal_test, options...)
 }
 
 // SometimesOccurs asserts that this is evaluated at least once.
 // This assertion will fail if it is not evaluated, and otherwise will pass.
 // Alternative name is Reachable()
-func SometimesOccurs(values any) {
+func SometimesOccurs(text string, values any, options ...string) {
   location_info := NewLocationInfo(OffsetAPICaller) 
-  AssertImpl("", true, values, location_info, was_hit, must_be_hit, expecting_true, existential_test)
+  AssertImpl(text, true, values, location_info, was_hit, must_be_hit, expecting_true, existential_test, options...)
 }
 
-func AssertImpl(text string, cond bool, values any, loc *LocationInfo, hit bool, must_hit bool, expecting bool, expect_type string) {
+func AssertImpl(text string, cond bool, values any, loc *LocationInfo, hit bool, must_hit bool, expecting bool, expect_type string, options ...string) {
   message_key := makeKey(loc)
   tracker_entry := assert_tracker.get_tracker_entry(message_key)
   details_map := struct_to_map(values)
 
-  assertInfo := AssertInfo{
+  aI := &AssertInfo{
       Hit: hit,
       MustHit: must_hit,
       ExpectType: expect_type,
@@ -107,7 +109,34 @@ func AssertImpl(text string, cond bool, values any, loc *LocationInfo, hit bool,
       Location: loc,
       Details: details_map,
   }
-  tracker_entry.emit(&assertInfo)
+
+  var before, after, opt_name, opt_value string
+  var found, did_apply bool
+
+  for _, option := range options {
+      // option should be key:value
+      if before, after, found = strings.Cut(option, ":"); found {
+          opt_name = strings.ToLower(strings.TrimSpace(before))
+          opt_value = strings.TrimSpace(after)
+          if did_apply = aI.applyOption(opt_name, opt_value); !did_apply {
+              fmt.Fprintf(os.Stderr, "Unable to apply option %s(%q)\n", opt_name, opt_value)
+          }
+      }
+      if !found {
+          fmt.Fprintf(os.Stderr, "Unable to parse %q\n", option)
+      }
+  }
+
+  tracker_entry.emit(aI)
+}
+
+func (aI *AssertInfo) applyOption(opt_name string, opt_value string) bool {
+    // fmt.Printf("Applying %s(%q)\n", opt_name, opt_value)
+    if (opt_name == "id") {
+        aI.Id = fmt.Sprintf("%s (%s)", aI.Message, opt_value)
+        return true
+    }
+    return false
 }
 
 
