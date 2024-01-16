@@ -4,6 +4,8 @@ import (
   "crypto/rand"
   "math"
   "math/big"
+  "os"
+  // [PH] "unicode/utf8"
 )
 
 
@@ -30,7 +32,6 @@ func Fuzz_getchar() (r rune, err error) {
     // [PH]         fmt.Fprintln(os.Stderr, "warning, failed to restore terminal:", err)
     // [PH]     }
     // [PH] }()
-
     // [PH] in := bufio.NewReader(os.Stdin)
     // [PH] r, _, err = in.ReadRune()
     // [PH] return r, err
