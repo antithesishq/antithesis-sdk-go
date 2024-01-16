@@ -1,20 +1,17 @@
 package assert
 
-// --------------------------------------------------------------------------------
-// EmitTracker
-// --------------------------------------------------------------------------------
-type TrackerInfo struct {
+type trackerInfo struct {
     PassCount int
     FailCount int
 }
 
-type EmitTracker map[string]*TrackerInfo
+type emitTracker map[string]*trackerInfo
 
 // assert_tracker (global) keeps track of the unique asserts evaluated
-var assert_tracker EmitTracker = make(EmitTracker)
+var assert_tracker emitTracker = make(emitTracker)
 
-func (tracker EmitTracker) get_tracker_entry(message_key string) *TrackerInfo {
-  var tracker_entry *TrackerInfo
+func (tracker emitTracker) get_tracker_entry(message_key string) *trackerInfo {
+  var tracker_entry *trackerInfo
   var ok bool
 
   if (tracker == nil) {
@@ -22,22 +19,22 @@ func (tracker EmitTracker) get_tracker_entry(message_key string) *TrackerInfo {
   }
 
   if tracker_entry, ok = tracker[message_key]; !ok {
-      tracker_entry = NewTrackerInfo()
+      tracker_entry = newTrackerInfo()
       tracker[message_key] = tracker_entry
   }
   return tracker_entry
 }
 
 
-func NewTrackerInfo() *TrackerInfo {
-    tracker_info := TrackerInfo {
+func newTrackerInfo() *trackerInfo {
+    tracker_info := trackerInfo {
         PassCount: 0,
         FailCount: 0,
     }
     return &tracker_info
 }
 
-func (ti *TrackerInfo) emit(ai *AssertInfo) {
+func (ti *trackerInfo) emit(ai *AssertInfo) {
   if ti == nil || ai == nil {
       return
   }

@@ -23,20 +23,18 @@ type AssertInfo struct {
     Details map[string]any `json:"details"`
 }
 
-type WrappedAssertInfo struct {
+type wrappedAssertInfo struct {
     A *AssertInfo `json:"ant_assert"`
 }
 
-type LocalLogAssertInfo struct {
+type localLogAssertInfo struct {
     local.LocalLogInfo
-    WrappedAssertInfo
+    wrappedAssertInfo
 }
 
-// --------------------------------------------------------------------------------
-// Version
-// --------------------------------------------------------------------------------
+// Version provides the latest version id of the Anithesis SDK for Go
 func Version() string {
-  return "0.1.1"
+  return "v0.1.3"
 }
 
 // --------------------------------------------------------------------------------
@@ -172,15 +170,15 @@ func emit_assert(assert_info *AssertInfo) error {
   var data []byte = nil
   var err error
 
-  wrapped_assert := WrappedAssertInfo{assert_info}
+  wrapped_assert := wrappedAssertInfo{assert_info}
   if data, err = json.Marshal(wrapped_assert); err != nil {
       return err
   }
   payload := string(data)
   if err = internal.Json_data(payload); errors.Is(err, internal.DSOError) {
-      local_info := LocalLogAssertInfo{
+      local_info := localLogAssertInfo{
         LocalLogInfo: *local.NewLogInfo("", ""),
-        WrappedAssertInfo: wrapped_assert,
+        wrappedAssertInfo: wrapped_assert,
       }
       if data, err = json.Marshal(local_info); err != nil {
           return err

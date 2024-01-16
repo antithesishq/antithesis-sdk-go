@@ -6,10 +6,6 @@ import (
   "strings"
 )
 
-// --------------------------------------------------------------------------------
-// LocationInfo
-// --------------------------------------------------------------------------------
-
 // StackFrameOffset indicates how many frames to go up in the 
 // call stack to find the filename/location/line info.  As 
 // this work is always done in NewLocationInfo(), the offset is 
