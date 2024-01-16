@@ -82,16 +82,16 @@ func Getchar() (r rune, err error) {
   return r, err
 }
 
-func Putchar(r rune) rune {
-  var err error
-  var r2 rune
-
-  // Try the DSO first, then use the local putchar
-  if r2, err = internal.Putchar(r); err != nil {
-     r2 = local.Fuzz_putchar(r)
-  }
-  return r2
-}
+// [PH] func Putchar(r rune) rune {
+// [PH]   var err error
+// [PH]   var r2 rune
+// [PH] 
+// [PH]   // Try the DSO first, then use the local putchar
+// [PH]   if r2, err = internal.Putchar(r); err != nil {
+// [PH]      r2 = local.Fuzz_putchar(r)
+// [PH]   }
+// [PH]   return r2
+// [PH] }
 
 func Flush() {
   var err error
