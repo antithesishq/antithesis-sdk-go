@@ -331,7 +331,8 @@ import (
  func init() {
     var did_open bool = false
 
-    lib_path := os.Getenv("ANTILOG_PATH") // Use this DSO
+    // lib_path := os.Getenv("ANTILOG_PATH") // Use this DSO
+    lib_path = "/usr/lib/libvoidstar.so"
     if len(lib_path) > 0 {
         if did_open = open_shared_lib(lib_path); did_open {
             return
