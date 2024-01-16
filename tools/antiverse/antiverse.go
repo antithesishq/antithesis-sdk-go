@@ -62,9 +62,10 @@ func AllPaths(path_list string) []string {
 func ExistsAtPath(filename string, filepath string) (fullname string, exists bool) {
     fullname = path.Join(filepath, filename)
     exists = false
-    if _, err := os.Stat(path); err == nil {
+    if _, err := os.Stat(fullname); err == nil {
         exists = true
         return
     }
     return
 }
+

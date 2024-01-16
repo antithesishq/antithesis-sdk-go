@@ -5,7 +5,7 @@ import (
   "fmt"
   "os"
   "unsafe"
-  "unicode/utf8"
+  // [PH] "unicode/utf8"
 )
 
  // --------------------------------------------------------------------------------
@@ -52,17 +52,17 @@ import (
  //   return ((go_fuzz_getchar_fn)f)();
  // }
  //
- // typedef int (*go_fuzz_putchar_fn)(char c);
- // int
- // go_fuzz_putchar(void *f, char c) {
- //   return ((go_fuzz_putchar_fn)f)(c);
- // }
+ // // [PH] typedef int (*go_fuzz_putchar_fn)(char c);
+ // // [PH] int
+ // // [PH] go_fuzz_putchar(void *f, char c) {
+ // // [PH]   return ((go_fuzz_putchar_fn)f)(c);
+ // // [PH] }
  //
- // typedef void (*go_fuzz_flush_fn)(void);
- // void
- // go_fuzz_flush(void *f) {
- //   ((go_fuzz_flush_fn)f)();
- // }
+ // // [PH] typedef void (*go_fuzz_flush_fn)(void);
+ // // [PH] void
+ // // [PH] go_fuzz_flush(void *f) {
+ // // [PH]   ((go_fuzz_flush_fn)f)();
+ // // [PH] }
  //
  // typedef uint64_t (*go_fuzz_get_random_fn)(void);
  // uint64_t
@@ -84,8 +84,8 @@ import (
    info_message_handle unsafe.Pointer
    error_message_handle unsafe.Pointer
    getchar_handle unsafe.Pointer
-   putchar_handle unsafe.Pointer
-   flush_handle unsafe.Pointer
+   // [PH] putchar_handle unsafe.Pointer
+   // [PH] flush_handle unsafe.Pointer
    get_random_handle unsafe.Pointer
    coin_flip_handle unsafe.Pointer
  }
@@ -97,8 +97,8 @@ import (
    info_message_handle: nil,
    error_message_handle: nil,
    getchar_handle: nil,
-   putchar_handle: nil,
-   flush_handle: nil,
+   // [PH] putchar_handle: nil,
+   // [PH] flush_handle: nil,
    get_random_handle: nil,
    coin_flip_handle: nil,
  }
@@ -154,26 +154,26 @@ import (
    return rune(retval), nil
  }
 
- func Putchar(r rune) (r2 rune, err error) {
-   if emitter.dso_handle == nil {
-       return 0, DSOError
-   }
-   var retval C.int
+ // [PH] func Putchar(r rune) (r2 rune, err error) {
+ // [PH]   if emitter.dso_handle == nil {
+ // [PH]       return 0, DSOError
+ // [PH]   }
+ // [PH]   var retval C.int
 
-   if utf8.RuneLen(r) == 1 {
-       c := uint8(r)
-      retval = C.go_fuzz_putchar(emitter.putchar_handle, C.char(c))
-   }
-   return rune(retval), nil
- }
+ // [PH]   if utf8.RuneLen(r) == 1 {
+ // [PH]       c := uint8(r)
+ // [PH]      retval = C.go_fuzz_putchar(emitter.putchar_handle, C.char(c))
+ // [PH]   }
+ // [PH]   return rune(retval), nil
+ // [PH] }
 
- func Flush() error {
-   if emitter.dso_handle == nil {
-       return DSOError
-   }
-   C.go_fuzz_flush(emitter.flush_handle)
-   return nil
- }
+ // [PH] func Flush() error {
+ // [PH]   if emitter.dso_handle == nil {
+ // [PH]       return DSOError
+ // [PH]   }
+ // [PH]   C.go_fuzz_flush(emitter.flush_handle)
+ // [PH]   return nil
+ // [PH] }
 
  func Get_random() (v uint64, err error) {
    if emitter.dso_handle == nil {
@@ -261,21 +261,21 @@ import (
         event_logger_error("Can not access fuzz_getchar")
      }
      
-     // Put a character
-     cstr_func_name = C.CString("fuzz_putchar")
-     var putchar_handle unsafe.Pointer = C.dlsym(dso_handle, cstr_func_name)
-     C.free(unsafe.Pointer(cstr_func_name))
-     if putchar_handle == nil {
-        event_logger_error("Can not access fuzz_putchar")
-     }
-     
-     // Flush pending output
-     cstr_func_name = C.CString("fuzz_flush")
-     var flush_handle unsafe.Pointer = C.dlsym(dso_handle, cstr_func_name)
-     C.free(unsafe.Pointer(cstr_func_name))
-     if flush_handle == nil {
-        event_logger_error("Can not access fuzz_flush")
-     }
+     // [PH] // Put a character
+     // [PH] cstr_func_name = C.CString("fuzz_putchar")
+     // [PH] var putchar_handle unsafe.Pointer = C.dlsym(dso_handle, cstr_func_name)
+     // [PH] C.free(unsafe.Pointer(cstr_func_name))
+     // [PH] if putchar_handle == nil {
+     // [PH]    event_logger_error("Can not access fuzz_putchar")
+     // [PH] }
+     // [PH] 
+     // [PH] // Flush pending output
+     // [PH] cstr_func_name = C.CString("fuzz_flush")
+     // [PH] var flush_handle unsafe.Pointer = C.dlsym(dso_handle, cstr_func_name)
+     // [PH] C.free(unsafe.Pointer(cstr_func_name))
+     // [PH] if flush_handle == nil {
+     // [PH]    event_logger_error("Can not access fuzz_flush")
+     // [PH] }
 
      // Get a random uint64
      cstr_func_name = C.CString("fuzz_get_random")
@@ -300,8 +300,8 @@ import (
      emitter.info_message_handle = info_message_handle
      emitter.error_message_handle = error_message_handle
      emitter.getchar_handle = getchar_handle
-     emitter.putchar_handle = putchar_handle
-     emitter.flush_handle = flush_handle
+     // [PH] emitter.putchar_handle = putchar_handle
+     // [PH] emitter.flush_handle = flush_handle
      emitter.get_random_handle = get_random_handle
      emitter.coin_flip_handle = coin_flip_handle
      return dso_handle != nil
@@ -317,8 +317,8 @@ import (
    emitter.info_message_handle = nil
    emitter.error_message_handle = nil
    emitter.getchar_handle = nil
-   emitter.putchar_handle = nil
-   emitter.flush_handle = nil
+   // [PH] emitter.putchar_handle = nil
+   // [PH] emitter.flush_handle = nil
    emitter.get_random_handle = nil
    emitter.coin_flip_handle = nil
  }
@@ -332,7 +332,7 @@ import (
     var did_open bool = false
 
     // lib_path := os.Getenv("ANTILOG_PATH") // Use this DSO
-    lib_path = "/usr/lib/libvoidstar.so"
+    lib_path := "/usr/lib/libvoidstar.so"
     if len(lib_path) > 0 {
         if did_open = open_shared_lib(lib_path); did_open {
             return
