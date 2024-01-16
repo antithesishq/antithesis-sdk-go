@@ -58,11 +58,11 @@ import (
  // // [PH]   return ((go_fuzz_putchar_fn)f)(c);
  // // [PH] }
  //
- // // [PH] typedef void (*go_fuzz_flush_fn)(void);
- // // [PH] void
- // // [PH] go_fuzz_flush(void *f) {
- // // [PH]   ((go_fuzz_flush_fn)f)();
- // // [PH] }
+ // typedef void (*go_fuzz_flush_fn)(void);
+ // void
+ // go_fuzz_flush(void *f) {
+ //   ((go_fuzz_flush_fn)f)();
+ // }
  //
  // typedef uint64_t (*go_fuzz_get_random_fn)(void);
  // uint64_t
