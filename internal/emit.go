@@ -5,13 +5,12 @@ import (
   "fmt"
   "os"
   "unsafe"
-  // [PH] "unicode/utf8"
 )
 
  // --------------------------------------------------------------------------------
  // To build and run an executable with this package
  //
- // CC=clang CGO_ENABLED=1 go run ./main.go haj
+ // CC=clang CGO_ENABLED=1 go run ./main.go
  // --------------------------------------------------------------------------------
 
 
@@ -206,9 +205,21 @@ import (
  }
 
 
+ func exists_at_path(fullname string) (name string, exists bool) {
+    exists = false
+    name = fullname
+    if _, err := os.Stat(fullname); err == nil {
+        exists = true
+        return
+    }
+    return
+  }
+
  // Open the target library
  func open_shared_lib(lib_path string) bool {
-     fmt.Fprintf(os.Stderr,"open_shared_lib(%q)\n", lib_path)
+     if _, exists := exists_at_path(lib_path); !exists {
+         return false
+     }
      loading_mode := C.int(C.RTLD_NOW)
      cstr_lib_path := C.CString(lib_path)
 
@@ -220,7 +231,6 @@ import (
         event_logger_error("Can not connect to event logger")
         return false
      }
-     fmt.Fprintf(os.Stderr, "Received a DSO handle: %+v %p\n", dso_handle, dso_handle)
 
      // Send JSON
      var cstr_func_name *C.char
@@ -328,13 +338,11 @@ import (
 
  func event_logger_error(what string) {
    err_txt := C.GoString(C.dlerror())
-   fmt.Fprintf(os.Stderr, "\n    [* antithesis-sdk-go *] %s =->  %s\n\n", what, err_txt)
+   fmt.Fprintf(os.Stderr, "[* antithesis-sdk-go *] %s =->  %s\n\n", what, err_txt)
  }
 
  func init() {
     var did_open bool = false
-
-    // lib_path := os.Getenv("ANTILOG_PATH") // Use this DSO
     lib_path := "/usr/lib/libvoidstar.so"
     if len(lib_path) > 0 {
         if did_open = open_shared_lib(lib_path); did_open {

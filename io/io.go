@@ -127,8 +127,12 @@ func SetupComplete() {
 }
 
 func RandomChoice(things []any) any {
-    if len(things) < 1 {
+    num_things := len(things)
+    if num_things < 1 {
         return nil
     }
-    return things[0]
+
+    uval := GetRandom()
+    index := uval % uint64(num_things)
+    return things[index]
 }

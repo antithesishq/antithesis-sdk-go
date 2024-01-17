@@ -34,7 +34,7 @@ type localLogAssertInfo struct {
 
 // Version provides the latest version id of the Anithesis SDK for Go
 func Version() string {
-  return "v0.1.7"
+  return "v0.1.8"
 }
 
 // --------------------------------------------------------------------------------
@@ -52,7 +52,7 @@ const existential_test = "some"
 
 // AlwaysTrue asserts that when this is evaluated
 // the condition will always be true, and that this is evaluated at least once.
-// Alternative name is Always()
+// Could be named name is Always()
 func AlwaysTrue(text string, cond bool, values any, options ...string) {
   location_info := NewLocationInfo(OffsetAPICaller) 
   AssertImpl(text, cond, values, location_info, was_hit, must_be_hit, expecting_true, universal_test, options...)
@@ -60,7 +60,7 @@ func AlwaysTrue(text string, cond bool, values any, options ...string) {
 
 // AlwaysTrueIfOccurs asserts that when this is evaluated
 // the condition will always be true, or that this is never evaluated.
-// Alternative name is UnreachableOrAlways()
+// Could be named is UnreachableOrAlways()
 func AlwaysTrueIfOccurs(text string, cond bool, values any, options ...string) {
   location_info := NewLocationInfo(OffsetAPICaller) 
   AssertImpl(text, cond, values, location_info, was_hit, optionally_hit, expecting_true, universal_test, options...)
@@ -68,7 +68,7 @@ func AlwaysTrueIfOccurs(text string, cond bool, values any, options ...string) {
 
 // SometimesTrue asserts that when this is evaluated
 // the condition will sometimes be true, and that this is evaluated at least once.
-// Alternative name is Sometimes()
+// Could be named is Sometimes()
 func SometimesTrue(text string, cond bool, values any, options ...string) {
   location_info := NewLocationInfo(OffsetAPICaller) 
   AssertImpl(text, cond, values, location_info, was_hit, must_be_hit, expecting_true, existential_test, options...)
@@ -76,7 +76,7 @@ func SometimesTrue(text string, cond bool, values any, options ...string) {
 
 // NeverOccurs asserts that this is never evaluated.
 // This assertion will fail if it is evaluated.
-// Alternative name is Unreachable()
+// Could be named is Unreachable()
 func NeverOccurs(text string, values any, options ...string) {
   location_info := NewLocationInfo(OffsetAPICaller) 
   AssertImpl(text, false, values, location_info, was_hit, optionally_hit, expecting_true, universal_test, options...)
@@ -84,7 +84,7 @@ func NeverOccurs(text string, values any, options ...string) {
 
 // SometimesOccurs asserts that this is evaluated at least once.
 // This assertion will fail if it is not evaluated, and otherwise will pass.
-// Alternative name is Reachable()
+// Could be named is Reachable()
 func SometimesOccurs(text string, values any, options ...string) {
   location_info := NewLocationInfo(OffsetAPICaller) 
   AssertImpl(text, true, values, location_info, was_hit, must_be_hit, expecting_true, existential_test, options...)
@@ -129,7 +129,6 @@ func AssertImpl(text string, cond bool, values any, loc *LocationInfo, hit bool,
 }
 
 func (aI *AssertInfo) applyOption(opt_name string, opt_value string) bool {
-    // fmt.Printf("Applying %s(%q)\n", opt_name, opt_value)
     if (opt_name == "id") {
         aI.Id = fmt.Sprintf("%s (%s)", aI.Message, opt_value)
         return true
