@@ -11,10 +11,7 @@ type JSONDataInfo struct {
     Any any `json:"."`
 }
 
-// --------------------------------------------------------------------------------
-// JSON and general text output 
-// --------------------------------------------------------------------------------
-func LogEvent(name string, event any) {
+func xLogEvent(name string, event any) {
   var data []byte = nil
   var err error
 
@@ -42,14 +39,14 @@ func LogEvent(name string, event any) {
   }
 }
 
-func OutputText(text string) {
+func xOutputText(text string) {
   // Try the DSO first, then revert to local_output (if it was enabled)
   if err := internal.Info_message(text); err != nil {
      local.Log_text(text, "info")
   }
 }
 
-func ErrorText(text string) {
+func xErrorText(text string) {
   // Try the DSO first, then revert to local_output (if it was enabled)
   if err := internal.Error_message(text); err != nil {
      local.Log_text(text, "err")
@@ -59,7 +56,7 @@ func ErrorText(text string) {
 // --------------------------------------------------------------------------------
 // Setting the source name
 // --------------------------------------------------------------------------------
-func SetSourceName(name string) {
+func xSetSourceName(name string) {
   var err error
 
   // Try the DSO first, then update the source name for local output.
@@ -73,7 +70,7 @@ func SetSourceName(name string) {
 // --------------------------------------------------------------------------------
 // Console I/O
 // --------------------------------------------------------------------------------
-func Getchar() (r rune, err error) {
+func xGetchar() (r rune, err error) {
 
   // Try the DSO first, then use the local getchar
   if r, err = internal.Getchar(); err != nil {
@@ -93,7 +90,7 @@ func Getchar() (r rune, err error) {
 // [PH]   return r2
 // [PH] }
 
-func Flush() {
+func xFlush() {
   var err error
 
   // Try the DSO first, then use the local flush
@@ -101,6 +98,17 @@ func Flush() {
      local.Fuzz_flush()
   }
   return
+}
+
+func xCoinFlip() bool {
+    var err error
+    var b bool
+
+  // Try the DSO first, then use the local coin_flip
+  if b, err = internal.Coin_flip(); err != nil {
+     b = local.Fuzz_coin_flip()
+  }
+  return b
 }
 
 func GetRandom() uint64 {
@@ -114,14 +122,13 @@ func GetRandom() uint64 {
   return v
 }
 
-func CoinFlip() bool {
-    var err error
-    var b bool
-
-  // Try the DSO first, then use the local coin_flip
-  if b, err = internal.Coin_flip(); err != nil {
-     b = local.Fuzz_coin_flip()
-  }
-  return b
+func SetupComplete() {
+    xLogEvent("sut_setup_status", "complete")
 }
 
+func RandomChoice(things []any) any {
+    if len(things) < 1 {
+        return nil
+    }
+    return things[0]
+}

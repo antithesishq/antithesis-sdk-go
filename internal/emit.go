@@ -113,6 +113,7 @@ import (
    cstr_payload := C.CString(payload)
    C.go_fuzz_json_data(emitter.json_data_handle, cstr_payload, C.ulong(nbx))
    C.free(unsafe.Pointer(cstr_payload))
+   Flush()
    return nil
  }
 
@@ -207,6 +208,7 @@ import (
 
  // Open the target library
  func open_shared_lib(lib_path string) bool {
+     fmt.Fprintf(os.Stderr,"open_shared_lib(%q)\n", lib_path)
      loading_mode := C.int(C.RTLD_NOW)
      cstr_lib_path := C.CString(lib_path)
 
@@ -218,6 +220,7 @@ import (
         event_logger_error("Can not connect to event logger")
         return false
      }
+     fmt.Fprintf(os.Stderr, "Received a DSO handle: %+v %p\n", dso_handle, dso_handle)
 
      // Send JSON
      var cstr_func_name *C.char
