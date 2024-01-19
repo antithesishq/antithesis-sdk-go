@@ -13,7 +13,7 @@ import (
 type AssertInfo struct {
     Hit bool `json:"hit"`
     MustHit bool `json:"must_hit"`
-    ExpectType string `json:"expect_type"`
+    AssertType string `json:"assert_type"`
     Expecting bool `json:"expecting"`
     Category string `json:"category"`
     Message string `json:"message"`
@@ -34,7 +34,7 @@ type localLogAssertInfo struct {
 
 // Version provides the latest version id of the Anithesis SDK for Go
 func Version() string {
-  return "v0.1.8"
+  return "v0.1.9"
 }
 
 // --------------------------------------------------------------------------------
@@ -90,7 +90,7 @@ func SometimesOccurs(text string, values any, options ...string) {
   AssertImpl(text, true, values, location_info, was_hit, must_be_hit, expecting_true, existential_test, options...)
 }
 
-func AssertImpl(text string, cond bool, values any, loc *LocationInfo, hit bool, must_hit bool, expecting bool, expect_type string, options ...string) {
+func AssertImpl(text string, cond bool, values any, loc *LocationInfo, hit bool, must_hit bool, expecting bool, assert_type string, options ...string) {
   message_key := makeKey(loc)
   tracker_entry := assert_tracker.get_tracker_entry(message_key)
   details_map := struct_to_map(values)
@@ -98,7 +98,7 @@ func AssertImpl(text string, cond bool, values any, loc *LocationInfo, hit bool,
   aI := &AssertInfo{
       Hit: hit,
       MustHit: must_hit,
-      ExpectType: expect_type,
+      AssertType: assert_type,
       Expecting: expecting,
       Category: "",
       Message: text,

@@ -389,12 +389,15 @@ func main() {
           ExpectPackageName: ANTILOG_PACKAGE,
       }
 
-      generate_expects(&gen_info)
+      generate_expects(module_name, &gen_info)
   }
 }
 
-func expect_output_file() (*os.File, error) {
+func expect_output_file(module_name string) (*os.File, error) {
   from_file := os.Getenv("GOFILE")
+  if (from_file == "") {
+      from_file = module_name
+  }
   dir_name, file_name := path.Split(from_file)
   ext := path.Ext(file_name)
   if len(ext)> 0 {
@@ -402,7 +405,7 @@ func expect_output_file() (*os.File, error) {
   }
   generated_name := fmt.Sprintf("%s%s", file_name, GENERATED_SUFFIX)
   output_file_name := path.Join(dir_name, generated_name)
-  fmt.Printf("File is: %q\n", output_file_name)
+  fmt.Printf("Generated file: %q\n", output_file_name)
 
   var file *os.File
   var err error
@@ -452,7 +455,7 @@ func expect_type_repr(s string) string {
     return "existential_test"
 }
 
-func generate_expects(gen_info *GenInfo) {
+func generate_expects(module_name string, gen_info *GenInfo) {
   var tmpl *template.Template
   var err error
 
@@ -511,7 +514,7 @@ func init() {
   }
 
   var out_file io.Writer
-  if out_file, err = expect_output_file(); err != nil {
+  if out_file, err = expect_output_file(module_name); err != nil {
     panic(err)
   }
 
