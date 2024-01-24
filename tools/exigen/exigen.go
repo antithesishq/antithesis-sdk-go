@@ -21,7 +21,7 @@ type AssertionFuncInfo struct {
   TargetFunc string
   MustHit bool
   Expecting bool
-  ExpectType string
+  AssertType string
   Condition bool
 }
 
@@ -41,43 +41,59 @@ var assertion_hint_map AssertionHints = setup_hint_map()
 func setup_hint_map() AssertionHints {
     hint_map := make(AssertionHints)
 
-    hint_map["AlwaysTrue"] = &AssertionFuncInfo{
-        TargetFunc: "AlwaysTrue",
+    hint_map["IsTrue"] = &AssertionFuncInfo{
+        TargetFunc: "IsTrue",
         MustHit: true,
         Expecting: true,
-        ExpectType: "all",
+        AssertType: "every",
         Condition: false,
     }
 
-    hint_map["AlwaysTrueIfOccurs"] = &AssertionFuncInfo{
-        TargetFunc: "AlwaysTrueIfOccurs",
+    hint_map["IsFalse"] = &AssertionFuncInfo{
+        TargetFunc: "IsFalse",
+        MustHit: true,
+        Expecting: false,
+        AssertType: "every",
+        Condition: true,
+    }
+
+    hint_map["TrueIfReached"] = &AssertionFuncInfo{
+        TargetFunc: "TrueIfReached",
         MustHit: false,
         Expecting: true,
-        ExpectType: "all",
+        AssertType: "every",
         Condition: false,
+    }
+
+    hint_map["FalseIfReached"] = &AssertionFuncInfo{
+        TargetFunc: "FalseIfReached",
+        MustHit: false,
+        Expecting: false,
+        AssertType: "every",
+        Condition: true,
     }
 
     hint_map["SometimesTrue"] = &AssertionFuncInfo{
         TargetFunc: "SometimesTrue",
         MustHit: true,
         Expecting: true,
-        ExpectType: "some",
+        AssertType: "some",
         Condition: false,
     }
 
-    hint_map["NeverOccurs"] = &AssertionFuncInfo{
-        TargetFunc: "NeverOccurs",
+    hint_map["Unreachable"] = &AssertionFuncInfo{
+        TargetFunc: "Unreachable",
         MustHit: false,
         Expecting: true,
-        ExpectType: "all",
+        AssertType: "none",
         Condition: false,
     }
 
-    hint_map["SometimesOccurs"] = &AssertionFuncInfo{
-        TargetFunc: "SometimesOccurs",
+    hint_map["Reachable"] = &AssertionFuncInfo{
+        TargetFunc: "Reachable",
         MustHit: true,
         Expecting: true,
-        ExpectType: "some",
+        AssertType: "none",
         Condition: false,
     }
     return hint_map
@@ -448,11 +464,18 @@ func expecting_repr(b bool) string {
     return "expecting_false"
 }
 
-func expect_type_repr(s string) string {
-    if (s == "all") {
-        return "universal_test"
+func assert_type_repr(s string) string {
+    var repr_text = "reachability_test"
+
+    switch s {
+    case "every":
+        repr_text = "universal_test"
+    case "some":
+        repr_text = "existential_test"
+    case "none":
+        repr_text = "reachability_test"
     }
-    return "existential_test"
+    return repr_text
 }
 
 func generate_expects(module_name string, gen_info *GenInfo) {
@@ -478,10 +501,11 @@ func init() {
    const must_be_hit = true
    const optionally_hit = false
    const expecting_true = true
-   // const expecting_false = false
+   const expecting_false = false
    
    const universal_test = "every"
    const existential_test = "some"
+   const reachability_test = "none"
 
    var no_values map[string]any = nil
    var loc_info *assert.LocationInfo
@@ -491,10 +515,10 @@ func init() {
    {{- $did_hit := hit_repr false -}}
    {{- $must_hit := must_hit_repr .AssertionFuncInfo.MustHit -}}
    {{- $expecting := expecting_repr .AssertionFuncInfo.Expecting -}}
-   {{- $expect_type := expect_type_repr .AssertionFuncInfo.ExpectType}}
+   {{- $assert_type := assert_type_repr .AssertionFuncInfo.AssertType}}
 
    loc_info = assert.NewLocInfo("{{.Classname}}", "{{.Funcname}}", "{{.Filename}}", {{.Line}})
-   assert.AssertImpl("{{.Message}}", {{$cond}}, no_values, loc_info, {{$did_hit}}, {{$must_hit}}, {{$expecting}}, {{$expect_type}})
+   assert.AssertImpl("{{.Message}}", {{$cond}}, no_values, loc_info, {{$did_hit}}, {{$must_hit}}, {{$expecting}}, {{$assert_type}})
    {{- end}}
 }
 `
@@ -506,7 +530,7 @@ func init() {
         "cond_repr": cond_repr,
         "must_hit_repr": must_hit_repr,
         "expecting_repr": expecting_repr,
-        "expect_type_repr": expect_type_repr,
+        "assert_type_repr": assert_type_repr,
   })
 
   if tmpl, err = tmpl.Parse(expector); err != nil {

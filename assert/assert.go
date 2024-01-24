@@ -34,7 +34,7 @@ type localLogAssertInfo struct {
 
 // Version provides the latest version id of the Anithesis SDK for Go
 func Version() string {
-  return "v0.1.9"
+  return "v0.1.10"
 }
 
 // --------------------------------------------------------------------------------
@@ -48,46 +48,65 @@ const expecting_false = false
 
 const universal_test = "every"
 const existential_test = "some"
-// const reachability_check "none"
+const reachability_test = "none"
 
-// AlwaysTrue asserts that when this is evaluated
+// IsTrue asserts that when this is evaluated
 // the condition will always be true, and that this is evaluated at least once.
-// Could be named name is Always()
-func AlwaysTrue(text string, cond bool, values any, options ...string) {
+func IsTrue(text string, cond bool, values any, options ...string) {
   location_info := NewLocationInfo(OffsetAPICaller) 
   AssertImpl(text, cond, values, location_info, was_hit, must_be_hit, expecting_true, universal_test, options...)
 }
 
-// AlwaysTrueIfOccurs asserts that when this is evaluated
+// IsFalse asserts that when this is evaluated
+// the condition will always be false, and that this is evaluated at least once.
+func IsFalse(text string, cond bool, values any, options ...string) {
+  location_info := NewLocationInfo(OffsetAPICaller) 
+  AssertImpl(text, cond, values, location_info, was_hit, must_be_hit, expecting_false, universal_test, options...)
+}
+
+
+// TrueIfReached asserts that when this is evaluated
 // the condition will always be true, or that this is never evaluated.
-// Could be named is UnreachableOrAlways()
-func AlwaysTrueIfOccurs(text string, cond bool, values any, options ...string) {
+func TrueIfReached(text string, cond bool, values any, options ...string) {
   location_info := NewLocationInfo(OffsetAPICaller) 
   AssertImpl(text, cond, values, location_info, was_hit, optionally_hit, expecting_true, universal_test, options...)
 }
 
+// FalseIfReached asserts that when this is evaluated
+// the condition will always be false, or that this is never evaluated.
+func FalseIfReached(text string, cond bool, values any, options ...string) {
+  location_info := NewLocationInfo(OffsetAPICaller) 
+  AssertImpl(text, cond, values, location_info, was_hit, optionally_hit, expecting_false, universal_test, options...)
+}
+
+
 // SometimesTrue asserts that when this is evaluated
 // the condition will sometimes be true, and that this is evaluated at least once.
-// Could be named is Sometimes()
 func SometimesTrue(text string, cond bool, values any, options ...string) {
   location_info := NewLocationInfo(OffsetAPICaller) 
   AssertImpl(text, cond, values, location_info, was_hit, must_be_hit, expecting_true, existential_test, options...)
 }
 
-// NeverOccurs asserts that this is never evaluated.
-// This assertion will fail if it is evaluated.
-// Could be named is Unreachable()
-func NeverOccurs(text string, values any, options ...string) {
+// SometimesFalse asserts that when this is evaluated
+// the condition will sometimes be false, and that this is evaluated at least once.
+func SometimesFalse(text string, cond bool, values any, options ...string) {
   location_info := NewLocationInfo(OffsetAPICaller) 
-  AssertImpl(text, false, values, location_info, was_hit, optionally_hit, expecting_true, universal_test, options...)
+  AssertImpl(text, cond, values, location_info, was_hit, must_be_hit, expecting_false, existential_test, options...)
 }
 
-// SometimesOccurs asserts that this is evaluated at least once.
-// This assertion will fail if it is not evaluated, and otherwise will pass.
-// Could be named is Reachable()
-func SometimesOccurs(text string, values any, options ...string) {
+
+// Unreachable asserts that this is never evaluated.
+// This assertion will fail if it is evaluated.
+func Unreachable(text string, values any, options ...string) {
   location_info := NewLocationInfo(OffsetAPICaller) 
-  AssertImpl(text, true, values, location_info, was_hit, must_be_hit, expecting_true, existential_test, options...)
+  AssertImpl(text, false, values, location_info, was_hit, optionally_hit, expecting_true, reachability_test, options...)
+}
+
+// Reachable asserts that this is evaluated at least once.
+// This assertion will fail if it is not evaluated, and otherwise will pass.
+func Reachable(text string, values any, options ...string) {
+  location_info := NewLocationInfo(OffsetAPICaller) 
+  AssertImpl(text, true, values, location_info, was_hit, must_be_hit, expecting_true, reachability_test, options...)
 }
 
 func AssertImpl(text string, cond bool, values any, loc *LocationInfo, hit bool, must_hit bool, expecting bool, assert_type string, options ...string) {
