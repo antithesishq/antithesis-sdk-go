@@ -24,7 +24,7 @@ type AssertInfo struct {
 }
 
 type wrappedAssertInfo struct {
-    A *AssertInfo `json:"ant_assert"`
+    A *AssertInfo `json:"antithesis_assert"`
 }
 
 type localLogAssertInfo struct {
@@ -34,7 +34,7 @@ type localLogAssertInfo struct {
 
 // Version provides the latest version id of the Anithesis SDK for Go
 func Version() string {
-  return "v0.1.10"
+  return "v0.1.11"
 }
 
 // --------------------------------------------------------------------------------
