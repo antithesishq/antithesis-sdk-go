@@ -7,27 +7,36 @@ Provides functions enabling Go programs to include non-fatal Assertions and stru
 The antithesis-sdk-go module also contains the exigen command, used to 
 identify assertions that were added to a Go module, and to generate
 corresponding function calls in an init() function to register these
-assertions.  exigen can run from source, or it can be installed in a dev 
-environment.  The notes here describe a run-from-source
-use case.
+assertions.  exigen should be installed in a dev environment.  
+
+```
+go get github.com/antithesishq/antithesis-sdk-go/tools/exigen
+go install github.com/antithesishq/antithesis-sdk-go/tools/exigen
+```
+
+This will install exigen to the $GOPATH/bin folder so it can be used
+to register all antithesis assertions used.  Prior to every `go build` step,
+use `go generate` so that any and all `//go:generate ...` directives found in
+the source being built, can be evaluated and executed.
+
 
 Add a Go directive somewhere in the main package for
 a module that has Antithesis assertions added to it.  The
 general form is like this:
 
-`//go:generate go run build-time-path-to-exigen my-module-name`
+`//go:generate exigen my-module-name`
 
 Example:
 
-`//go:generate go run /home/src/antithesis-sdk-go/cmd/exigen.go github.com/synadia/nats-cluster`
+`//go:generate exigen antithesis.com/go/sample-project`
 
 A good place to add this directive is in the top-level
 driver for an executable (often this is `main.go`)
 
-With the directive in place, add a `go generate <path>` build step, prior to 
-the typical compile/link build step `go build <path>`.  The `go generate <path>`
-step will scan the provided path, looking for Golang source code files.
-Any generate commands encountered will be executed as part of the `go generate`
+With the directive in place, add a `go generate` build step, prior to 
+the typical compile/link build step `go build <path>`.  The `go generate`
+step will scan Golang source code files.  Any generate commands 
+encountered will be executed as part of the `go generate`
 process.  When exigen runs, it will scan for packages in the specified
 module indicated in the corresponding //go:generate directive.  
 
