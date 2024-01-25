@@ -120,6 +120,7 @@ var receiver string
 var package_name string
 
 const ANTILOG_PACKAGE = "github.com/antithesishq/antithesis-sdk-go/assert"
+const ANTILOG_ASSERT = "assert"
 const NAME_NOT_AVAILABLE = "anonymous"
 const GENERATED_SUFFIX = "_exigen.go"
 
@@ -494,6 +495,9 @@ import (
 )
 
 func init() {
+   if assert.No_emit() {
+       return
+   }
    const cond_true = true
    const cond_false = false
    // const was_hit = true

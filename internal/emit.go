@@ -104,6 +104,10 @@ import (
 
  var DSOError error = errors.New("No DSO Available")
 
+ func No_emit() bool {
+     return emitter.dso_handle == nil
+ }
+
  func Json_data(payload string) error {
    if emitter.dso_handle == nil {
        return DSOError

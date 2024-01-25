@@ -46,6 +46,18 @@ func Emit(payload string) {
     local_handler.emit(payload)
 }
 
+func No_emit() bool {
+  if !local_handler.can_be_opened {
+      return true
+  }
+  if local_handler.out_f == nil {
+    if len(os.Getenv("ANTILOG_OUTPUT")) == 0 {
+        local_handler.can_be_opened = false
+        return true
+    }
+  }
+  return false
+}
 
 // --------------------------------------------------------------------------------
 // Local Handler (carries state to support local output)
