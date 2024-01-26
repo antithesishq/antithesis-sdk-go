@@ -41,40 +41,40 @@ var assertion_hint_map AssertionHints = setup_hint_map()
 func setup_hint_map() AssertionHints {
     hint_map := make(AssertionHints)
 
-    hint_map["IsTrue"] = &AssertionFuncInfo{
-        TargetFunc: "IsTrue",
+    hint_map["Always"] = &AssertionFuncInfo{
+        TargetFunc: "Always",
         MustHit: true,
         Expecting: true,
         AssertType: "every",
         Condition: false,
     }
 
-    hint_map["IsFalse"] = &AssertionFuncInfo{
-        TargetFunc: "IsFalse",
-        MustHit: true,
-        Expecting: false,
-        AssertType: "every",
-        Condition: true,
-    }
+    // hint_map["IsFalse"] = &AssertionFuncInfo{
+    //     TargetFunc: "IsFalse",
+    //     MustHit: true,
+    //     Expecting: false,
+    //     AssertType: "every",
+    //     Condition: true,
+    // }
 
-    hint_map["TrueIfReached"] = &AssertionFuncInfo{
-        TargetFunc: "TrueIfReached",
+    hint_map["AlwaysOrUnreachable"] = &AssertionFuncInfo{
+        TargetFunc: "AlwaysOrUnreachable",
         MustHit: false,
         Expecting: true,
         AssertType: "every",
         Condition: false,
     }
 
-    hint_map["FalseIfReached"] = &AssertionFuncInfo{
-        TargetFunc: "FalseIfReached",
-        MustHit: false,
-        Expecting: false,
-        AssertType: "every",
-        Condition: true,
-    }
+    // hint_map["FalseIfReached"] = &AssertionFuncInfo{
+    //     TargetFunc: "FalseIfReached",
+    //     MustHit: false,
+    //     Expecting: false,
+    //     AssertType: "every",
+    //     Condition: true,
+    // }
 
-    hint_map["SometimesTrue"] = &AssertionFuncInfo{
-        TargetFunc: "SometimesTrue",
+    hint_map["Sometimes"] = &AssertionFuncInfo{
+        TargetFunc: "Sometimes",
         MustHit: true,
         Expecting: true,
         AssertType: "some",

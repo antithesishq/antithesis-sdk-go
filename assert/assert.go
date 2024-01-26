@@ -34,7 +34,7 @@ type localLogAssertInfo struct {
 
 // Version provides the latest version id of the Anithesis SDK for Go
 func Version() string {
-  return "v0.1.14"
+  return "v0.1.15"
 }
 
 // --------------------------------------------------------------------------------
@@ -62,9 +62,9 @@ func NoEmit() bool {
     return internal.No_emit() && local.No_emit()
 }
 
-// IsTrue asserts that when this is evaluated
+// Always asserts that when this is evaluated
 // the condition will always be true, and that this is evaluated at least once.
-func IsTrue(text string, cond bool, values any, options ...string) {
+func Always(text string, cond bool, values any, options ...string) {
   if internal.No_emit() && local.No_emit() {
       return
   }
@@ -72,20 +72,20 @@ func IsTrue(text string, cond bool, values any, options ...string) {
   AssertImpl(text, cond, values, location_info, was_hit, must_be_hit, expecting_true, universal_test, options...)
 }
 
-// IsFalse asserts that when this is evaluated
-// the condition will always be false, and that this is evaluated at least once.
-func IsFalse(text string, cond bool, values any, options ...string) {
-  if internal.No_emit() && local.No_emit() {
-      return
-  }
-  location_info := NewLocationInfo(OffsetAPICaller) 
-  AssertImpl(text, cond, values, location_info, was_hit, must_be_hit, expecting_false, universal_test, options...)
-}
+// // IsFalse asserts that when this is evaluated
+// // the condition will always be false, and that this is evaluated at least once.
+// func IsFalse(text string, cond bool, values any, options ...string) {
+//   if internal.No_emit() && local.No_emit() {
+//       return
+//   }
+//   location_info := NewLocationInfo(OffsetAPICaller) 
+//   AssertImpl(text, cond, values, location_info, was_hit, must_be_hit, expecting_false, universal_test, options...)
+// }
 
 
-// TrueIfReached asserts that when this is evaluated
-// the condition will always be true, or that this is never evaluated.
-func TrueIfReached(text string, cond bool, values any, options ...string) {
+// AlwaysOrUnreachable asserts that when this is evaluated
+// the condition will always be true, or that this is never reaached and evaluated.
+func AlwaysOrUnreachable(text string, cond bool, values any, options ...string) {
   if internal.No_emit() && local.No_emit() {
       return
   }
@@ -93,20 +93,20 @@ func TrueIfReached(text string, cond bool, values any, options ...string) {
   AssertImpl(text, cond, values, location_info, was_hit, optionally_hit, expecting_true, universal_test, options...)
 }
 
-// FalseIfReached asserts that when this is evaluated
-// the condition will always be false, or that this is never evaluated.
-func FalseIfReached(text string, cond bool, values any, options ...string) {
-  if internal.No_emit() && local.No_emit() {
-      return
-  }
-  location_info := NewLocationInfo(OffsetAPICaller) 
-  AssertImpl(text, cond, values, location_info, was_hit, optionally_hit, expecting_false, universal_test, options...)
-}
+// // FalseIfReached asserts that when this is evaluated
+// // the condition will always be false, or that this is never evaluated.
+// func FalseIfReached(text string, cond bool, values any, options ...string) {
+//   if internal.No_emit() && local.No_emit() {
+//       return
+//   }
+//   location_info := NewLocationInfo(OffsetAPICaller) 
+//   AssertImpl(text, cond, values, location_info, was_hit, optionally_hit, expecting_false, universal_test, options...)
+// }
 
 
-// SometimesTrue asserts that when this is evaluated
+// Sometimes asserts that when this is evaluated
 // the condition will sometimes be true, and that this is evaluated at least once.
-func SometimesTrue(text string, cond bool, values any, options ...string) {
+func Sometimes(text string, cond bool, values any, options ...string) {
   if internal.No_emit() && local.No_emit() {
       return
   }
@@ -114,15 +114,15 @@ func SometimesTrue(text string, cond bool, values any, options ...string) {
   AssertImpl(text, cond, values, location_info, was_hit, must_be_hit, expecting_true, existential_test, options...)
 }
 
-// SometimesFalse asserts that when this is evaluated
-// the condition will sometimes be false, and that this is evaluated at least once.
-func SometimesFalse(text string, cond bool, values any, options ...string) {
-  if internal.No_emit() && local.No_emit() {
-      return
-  }
-  location_info := NewLocationInfo(OffsetAPICaller) 
-  AssertImpl(text, cond, values, location_info, was_hit, must_be_hit, expecting_false, existential_test, options...)
-}
+// // SometimesFalse asserts that when this is evaluated
+// // the condition will sometimes be false, and that this is evaluated at least once.
+// func SometimesFalse(text string, cond bool, values any, options ...string) {
+//   if internal.No_emit() && local.No_emit() {
+//       return
+//   }
+//   location_info := NewLocationInfo(OffsetAPICaller) 
+//   AssertImpl(text, cond, values, location_info, was_hit, must_be_hit, expecting_false, existential_test, options...)
+// }
 
 
 // Unreachable asserts that this is never evaluated.

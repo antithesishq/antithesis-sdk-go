@@ -25,10 +25,10 @@ func TestWillNotEmitLocally(t *testing.T) {
     }
 }
 
-func BenchmarkIsTrue(b *testing.B) {
+func BenchmarkAlways(b *testing.B) {
     os.Unsetenv(local.LocalOutputEnvVar)
     for i := 0; i < b.N; i++ {
-        IsTrue("statement", true, nil)
+        Always("statement", true, nil)
     }
 }
 
