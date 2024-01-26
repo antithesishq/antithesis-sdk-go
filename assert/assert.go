@@ -34,7 +34,7 @@ type localLogAssertInfo struct {
 
 // Version provides the latest version id of the Anithesis SDK for Go
 func Version() string {
-  return "v0.1.13"
+  return "v0.1.14"
 }
 
 // --------------------------------------------------------------------------------

@@ -35,6 +35,8 @@ func xLogEvent(name string, event any) {
   }
 }
 
+// SetupComplet indicates that the system under test
+// is ready for testing.
 func SetupComplete() {
     xLogEvent("sut_setup_status", "complete")
 }
