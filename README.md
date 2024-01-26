@@ -3,6 +3,35 @@
 
 Provides functions enabling Go programs to include non-fatal Assertions and structured IO.
 
+### Running Benchmarks and Tests
+
+```
+CC=clang go test -bench=. ./assert 
+```
+
+Results from 26-Jan-2024 v0.1.13
+
+```
+goos: linux
+goarch: amd64
+pkg: github.com/antithesishq/antithesis-sdk-go/assert
+cpu: AMD Ryzen 9 5900X 12-Core Processor            
+BenchmarkIsTrue-24                              374603544                3.178 ns/op
+BenchmarkCanEmitWithLocalEmitDisabled-24        684141135                1.692 ns/op
+BenchmarkNoEmitWithLocalEmitDisabled-24         690226068                1.686 ns/op
+BenchmarkCanEmitWithLocalEmitEnabled-24         790518410                1.584 ns/op
+BenchmarkNoEmitWithLocalEmitEnabled-24          748888886                1.553 ns/op
+PASS
+ok      github.com/antithesishq/antithesis-sdk-go/assert        6.927s
+```
+
+### Building
+
+```
+CC=clang go build ./assert ./io ./local ./internal ./lifecycle 
+```
+
+
 ### Using exigen
 The antithesis-sdk-go module also contains the exigen command, used to 
 identify assertions that were added to a Go module, and to generate

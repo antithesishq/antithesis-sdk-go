@@ -495,7 +495,7 @@ import (
 )
 
 func init() {
-   if assert.No_emit() {
+   if assert.NoEmit() {
        return
    }
    const cond_true = true

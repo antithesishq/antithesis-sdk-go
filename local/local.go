@@ -20,6 +20,8 @@ var local_handler = &LocalHandling {
     source_name: "",
 }
 
+const LocalOutputEnvVar = "ANTILOG_OUTPUT"
+
 func Get_ticks() int64 {
     return local_handler.get_ticks()
 }
@@ -51,7 +53,7 @@ func No_emit() bool {
       return true
   }
   if local_handler.out_f == nil {
-    if len(os.Getenv("ANTILOG_OUTPUT")) == 0 {
+    if len(os.Getenv(LocalOutputEnvVar)) == 0 {
         local_handler.can_be_opened = false
         return true
     }
@@ -101,7 +103,7 @@ func (pout *LocalHandling) open_output_file() error {
   var err error
 
   // Make sure we have user intent to open a file
-  out_path := os.Getenv("ANTILOG_OUTPUT") // Write output to this file
+  out_path := os.Getenv(LocalOutputEnvVar) // Write output to this file
   if (len(out_path) == 0) {
     return errors.New("No local output")
   }

@@ -34,7 +34,7 @@ type localLogAssertInfo struct {
 
 // Version provides the latest version id of the Anithesis SDK for Go
 func Version() string {
-  return "v0.1.12"
+  return "v0.1.13"
 }
 
 // --------------------------------------------------------------------------------
@@ -52,13 +52,13 @@ const reachability_test = "none"
 
 // Can_emit returns true if assertions will be processed,
 // and returns false if assertions will be ignored
-func Can_emit() bool {
+func CanEmit() bool {
     return !internal.No_emit() || !local.No_emit()
 }
 
 // Can_emit returns true if assertions will be processed,
 // and returns false if assertions will be ignored
-func No_emit() bool {
+func NoEmit() bool {
     return internal.No_emit() && local.No_emit()
 }
 
