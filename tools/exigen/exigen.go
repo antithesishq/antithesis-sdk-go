@@ -26,6 +26,7 @@ type AssertionFuncInfo struct {
 }
 
 type AntExpect struct {
+  Assertion string
   Message string
   Classname string
   Funcname string
@@ -49,14 +50,6 @@ func setup_hint_map() AssertionHints {
         Condition: false,
     }
 
-    // hint_map["IsFalse"] = &AssertionFuncInfo{
-    //     TargetFunc: "IsFalse",
-    //     MustHit: true,
-    //     Expecting: false,
-    //     AssertType: "every",
-    //     Condition: true,
-    // }
-
     hint_map["AlwaysOrUnreachable"] = &AssertionFuncInfo{
         TargetFunc: "AlwaysOrUnreachable",
         MustHit: false,
@@ -64,14 +57,6 @@ func setup_hint_map() AssertionHints {
         AssertType: "every",
         Condition: false,
     }
-
-    // hint_map["FalseIfReached"] = &AssertionFuncInfo{
-    //     TargetFunc: "FalseIfReached",
-    //     MustHit: false,
-    //     Expecting: false,
-    //     AssertType: "every",
-    //     Condition: true,
-    // }
 
     hint_map["Sometimes"] = &AssertionFuncInfo{
         TargetFunc: "Sometimes",
@@ -86,7 +71,7 @@ func setup_hint_map() AssertionHints {
         MustHit: false,
         Expecting: true,
         AssertType: "none",
-        Condition: false,
+        Condition: true,
     }
 
     hint_map["Reachable"] = &AssertionFuncInfo{
@@ -94,7 +79,7 @@ func setup_hint_map() AssertionHints {
         MustHit: true,
         Expecting: true,
         AssertType: "none",
-        Condition: false,
+        Condition: true,
     }
     return hint_map
 }
@@ -251,6 +236,7 @@ func node_inspector(x ast.Node) bool {
       if func_hints := assertion_hint_map.hints_for_name(target_func); func_hints != nil && expr_text != "" {
         test_name := arg_at_index(call_args, 0)
         expect := AntExpect{
+            Assertion: target_func,
             Message: test_name, 
             Classname: package_name, 
             Funcname: func_name, 
@@ -437,6 +423,13 @@ func expect_output_file(module_name string) (*os.File, error) {
   return file, err
 }
 
+func assertion_name_repr(s string) string {
+    if s == "Reachable" || s == "Unreachable" {
+        return fmt.Sprintf("%s(message, values)", s)
+    }
+    return fmt.Sprintf("%s(message, cond, values)", s)
+}
+
 func hit_repr(b bool) string {
     if (!b) {
         return "not_hit"
@@ -498,14 +491,14 @@ func init() {
    if assert.NoEmit() {
        return
    }
-   const cond_true = true
    const cond_false = false
-   // const was_hit = true
-   const not_hit = false
+   const cond_true = !cond_false
+   const was_hit = true
+   const not_hit = !was_hit
    const must_be_hit = true
-   const optionally_hit = false
+   const optionally_hit = !must_be_hit
    const expecting_true = true
-   const expecting_false = false
+   const expecting_false = !expecting_true
    
    const universal_test = "every"
    const existential_test = "some"
@@ -519,8 +512,10 @@ func init() {
    {{- $did_hit := hit_repr false -}}
    {{- $must_hit := must_hit_repr .AssertionFuncInfo.MustHit -}}
    {{- $expecting := expecting_repr .AssertionFuncInfo.Expecting -}}
+   {{- $assertion_name := assertion_name_repr .Assertion -}}
    {{- $assert_type := assert_type_repr .AssertionFuncInfo.AssertType}}
 
+   // {{$assertion_name}}
    loc_info = assert.NewLocInfo("{{.Classname}}", "{{.Funcname}}", "{{.Filename}}", {{.Line}})
    assert.AssertImpl("{{.Message}}", {{$cond}}, no_values, loc_info, {{$did_hit}}, {{$must_hit}}, {{$expecting}}, {{$assert_type}})
    {{- end}}
@@ -535,6 +530,7 @@ func init() {
         "must_hit_repr": must_hit_repr,
         "expecting_repr": expecting_repr,
         "assert_type_repr": assert_type_repr,
+        "assertion_name_repr": assertion_name_repr,
   })
 
   if tmpl, err = tmpl.Parse(expector); err != nil {

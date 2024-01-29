@@ -34,7 +34,7 @@ type localLogAssertInfo struct {
 
 // Version provides the latest version id of the Anithesis SDK for Go
 func Version() string {
-  return "v0.1.15"
+  return "v0.1.16"
 }
 
 // --------------------------------------------------------------------------------
@@ -132,7 +132,7 @@ func Unreachable(text string, values any, options ...string) {
       return
   }
   location_info := NewLocationInfo(OffsetAPICaller) 
-  AssertImpl(text, false, values, location_info, was_hit, optionally_hit, expecting_true, reachability_test, options...)
+  AssertImpl(text, true, values, location_info, was_hit, optionally_hit, expecting_true, reachability_test, options...)
 }
 
 // Reachable asserts that this is evaluated at least once.
