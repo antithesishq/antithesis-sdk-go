@@ -1,13 +1,16 @@
-{pkgs ? import <nixpkgs> {}}:
+{
+  pkgs ? import <nixpkgs> {}, 
+  doc2go ? pkgs.doc2go,
+  lib ? pkgs.lib,
+  go ? pkgs.go,
+  stdenv ? pkgs.stdenv,
+}:
 
 let
-  lib = pkgs.lib;
-  doc2go = pkgs.doc2go;
-
-  docs = pkgs.stdenv.mkDerivation {
+  docs = stdenv.mkDerivation {
     name = "build_docs";
     src = ./.; # TODO: filter
-    buildInputs = [pkgs.go];
+    buildInputs = [go];
     buildPhase = ''
       export HOME=$TMPDIR
       mkdir -p $out/docs
@@ -27,7 +30,7 @@ let
       description = "Antithesis go sdk.";
       homepage = "https://github.com/antithesishq/antithesis-sdk-go";
       platforms = lib.platforms.linux;
-      licenses = lib.icenses.mit;
+      licenses = lib.licenses.mit;
     };
   };
 in
