@@ -8,13 +8,13 @@
 
 let
   docs = stdenv.mkDerivation {
-    name = "build_docs";
+    name = "go_sdk_docs";
     src = ./.; # TODO: filter
     buildInputs = [go];
     buildPhase = ''
       export HOME=$TMPDIR
       mkdir -p $out/docs
-      ${doc2go}/bin/doc2go -out $out/docs ./assert ./io ./lifecycle
+      ${doc2go}/bin/doc2go -out $out/docs ./assert ./random ./lifecycle
     '';
   };
 
