@@ -10,10 +10,6 @@ package assert
 
 import (
 	"fmt"
-	"os"
-	"strings"
-
-	"github.com/antithesishq/antithesis-sdk-go/internal"
 )
 
 type assertInfo struct {
@@ -54,9 +50,9 @@ const reachability_test = "none"
 // for understanding the reason that condition had the value it did. For instance,
 // in an asertion that x > 5, it could be helpful to send the value of x so failing
 // cases can be better understood.
-func Always(message string, condition bool, values map[string]any, options ...string) {
+func Always(message string, condition bool, values map[string]any) {
 	location_info := newLocationInfo(offsetAPICaller)
-	assertImpl(message, condition, values, location_info, was_hit, must_be_hit, expecting_true, universal_test, options...)
+	assertImpl(message, condition, values, location_info, was_hit, must_be_hit, expecting_true, universal_test)
 }
 
 // Assert that condition is true if it is ever evaluated. Callers will not
@@ -66,9 +62,9 @@ func Always(message string, condition bool, values map[string]any, options ...st
 // for understanding the reason that condition had the value it did. For instance,
 // in an asertion that x > 5, it could be helpful to send the value of x so failing
 // cases can be better understood.
-func AlwaysOrUnreachable(message string, condition bool, values map[string]any, options ...string) {
+func AlwaysOrUnreachable(message string, condition bool, values map[string]any) {
 	location_info := newLocationInfo(offsetAPICaller)
-	assertImpl(message, condition, values, location_info, was_hit, optionally_hit, expecting_true, universal_test, options...)
+	assertImpl(message, condition, values, location_info, was_hit, optionally_hit, expecting_true, universal_test)
 }
 
 // Assert that condition is true at least once in a test. Callers that invoke Sometimes will
@@ -78,9 +74,9 @@ func AlwaysOrUnreachable(message string, condition bool, values map[string]any, 
 // for understanding the reason that condition had the value it did. For instance,
 // in an asertion that x > 5, it could be helpful to send the value of x so failing
 // cases can be better understood.
-func Sometimes(message string, condition bool, values map[string]any, options ...string) {
+func Sometimes(message string, condition bool, values map[string]any) {
 	location_info := newLocationInfo(offsetAPICaller)
-	assertImpl(message, condition, values, location_info, was_hit, must_be_hit, expecting_true, existential_test, options...)
+	assertImpl(message, condition, values, location_info, was_hit, must_be_hit, expecting_true, existential_test)
 }
 
 // Assert that some path of code is not taken. A failure will be raised if this
@@ -88,9 +84,9 @@ func Sometimes(message string, condition bool, values map[string]any, options ..
 // message will be used as a display name in reporting and should therefore be
 // useful to a broad audience. The map of values is used to supply context useful
 // for understanding the reason that this code path was taken.
-func Unreachable(message string, values map[string]any, options ...string) {
+func Unreachable(message string, values map[string]any) {
 	location_info := newLocationInfo(offsetAPICaller)
-	assertImpl(message, true, values, location_info, was_hit, optionally_hit, expecting_true, reachability_test, options...)
+	assertImpl(message, true, values, location_info, was_hit, optionally_hit, expecting_true, reachability_test)
 }
 
 // Assert that some path of code is tested. If any call to Reachable is not
@@ -98,12 +94,12 @@ func Unreachable(message string, values map[string]any, options ...string) {
 // message will be used as a display name in reporting and should therefore be
 // useful to a broad audience. The map of values is used to supply context useful
 // for understanding the reason that this code path was taken.
-func Reachable(message string, values map[string]any, options ...string) {
+func Reachable(message string, values map[string]any) {
 	location_info := newLocationInfo(offsetAPICaller)
-	assertImpl(message, true, values, location_info, was_hit, must_be_hit, expecting_true, reachability_test, options...)
+	assertImpl(message, true, values, location_info, was_hit, must_be_hit, expecting_true, reachability_test)
 }
 
-func assertImpl(message string, cond bool, values map[string]any, loc *locationInfo, hit bool, must_hit bool, expecting bool, assert_type string, options ...string) {
+func assertImpl(message string, cond bool, values map[string]any, loc *locationInfo, hit bool, must_hit bool, expecting bool, assert_type string) {
 	message_key := makeKey(loc)
 	tracker_entry := assert_tracker.get_tracker_entry(message_key)
 
@@ -120,38 +116,9 @@ func assertImpl(message string, cond bool, values map[string]any, loc *locationI
 		Details:    values,
 	}
 
-	var before, after, opt_name, opt_value string
-	var found, did_apply bool
-
-	for _, option := range options {
-		// option should be key:value
-		if before, after, found = strings.Cut(option, ":"); found {
-			opt_name = strings.ToLower(strings.TrimSpace(before))
-			opt_value = strings.TrimSpace(after)
-			if did_apply = aI.applyOption(opt_name, opt_value); !did_apply {
-				fmt.Fprintf(os.Stderr, "Unable to apply option %s(%q)\n", opt_name, opt_value)
-			}
-		}
-		if !found {
-			fmt.Fprintf(os.Stderr, "Unable to parse %q\n", option)
-		}
-	}
-
 	tracker_entry.emit(aI)
-}
-
-func (aI *assertInfo) applyOption(opt_name string, opt_value string) bool {
-	if opt_name == "id" {
-		aI.Id = fmt.Sprintf("%s (%s)", aI.Message, opt_value)
-		return true
-	}
-	return false
 }
 
 func makeKey(loc *locationInfo) string {
 	return fmt.Sprintf("%s|%d|%d", loc.Filename, loc.Line, loc.Column)
-}
-
-func emit_assert(assert_info *assertInfo) error {
-	return internal.Json_data(wrappedAssertInfo{assert_info})
 }

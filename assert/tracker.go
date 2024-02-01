@@ -1,5 +1,7 @@
 package assert
 
+import "github.com/antithesishq/antithesis-sdk-go/internal"
+
 type trackerInfo struct {
 	PassCount int
 	FailCount int
@@ -56,4 +58,8 @@ func (ti *trackerInfo) emit(ai *assertInfo) {
 	if err == nil {
 		ti.FailCount++
 	}
+}
+
+func emit_assert(assert_info *assertInfo) error {
+	return internal.Json_data(wrappedAssertInfo{assert_info})
 }
