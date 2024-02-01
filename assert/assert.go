@@ -1,40 +1,32 @@
+// Package assert allows callers to configure test oracles for the [Antithesis testing platform].
+//
+// For full functionality, code should be indexed by the exigen command
+// so that Antithesis can know what invocations to expect. This is needed
+// for Always, Sometime, and Reachable. It will make reporting about
+// Unreachable and AlwaysOrUnreachable more understandable.
+//
+// [Antithesis testing platform]: https://antithesis.com
 package assert
 
 import (
-  "encoding/json"
-  "errors"
-  "fmt"
-  "github.com/antithesishq/antithesis-sdk-go/internal"
-  "github.com/antithesishq/antithesis-sdk-go/local"
-  "os"
-  "strings"
+	"fmt"
 )
 
-type AssertInfo struct {
-    Hit bool `json:"hit"`
-    MustHit bool `json:"must_hit"`
-    AssertType string `json:"assert_type"`
-    Expecting bool `json:"expecting"`
-    Category string `json:"category"`
-    Message string `json:"message"`
-    Condition bool `json:"condition"`
-    Id string `json:"id"`
-    Location *LocationInfo `json:"location"`
-    Details map[string]any `json:"details"`
+type assertInfo struct {
+	Hit        bool           `json:"hit"`
+	MustHit    bool           `json:"must_hit"`
+	AssertType string         `json:"assert_type"`
+	Expecting  bool           `json:"expecting"`
+	Category   string         `json:"category"`
+	Message    string         `json:"message"`
+	Condition  bool           `json:"condition"`
+	Id         string         `json:"id"`
+	Location   *locationInfo  `json:"location"`
+	Details    map[string]any `json:"details"`
 }
 
 type wrappedAssertInfo struct {
-    A *AssertInfo `json:"antithesis_assert"`
-}
-
-type localLogAssertInfo struct {
-    local.LocalLogInfo
-    wrappedAssertInfo
-}
-
-// Version provides the latest version id of the Anithesis SDK for Go
-func Version() string {
-  return "v0.1.16"
+	A *assertInfo `json:"antithesis_assert"`
 }
 
 // --------------------------------------------------------------------------------
@@ -44,205 +36,89 @@ const was_hit = true
 const must_be_hit = true
 const optionally_hit = false
 const expecting_true = true
-const expecting_false = false
 
 const universal_test = "every"
 const existential_test = "some"
 const reachability_test = "none"
 
-// Can_emit returns true if assertions will be processed,
-// and returns false if assertions will be ignored
-func CanEmit() bool {
-    return !internal.No_emit() || !local.No_emit()
+// Assert that condition is true one or more times during a test. Callers of
+// `Always` can see failures in two cases:
+// 1. If this function is ever invoked with a `false` for the conditional or
+// 2. If an "indexed" invocation of Always is not covered at least once.
+// message will be used as a display name in reporting and should therefore be
+// useful to a broad audience. The map of values is used to supply context useful
+// for understanding the reason that condition had the value it did. For instance,
+// in an asertion that x > 5, it could be helpful to send the value of x so failing
+// cases can be better understood.
+func Always(message string, condition bool, values map[string]any) {
+	location_info := newLocationInfo(offsetAPICaller)
+	assertImpl(message, condition, values, location_info, was_hit, must_be_hit, expecting_true, universal_test)
 }
 
-// Can_emit returns true if assertions will be processed,
-// and returns false if assertions will be ignored
-func NoEmit() bool {
-    return internal.No_emit() && local.No_emit()
+// Assert that condition is true if it is ever evaluated. Callers will not
+// see a failure in their test if the condition is never evaluated.
+// message will be used as a display name in reporting and should therefore be
+// useful to a broad audience. The map of values is used to supply context useful
+// for understanding the reason that condition had the value it did. For instance,
+// in an asertion that x > 5, it could be helpful to send the value of x so failing
+// cases can be better understood.
+func AlwaysOrUnreachable(message string, condition bool, values map[string]any) {
+	location_info := newLocationInfo(offsetAPICaller)
+	assertImpl(message, condition, values, location_info, was_hit, optionally_hit, expecting_true, universal_test)
 }
 
-// Always asserts that when this is evaluated
-// the condition will always be true, and that this is evaluated at least once.
-func Always(text string, cond bool, values any, options ...string) {
-  if internal.No_emit() && local.No_emit() {
-      return
-  }
-  location_info := NewLocationInfo(OffsetAPICaller) 
-  AssertImpl(text, cond, values, location_info, was_hit, must_be_hit, expecting_true, universal_test, options...)
+// Assert that condition is true at least once in a test. Callers that invoke Sometimes will
+// only see an error if that particualr invocation is neven called with condtition true.
+// message will be used as a display name in reporting and should therefore be
+// useful to a broad audience. The map of values is used to supply context useful
+// for understanding the reason that condition had the value it did. For instance,
+// in an asertion that x > 5, it could be helpful to send the value of x so failing
+// cases can be better understood.
+func Sometimes(message string, condition bool, values map[string]any) {
+	location_info := newLocationInfo(offsetAPICaller)
+	assertImpl(message, condition, values, location_info, was_hit, must_be_hit, expecting_true, existential_test)
 }
 
-// // IsFalse asserts that when this is evaluated
-// // the condition will always be false, and that this is evaluated at least once.
-// func IsFalse(text string, cond bool, values any, options ...string) {
-//   if internal.No_emit() && local.No_emit() {
-//       return
-//   }
-//   location_info := NewLocationInfo(OffsetAPICaller) 
-//   AssertImpl(text, cond, values, location_info, was_hit, must_be_hit, expecting_false, universal_test, options...)
-// }
-
-
-// AlwaysOrUnreachable asserts that when this is evaluated
-// the condition will always be true, or that this is never reaached and evaluated.
-func AlwaysOrUnreachable(text string, cond bool, values any, options ...string) {
-  if internal.No_emit() && local.No_emit() {
-      return
-  }
-  location_info := NewLocationInfo(OffsetAPICaller) 
-  AssertImpl(text, cond, values, location_info, was_hit, optionally_hit, expecting_true, universal_test, options...)
+// Assert that some path of code is not taken. A failure will be raised if this
+// function is ever called.
+// message will be used as a display name in reporting and should therefore be
+// useful to a broad audience. The map of values is used to supply context useful
+// for understanding the reason that this code path was taken.
+func Unreachable(message string, values map[string]any) {
+	location_info := newLocationInfo(offsetAPICaller)
+	assertImpl(message, true, values, location_info, was_hit, optionally_hit, expecting_true, reachability_test)
 }
 
-// // FalseIfReached asserts that when this is evaluated
-// // the condition will always be false, or that this is never evaluated.
-// func FalseIfReached(text string, cond bool, values any, options ...string) {
-//   if internal.No_emit() && local.No_emit() {
-//       return
-//   }
-//   location_info := NewLocationInfo(OffsetAPICaller) 
-//   AssertImpl(text, cond, values, location_info, was_hit, optionally_hit, expecting_false, universal_test, options...)
-// }
-
-
-// Sometimes asserts that when this is evaluated
-// the condition will sometimes be true, and that this is evaluated at least once.
-func Sometimes(text string, cond bool, values any, options ...string) {
-  if internal.No_emit() && local.No_emit() {
-      return
-  }
-  location_info := NewLocationInfo(OffsetAPICaller) 
-  AssertImpl(text, cond, values, location_info, was_hit, must_be_hit, expecting_true, existential_test, options...)
+// Assert that some path of code is tested. If any call to Reachable is not
+// invoked during the course of a test a failure will be noted.
+// message will be used as a display name in reporting and should therefore be
+// useful to a broad audience. The map of values is used to supply context useful
+// for understanding the reason that this code path was taken.
+func Reachable(message string, values map[string]any) {
+	location_info := newLocationInfo(offsetAPICaller)
+	assertImpl(message, true, values, location_info, was_hit, must_be_hit, expecting_true, reachability_test)
 }
 
-// // SometimesFalse asserts that when this is evaluated
-// // the condition will sometimes be false, and that this is evaluated at least once.
-// func SometimesFalse(text string, cond bool, values any, options ...string) {
-//   if internal.No_emit() && local.No_emit() {
-//       return
-//   }
-//   location_info := NewLocationInfo(OffsetAPICaller) 
-//   AssertImpl(text, cond, values, location_info, was_hit, must_be_hit, expecting_false, existential_test, options...)
-// }
+func assertImpl(message string, cond bool, values map[string]any, loc *locationInfo, hit bool, must_hit bool, expecting bool, assert_type string) {
+	message_key := makeKey(loc)
+	tracker_entry := assert_tracker.get_tracker_entry(message_key)
 
+	aI := &assertInfo{
+		Hit:        hit,
+		MustHit:    must_hit,
+		AssertType: assert_type,
+		Expecting:  expecting,
+		Category:   "",
+		Message:    message,
+		Condition:  cond,
+		Id:         message_key,
+		Location:   loc,
+		Details:    values,
+	}
 
-// Unreachable asserts that this is never evaluated.
-// This assertion will fail if it is evaluated.
-func Unreachable(text string, values any, options ...string) {
-  if internal.No_emit() && local.No_emit() {
-      return
-  }
-  location_info := NewLocationInfo(OffsetAPICaller) 
-  AssertImpl(text, true, values, location_info, was_hit, optionally_hit, expecting_true, reachability_test, options...)
+	tracker_entry.emit(aI)
 }
 
-// Reachable asserts that this is evaluated at least once.
-// This assertion will fail if it is not evaluated, and otherwise will pass.
-func Reachable(text string, values any, options ...string) {
-  if internal.No_emit() && local.No_emit() {
-      return
-  }
-  location_info := NewLocationInfo(OffsetAPICaller) 
-  AssertImpl(text, true, values, location_info, was_hit, must_be_hit, expecting_true, reachability_test, options...)
-}
-
-func AssertImpl(text string, cond bool, values any, loc *LocationInfo, hit bool, must_hit bool, expecting bool, assert_type string, options ...string) {
-  if internal.No_emit() && local.No_emit() {
-      return
-  }
-  message_key := makeKey(loc)
-  tracker_entry := assert_tracker.get_tracker_entry(message_key)
-  details_map := struct_to_map(values)
-
-  aI := &AssertInfo{
-      Hit: hit,
-      MustHit: must_hit,
-      AssertType: assert_type,
-      Expecting: expecting,
-      Category: "",
-      Message: text,
-      Condition: cond,
-      Id: message_key,
-      Location: loc,
-      Details: details_map,
-  }
-
-  var before, after, opt_name, opt_value string
-  var found, did_apply bool
-
-  for _, option := range options {
-      // option should be key:value
-      if before, after, found = strings.Cut(option, ":"); found {
-          opt_name = strings.ToLower(strings.TrimSpace(before))
-          opt_value = strings.TrimSpace(after)
-          if did_apply = aI.applyOption(opt_name, opt_value); !did_apply {
-              fmt.Fprintf(os.Stderr, "Unable to apply option %s(%q)\n", opt_name, opt_value)
-          }
-      }
-      if !found {
-          fmt.Fprintf(os.Stderr, "Unable to parse %q\n", option)
-      }
-  }
-
-  tracker_entry.emit(aI)
-}
-
-func (aI *AssertInfo) applyOption(opt_name string, opt_value string) bool {
-    if (opt_name == "id") {
-        aI.Id = fmt.Sprintf("%s (%s)", aI.Message, opt_value)
-        return true
-    }
-    return false
-}
-
-
-func makeKey(loc *LocationInfo) string {
-    return fmt.Sprintf("%s|%d|%d", loc.Filename, loc.Line, loc.Column)
-}
-
-func struct_to_map(values any) map[string]any {
-
-  var details_map map[string]any
-
-  // Validate and format the details
-  var data []byte = nil
-  var err error
-  if values != nil {
-      if data, err = json.Marshal(values); err != nil {
-          return details_map
-      }
-  }
-
-  details_map = make(map[string]any)
-  if err = json.Unmarshal(data, &details_map); err != nil {
-      details_map = nil
-  }
-  return details_map
-}
-
-
-// --------------------------------------------------------------------------------
-// Emit JSON structured payloads
-// --------------------------------------------------------------------------------
-func emit_assert(assert_info *AssertInfo) error {
-  var data []byte = nil
-  var err error
-
-  wrapped_assert := wrappedAssertInfo{assert_info}
-  if data, err = json.Marshal(wrapped_assert); err != nil {
-      return err
-  }
-  payload := string(data)
-  if err = internal.Json_data(payload); errors.Is(err, internal.DSOError) {
-      local_info := localLogAssertInfo{
-        LocalLogInfo: *local.NewLogInfo("", ""),
-        wrappedAssertInfo: wrapped_assert,
-      }
-      if data, err = json.Marshal(local_info); err != nil {
-          return err
-      }
-      payload = string(data)
-      local.Emit(payload)
-      err = nil
-  }
-  return err
+func makeKey(loc *locationInfo) string {
+	return fmt.Sprintf("%s|%d|%d", loc.Filename, loc.Line, loc.Column)
 }

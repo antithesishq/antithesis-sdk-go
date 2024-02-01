@@ -1,42 +1,33 @@
 
-# antithesis-sdk-go
+# Antithesis Go SDK
 
-Provides functions enabling Go programs to include non-fatal Assertions and structured IO.
+Provides functions for Go programs to configure the [Antithesis](https://antithesis.com) platform. Functionality is grouped into the packages `assert` for Assertions, `random` for Antithesis input, and `lifecycle` for controlling Antithesis simulation.
 
-### Running Benchmarks and Tests
+For general usage guidance see [Antithesis SDK Documentation](https://antithesis.com/docs/using_antithesis/sdk/overview.html)
 
-```
-CC=clang go test -bench=. ./assert 
-```
+## Assertions
+Developers can use the functions in the `assert` package to declare properties
+of their system for Antithesis to check. This includes conventional assertions,
+and also [Sometimes Assertions](https://antithesis.com/docs/best_practices/sometimes_assertions.html)
+which can help you assess the quality of your testing or check for unreachable
+code.
 
-Results from 26-Jan-2024 v0.1.13
+Visit the Antithesis documentation for more [details about Assertions](https://antithesis.com/docs/using_antithesis/properties.html).
 
-```
-goos: linux
-goarch: amd64
-pkg: github.com/antithesishq/antithesis-sdk-go/assert
-cpu: AMD Ryzen 9 5900X 12-Core Processor            
-BenchmarkIsTrue-24                              374603544                3.178 ns/op
-BenchmarkCanEmitWithLocalEmitDisabled-24        684141135                1.692 ns/op
-BenchmarkNoEmitWithLocalEmitDisabled-24         690226068                1.686 ns/op
-BenchmarkCanEmitWithLocalEmitEnabled-24         790518410                1.584 ns/op
-BenchmarkNoEmitWithLocalEmitEnabled-24          748888886                1.553 ns/op
-PASS
-ok      github.com/antithesishq/antithesis-sdk-go/assert        6.927s
-```
+## Random
+Developers can get input from the Antithesis platform by calling functions from the `random` package. Getting input from Antithesis allows it to guide your workload to find more bugs faster. For information on how this works, and should be used, see the documentation on [workload basics](https://antithesis.com/docs/getting_started/workload.html)
 
-### Building
+## Lifecycle
+Antithesis waits to start injecting faults until the software under test indicates
+that it is booted and ready. Use the lifecycle call `SetupComplete()` to indicate
+that your system is ready for testing.
 
-```
-CC=clang go build ./assert ./io ./local ./internal ./lifecycle 
-```
+## Assertion Catalog
+In order to correctly identify what assertions should be expected and warn if they are not seen, Antithesis needs to know what assertions you have defined in your code. The included tool, `exigen`, does this job. `exigen` scans your code and generates an `init()` function to register your Assertions with Antithesis.
 
+### Using `exigen`
 
-### Using exigen
-The antithesis-sdk-go module also contains the exigen command, used to 
-identify assertions that were added to a Go module, and to generate
-corresponding function calls in an init() function to register these
-assertions.  exigen should be installed in a dev environment.  
+To install in a development environment:
 
 ```
 go get github.com/antithesishq/antithesis-sdk-go/tools/exigen
@@ -47,7 +38,6 @@ This will install exigen to the $GOPATH/bin folder so it can be used
 to register all antithesis assertions used.  Prior to every `go build` step,
 use `go generate` so that any and all `//go:generate ...` directives found in
 the source being built, can be evaluated and executed.
-
 
 Add a Go directive somewhere in the main package for
 a module that has Antithesis assertions added to it.  The
@@ -83,11 +73,34 @@ After running `go generate <path>` run `go build <path>` and the
 module source, along with the newly generated `main_exigen.go` file
 will be compiled and linked.
 
-### Building antithesis-sdk-go
-When building antithesis-sdk-go, make sure to specify clang and to set CGO_ENABLED
-  
-Example:
+### Building
 
-    CC=clang CGO_ENABLED=1 go build
+```
+CC=clang go build ./assert ./random ./internal ./lifecycle 
+```
 
+### Running Benchmarks and Tests
 
+```
+CC=clang go test -bench=. ./internal ./assert
+```
+
+Results from 30-Jan-2024
+
+```
+goos: linux
+goarch: amd64
+pkg: github.com/antithesishq/antithesis-sdk-go/internal
+cpu: Intel(R) Xeon(R) E-2224G CPU @ 3.50GHz
+BenchmarkNoEmitWithLocalEmitDisabled-4          43285894                25.65 ns/op
+BenchmarkNoEmitWithLocalEmitEnabled-4           34070612                34.24 ns/op
+PASS
+ok      github.com/antithesishq/antithesis-sdk-go/internal      2.345s
+goos: linux
+goarch: amd64
+pkg: github.com/antithesishq/antithesis-sdk-go/assert
+cpu: Intel(R) Xeon(R) E-2224G CPU @ 3.50GHz
+BenchmarkAlways-4        1330213               897.3 ns/op
+PASS
+ok      github.com/antithesishq/antithesis-sdk-go/assert        2.110s
+```

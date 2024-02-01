@@ -1,43 +1,19 @@
+// Package lifecycle allows callers control of the [Antithesis environment].
+//
+// Callers running outside of the Antithesis environment will see no effect
+// from these calls. Optionally, calls will log their operations to the file
+// pointed to in the environment variable ANTITHESIS_SDK_LOCAL_OUTPUT, if
+// it is defined.
+//
+// [Antithesis testing platform]: https://antithesis.com
 package lifecycle
 
 import (
-  "encoding/json"
-  "errors"
-  "github.com/antithesishq/antithesis-sdk-go/internal"
-  "github.com/antithesishq/antithesis-sdk-go/local"
-  )
+	"github.com/antithesishq/antithesis-sdk-go/internal"
+)
 
-func xLogEvent(name string, event any) {
-  var data []byte = nil
-  var err error
-
-  event_map := internal.ToJsonableMap(name, event)
-
-  // Make sure JSON Marshaling delivered something useful
-  if len(event_map) == 0 {
-      return
-  }
-
-  // Encode the map 
-  if data, err = json.Marshal(event_map); err != nil {
-      return 
-  }
-  text := string(data)
-
-  // Try the DSO first, then revert to local_output (if it was enabled)
-  if err := internal.Json_data(text); errors.Is(err, internal.DSOError) {
-      local_info := local.LogJSONDataInfo{
-        LocalLogInfo: *local.NewLogInfo("", ""),
-        LocalJSONDataInfo: local.LocalJSONDataInfo{event_map},
-      }
-      payload := internal.JsonWithRenaming(local_info, ".", name)
-     local.Emit(payload)
-  }
-}
-
-// SetupComplet indicates that the system under test
-// is ready for testing.
+// To be called once system setup is complete and the system is ready for
+// exploration.
 func SetupComplete() {
-    xLogEvent("setup_status", "complete")
+	internal.Json_data(map[string]string{"setup_status": "complete"})
 }
-

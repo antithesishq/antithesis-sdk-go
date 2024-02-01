@@ -1,356 +1,171 @@
 package internal
 
 import (
-  "errors"
-  "fmt"
-  "os"
-  "unsafe"
+	"encoding/json"
+	"fmt"
+	"log"
+	"math/rand"
+	"os"
+	"unsafe"
 )
 
- // --------------------------------------------------------------------------------
- // To build and run an executable with this package
- //
- // CC=clang CGO_ENABLED=1 go run ./main.go
- // --------------------------------------------------------------------------------
+// --------------------------------------------------------------------------------
+// To build and run an executable with this package
+//
+// CC=clang CGO_ENABLED=1 go run ./main.go
+// --------------------------------------------------------------------------------
 
+// #cgo LDFLAGS: -ldl
+//
+// #include <dlfcn.h>
+// #include <stdbool.h>
+// #include <stdint.h>
+// #include <stdlib.h>
+//
+// typedef void (*go_fuzz_json_data_fn)(const char *data, size_t size);
+// void
+// go_fuzz_json_data(void *f, const char *data, size_t size) {
+//   ((go_fuzz_json_data_fn)f)(data, size);
+// }
+//
+// typedef void (*go_fuzz_flush_fn)(void);
+// void
+// go_fuzz_flush(void *f) {
+//   ((go_fuzz_flush_fn)f)();
+// }
+//
+// typedef uint64_t (*go_fuzz_get_random_fn)(void);
+// uint64_t
+// go_fuzz_get_random(void *f) {
+//   return ((go_fuzz_get_random_fn)f)();
+// }
+//
+import "C"
 
- // #cgo LDFLAGS: -ldl
- //
- // #include <dlfcn.h>
- // #include <stdbool.h>
- // #include <stdint.h>
- // #include <stdlib.h>
- //
- // typedef void (*go_fuzz_json_data_fn)(const char *data, size_t size);
- // void
- // go_fuzz_json_data(void *f, const char *data, size_t size) {
- //   ((go_fuzz_json_data_fn)f)(data, size);
- // }
- //
- // typedef void (*go_fuzz_set_source_name_fn)(const char *name);
- // void
- // go_fuzz_set_source_name(void *f, const char *name) {
- //   ((go_fuzz_set_source_name_fn)f)(name);
- // }
- //
- // typedef void (*go_fuzz_info_message_fn)(const char *message);
- // void
- // go_fuzz_info_message(void *f, const char *message) {
- //   ((go_fuzz_info_message_fn)f)(message);
- // }
- //
- // typedef void (*go_fuzz_error_message_fn)(const char *message);
- // void
- // go_fuzz_error_message(void *f, const char *message) {
- //   ((go_fuzz_error_message_fn)f)(message);
- // }
- //
- // typedef int (*go_fuzz_getchar_fn)(void);
- // int
- // go_fuzz_getchar(void *f) {
- //   return ((go_fuzz_getchar_fn)f)();
- // }
- //
- // // [PH] typedef int (*go_fuzz_putchar_fn)(char c);
- // // [PH] int
- // // [PH] go_fuzz_putchar(void *f, char c) {
- // // [PH]   return ((go_fuzz_putchar_fn)f)(c);
- // // [PH] }
- //
- // typedef void (*go_fuzz_flush_fn)(void);
- // void
- // go_fuzz_flush(void *f) {
- //   ((go_fuzz_flush_fn)f)();
- // }
- //
- // typedef uint64_t (*go_fuzz_get_random_fn)(void);
- // uint64_t
- // go_fuzz_get_random(void *f) {
- //   return ((go_fuzz_get_random_fn)f)();
- // }
- //
- // typedef bool (*go_fuzz_coin_flip_fn)(void);
- // bool
- // go_fuzz_coin_flip(void *f) {
- //   return ((go_fuzz_coin_flip_fn)f)();
- // }
- import "C"
+func Json_data(v any) error {
+	if data, err := json.Marshal(v); err != nil {
+		return err
+	} else {
+		handler.output(string(data))
+		return nil
+	}
+}
 
- type EmitInfo struct {
-   dso_handle unsafe.Pointer
-   json_data_handle unsafe.Pointer
-   set_source_name_handle unsafe.Pointer
-   info_message_handle unsafe.Pointer
-   error_message_handle unsafe.Pointer
-   getchar_handle unsafe.Pointer
-   // [PH] putchar_handle unsafe.Pointer
-   flush_handle unsafe.Pointer
-   get_random_handle unsafe.Pointer
-   coin_flip_handle unsafe.Pointer
- }
+func Get_random() uint64 {
+	return handler.random()
+}
 
- var emitter = EmitInfo {
-   dso_handle: nil,
-   json_data_handle: nil,
-   set_source_name_handle: nil,
-   info_message_handle: nil,
-   error_message_handle: nil,
-   getchar_handle: nil,
-   // [PH] putchar_handle: nil,
-   flush_handle: nil,
-   get_random_handle: nil,
-   coin_flip_handle: nil,
- }
+type libHandler interface {
+	output(message string)
+	random() uint64
+}
 
- var DSOError error = errors.New("No DSO Available")
+const localOutputEnvVar = "ANTITHESIS_SDK_LOCAL_OUTPUT"
+const errorLogLinePrefix = "[* antithesis-sdk-go *]"
+const defaultNativeLibraryPath = "/usr/lib/libvoidstar.so"
 
- func No_emit() bool {
-     return emitter.dso_handle == nil
- }
+var handler libHandler
 
- func Json_data(payload string) error {
-   if emitter.dso_handle == nil {
-       return DSOError
-   }
-   nbx := len(payload)
-   cstr_payload := C.CString(payload)
-   C.go_fuzz_json_data(emitter.json_data_handle, cstr_payload, C.ulong(nbx))
-   C.free(unsafe.Pointer(cstr_payload))
-   Flush()
-   return nil
- }
+type voidstarHandler struct {
+	fuzzJsonData  unsafe.Pointer
+	fuzzFlush     unsafe.Pointer
+	fuzzGetRandom unsafe.Pointer
+}
 
- func Info_message(message string) error {
-   if emitter.dso_handle == nil {
-       return DSOError
-   }
-   cstr_message := C.CString(message)
-   C.go_fuzz_info_message(emitter.info_message_handle, cstr_message)
-   C.free(unsafe.Pointer(cstr_message))
-   return nil
- }
+func (h *voidstarHandler) output(message string) {
+	cstrMessage := C.CString(message)
+	defer C.free(unsafe.Pointer(cstrMessage))
+	C.go_fuzz_json_data(h.fuzzJsonData, cstrMessage, C.ulong(len(message)))
+	C.go_fuzz_flush(h.fuzzFlush)
+}
 
- func Error_message(message string) error {
-   if emitter.dso_handle == nil {
-       return DSOError
-   }
-   cstr_message := C.CString(message)
-   C.go_fuzz_error_message(emitter.error_message_handle, cstr_message)
-   C.free(unsafe.Pointer(cstr_message))
-   return nil
- }
+func (h *voidstarHandler) random() uint64 {
+	return uint64(C.go_fuzz_get_random(h.fuzzGetRandom))
+}
 
- func Set_source_name(name string) error {
-   if emitter.dso_handle == nil {
-       return DSOError
-   }
-   cstr_name := C.CString(name)
-   C.go_fuzz_set_source_name(emitter.set_source_name_handle, cstr_name)
-   C.free(unsafe.Pointer(cstr_name))
-   return nil
- }
+type localHandler struct {
+	outputFile *os.File // can be nil
+}
 
- func Getchar() (r rune, err error) {
-   if emitter.dso_handle == nil {
-       return 0, DSOError
-   }
-   retval := C.go_fuzz_getchar(emitter.getchar_handle)
-   return rune(retval), nil
- }
+func (h *localHandler) output(message string) {
+	if h.outputFile != nil {
+		h.outputFile.WriteString(message + "\n")
+	}
+}
 
- // [PH] func Putchar(r rune) (r2 rune, err error) {
- // [PH]   if emitter.dso_handle == nil {
- // [PH]       return 0, DSOError
- // [PH]   }
- // [PH]   var retval C.int
+func (h *localHandler) random() uint64 {
+	return rand.Uint64()
+}
 
- // [PH]   if utf8.RuneLen(r) == 1 {
- // [PH]       c := uint8(r)
- // [PH]      retval = C.go_fuzz_putchar(emitter.putchar_handle, C.char(c))
- // [PH]   }
- // [PH]   return rune(retval), nil
- // [PH] }
+// If we have a file at `defaultNativeLibraryPath`, we load the shared library
+// (and panic on any error encountered during load).
+// Otherwise fallback to the local handler.
+func init() {
+	if _, err := os.Stat(defaultNativeLibraryPath); err == nil {
+		if handler, err = openSharedLib(defaultNativeLibraryPath); err != nil {
+			panic(err)
+		}
+	}
+	handler = openLocalHandler()
+}
 
- func Flush() error {
-   if emitter.dso_handle == nil {
-       return DSOError
-   }
-   C.go_fuzz_flush(emitter.flush_handle)
-   return nil
- }
+// Attempt to load libvoidstar and some symbols from `path`
+func openSharedLib(path string) (*voidstarHandler, error) {
+	cstrPath := C.CString(path)
+	defer C.free(unsafe.Pointer(cstrPath))
 
- func Get_random() (v uint64, err error) {
-   if emitter.dso_handle == nil {
-       return 0, DSOError
-   }
-   retval := C.go_fuzz_get_random(emitter.get_random_handle)
-   return uint64(retval), nil
- }
+	dlError := func(message string) error {
+		return fmt.Errorf("%s: (%s)", message, C.GoString(C.dlerror()))
+	}
 
- func Coin_flip() (b bool, err error){
-   if emitter.dso_handle == nil {
-       return false, DSOError
-   }
-   retval := C.go_fuzz_coin_flip(emitter.coin_flip_handle)
-   return bool(retval), nil
- }
+	sharedLib := C.dlopen(cstrPath, C.int(C.RTLD_NOW))
+	if sharedLib == nil {
+		return nil, dlError("Can not load the Antithesis native library")
+	}
 
- func try_shared_lib(lib_path string) bool {
-   close_shared_lib()
-   did_open := open_shared_lib(lib_path)
-    if !did_open {
-      open_failed_handler()
-    }
-    return did_open
- }
+	loadFunc := func(name string) (symbol unsafe.Pointer, err error) {
+		cstrName := C.CString(name)
+		defer C.free(unsafe.Pointer(cstrName))
+		if symbol = C.dlsym(sharedLib, cstrName); symbol == nil {
+			err = dlError(fmt.Sprintf("Can not access symbol %s", name))
+		}
+		return
+	}
 
- func open_failed_handler() {
-      fmt.Printf("\n    [* antithesis-sdk-go *] Will handle events locally ---\n\n")
- }
+	fuzzJsonData, err := loadFunc("fuzz_json_data")
+	if err != nil {
+		return nil, err
+	}
+	fuzzFlush, err := loadFunc("fuzz_flush")
+	if err != nil {
+		return nil, err
+	}
+	fuzzGetRandom, err := loadFunc("fuzz_get_random")
+	if err != nil {
+		return nil, err
+	}
 
+	return &voidstarHandler{fuzzJsonData, fuzzFlush, fuzzGetRandom}, nil
+}
 
- func exists_at_path(fullname string) (name string, exists bool) {
-    exists = false
-    name = fullname
-    if _, err := os.Stat(fullname); err == nil {
-        exists = true
-        return
-    }
-    return
-  }
+// If `localOutputEnvVar` is set to a non-empty path, attempt to open that path and truncate the file
+// to serve as the log file of the local handler.
+// Otherwise, we don't have a log file, and logging is a no-op in the local handler.
+func openLocalHandler() *localHandler {
+	path, is_set := os.LookupEnv(localOutputEnvVar)
+	if !is_set || len(path) == 0 {
+		return &localHandler{nil}
+	}
 
- // Open the target library
- func open_shared_lib(lib_path string) bool {
-     if _, exists := exists_at_path(lib_path); !exists {
-         return false
-     }
-     loading_mode := C.int(C.RTLD_NOW)
-     cstr_lib_path := C.CString(lib_path)
+	// Open the file R/W (create if needed and possible)
+	file, err := os.OpenFile(path, os.O_RDWR|os.O_CREATE, 0644)
+	if err != nil {
+		log.Printf("%s Failed to open path %s: %v", errorLogLinePrefix, path, err)
+		file = nil
+	} else if err = file.Truncate(0); err != nil {
+		log.Printf("%s Failed to truncate file at %s: %v", errorLogLinePrefix, path, err)
+		file = nil
+	}
 
-     var dso_handle unsafe.Pointer = C.dlopen(cstr_lib_path, loading_mode)
-     C.free(unsafe.Pointer(cstr_lib_path))
-
-     if dso_handle == nil {
-        emitter.dso_handle = dso_handle
-        event_logger_error("Can not connect to event logger")
-        return false
-     }
-
-     // Send JSON
-     var cstr_func_name *C.char
-
-     cstr_func_name = C.CString("fuzz_json_data")
-     var json_data_handle unsafe.Pointer = C.dlsym(dso_handle, cstr_func_name)
-     C.free(unsafe.Pointer(cstr_func_name))
-     if json_data_handle == nil {
-        event_logger_error("Can not access fuzz_json_data")
-     }
-
-     // Set the source name
-     cstr_func_name = C.CString("fuzz_set_source_name")
-     var set_source_name_handle unsafe.Pointer = C.dlsym(dso_handle, cstr_func_name)
-     C.free(unsafe.Pointer(cstr_func_name))
-     if set_source_name_handle == nil {
-        event_logger_error("Can not access fuzz_set_source_name")
-     }
-     
-     // Send info message (stdout)
-     cstr_func_name = C.CString("fuzz_info_message")
-     var info_message_handle unsafe.Pointer = C.dlsym(dso_handle, cstr_func_name)
-     C.free(unsafe.Pointer(cstr_func_name))
-     if info_message_handle == nil {
-        event_logger_error("Can not access fuzz_info_message")
-     }
-     
-     // Send error message (stdout)
-     cstr_func_name = C.CString("fuzz_error_message")
-     var error_message_handle unsafe.Pointer = C.dlsym(dso_handle, cstr_func_name)
-     C.free(unsafe.Pointer(cstr_func_name))
-     if error_message_handle == nil {
-        event_logger_error("Can not access fuzz_error_message")
-     }
-     
-     // Get a character
-     cstr_func_name = C.CString("fuzz_getchar")
-     var getchar_handle unsafe.Pointer = C.dlsym(dso_handle, cstr_func_name)
-     C.free(unsafe.Pointer(cstr_func_name))
-     if getchar_handle == nil {
-        event_logger_error("Can not access fuzz_getchar")
-     }
-     
-     // [PH] // Put a character
-     // [PH] cstr_func_name = C.CString("fuzz_putchar")
-     // [PH] var putchar_handle unsafe.Pointer = C.dlsym(dso_handle, cstr_func_name)
-     // [PH] C.free(unsafe.Pointer(cstr_func_name))
-     // [PH] if putchar_handle == nil {
-     // [PH]    event_logger_error("Can not access fuzz_putchar")
-     // [PH] }
-     
-     // Flush pending output
-     cstr_func_name = C.CString("fuzz_flush")
-     var flush_handle unsafe.Pointer = C.dlsym(dso_handle, cstr_func_name)
-     C.free(unsafe.Pointer(cstr_func_name))
-     if flush_handle == nil {
-        event_logger_error("Can not access fuzz_flush")
-     }
-
-     // Get a random uint64
-     cstr_func_name = C.CString("fuzz_get_random")
-     var get_random_handle unsafe.Pointer = C.dlsym(dso_handle, cstr_func_name)
-     C.free(unsafe.Pointer(cstr_func_name))
-     if get_random_handle == nil {
-        event_logger_error("Can not access fuzz_get_random")
-     }
-
-     // Get a coin flip bool
-     cstr_func_name = C.CString("fuzz_coin_flip")
-     var coin_flip_handle unsafe.Pointer = C.dlsym(dso_handle, cstr_func_name)
-     C.free(unsafe.Pointer(cstr_func_name))
-     if coin_flip_handle == nil {
-        event_logger_error("Can not access fuzz_coin_flip")
-     }
-     
-     // Save all handles for later dispatch
-     emitter.dso_handle = dso_handle
-     emitter.json_data_handle = json_data_handle
-     emitter.set_source_name_handle = set_source_name_handle
-     emitter.info_message_handle = info_message_handle
-     emitter.error_message_handle = error_message_handle
-     emitter.getchar_handle = getchar_handle
-     // [PH] emitter.putchar_handle = putchar_handle
-     emitter.flush_handle = flush_handle
-     emitter.get_random_handle = get_random_handle
-     emitter.coin_flip_handle = coin_flip_handle
-     return dso_handle != nil
- }
-
- func close_shared_lib() {
-   if emitter.dso_handle != nil {
-     C.dlclose(emitter.dso_handle)
-     emitter.dso_handle = nil
-   }
-   emitter.json_data_handle = nil
-   emitter.set_source_name_handle = nil
-   emitter.info_message_handle = nil
-   emitter.error_message_handle = nil
-   emitter.getchar_handle = nil
-   // [PH] emitter.putchar_handle = nil
-   emitter.flush_handle = nil
-   emitter.get_random_handle = nil
-   emitter.coin_flip_handle = nil
- }
-
- func event_logger_error(what string) {
-   err_txt := C.GoString(C.dlerror())
-   fmt.Fprintf(os.Stderr, "[* antithesis-sdk-go *] %s =->  %s\n\n", what, err_txt)
- }
-
- func init() {
-    var did_open bool = false
-    lib_path := "/usr/lib/libvoidstar.so"
-    if len(lib_path) > 0 {
-        if did_open = open_shared_lib(lib_path); did_open {
-            return
-        }
-    }
- }
+	return &localHandler{file}
+}
