@@ -49,7 +49,8 @@ let
     buildPhase = ''
       export HOME=$TMPDIR
       mkdir -p $out/docs
-      doc2go -embed -home github.com/antithesishq/antithesis-sdk-go -out $out/docs ./assert ./random ./lifecycle
+      # TODO: can add `-emded` to generate basic stubs for the docs with no styling to customize our own
+      doc2go -home github.com/antithesishq/antithesis-sdk-go -out $out/docs ./assert ./random ./lifecycle
       pandoc --template ${index_template} -o $out/index.html README.md
     '';
   };
