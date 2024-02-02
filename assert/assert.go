@@ -1,6 +1,6 @@
 // Package assert allows callers to configure test oracles for the [Antithesis testing platform].
 //
-// For full functionality, code should be indexed by the exigen command
+// For full functionality, code should be indexed by the antithesis-go-generator command
 // so that Antithesis can know what invocations to expect. This is needed
 // for Always, Sometime, and Reachable. It will make reporting about
 // Unreachable and AlwaysOrUnreachable more understandable.
@@ -97,6 +97,11 @@ func Unreachable(message string, values map[string]any) {
 func Reachable(message string, values map[string]any) {
 	location_info := newLocationInfo(offsetAPICaller)
 	assertImpl(message, true, values, location_info, was_hit, must_be_hit, expecting_true, reachability_test)
+}
+
+// Unwrapped raw assertion access for custom tooling. Not to be called directly.
+func AssertRaw(message string, cond bool, values map[string]any, classname, funcname, filename string, line int, hit bool, must_hit bool, expecting bool, assert_type string) {
+	assertImpl(message, cond, values, &locationInfo{classname, funcname, filename, line, columnUnknown}, hit, must_hit, expecting, assert_type)
 }
 
 func assertImpl(message string, cond bool, values map[string]any, loc *locationInfo, hit bool, must_hit bool, expecting bool, assert_type string) {

@@ -54,9 +54,3 @@ func newLocationInfo(nframes stackFrameOffset) *locationInfo {
 	}
 	return &locationInfo{classname, funcname, filename, line, columnUnknown}
 }
-
-// NewLocInfo creates a locationInfo from values known outside of the
-// current execution context
-func newLocInfo(classname, funcname, filename string, line int) *locationInfo {
-	return &locationInfo{classname, funcname, filename, line, columnUnknown}
-}

@@ -5,73 +5,42 @@ Provides functions for Go programs to configure the [Antithesis](https://antithe
 
 For general usage guidance see [Antithesis SDK Documentation](https://antithesis.com/docs/using_antithesis/sdk/overview.html)
 
-## Assertions
-Developers can use the functions in the `assert` package to declare properties
-of their system for Antithesis to check. This includes conventional assertions,
-and also [Sometimes Assertions](https://antithesis.com/docs/best_practices/sometimes_assertions.html)
-which can help you assess the quality of your testing or check for unreachable
-code.
+## package `assert`
+Developers can use the functions in the `assert` package to declare properties of their system for Antithesis to check. This includes conventional assertions, and also [Sometimes Assertions](https://antithesis.com/docs/best_practices/sometimes_assertions.html) which can help you assess the quality of your testing or check for unreachable code.
 
 Visit the Antithesis documentation for more [details about Assertions](https://antithesis.com/docs/using_antithesis/properties.html).
 
-## Random
+## package `random`
 Developers can get input from the Antithesis platform by calling functions from the `random` package. Getting input from Antithesis allows it to guide your workload to find more bugs faster. For information on how this works, and should be used, see the documentation on [workload basics](https://antithesis.com/docs/getting_started/workload.html)
 
-## Lifecycle
+## package `lifecycle`
 Antithesis waits to start injecting faults until the software under test indicates
 that it is booted and ready. Use the lifecycle call `SetupComplete()` to indicate
 that your system is ready for testing.
 
-## Assertion Catalog
-In order to correctly identify what assertions should be expected and warn if they are not seen, Antithesis needs to know what assertions you have defined in your code. The included tool, `exigen`, does this job. `exigen` scans your code and generates an `init()` function to register your Assertions with Antithesis.
+## Assertion Indexer
+If an Assertions such as `assert.Always()` is not reached during a test, Antithesis will raise a warning. In order to warn about these unseen calls, Antithesis needs to know what assertions you have defined in your code. The included tool, `antithesis-go-generator`, does this job. `antithesis-go-generator` scans your code and generates new code to register your Assertions with Antithesis.
 
-### Using `exigen`
+### Using `antithesis-go-generator`
 
-To install in a development environment:
+Add a Go directive somewhere in the main package for a module that has Antithesis assertions added to it.  The general form is:
+
+`//go:generate antithesis-go-generator my-module-name`
+
+For example:
+
+`//go:generate antithesis-go-generator antithesis.com/go/sample-project`
+
+Next, install the generator tool in your development environment:
 
 ```
-go get github.com/antithesishq/antithesis-sdk-go/tools/exigen
-go install github.com/antithesishq/antithesis-sdk-go/tools/exigen
+go get github.com/antithesishq/antithesis-sdk-go/tools/antithesis-go-generator
+go install github.com/antithesishq/antithesis-sdk-go/tools/antithesis-go-generator
 ```
 
-This will install exigen to the $GOPATH/bin folder so it can be used
-to register all antithesis assertions used.  Prior to every `go build` step,
-use `go generate` so that any and all `//go:generate ...` directives found in
-the source being built, can be evaluated and executed.
+Finally, add a build step to invoke `go generate <path>` prior to the typical compile/link build step of `go build <path>`.  The `antithesis-go-generator` will write a file named after the source file containing the `//go:generate` directive. For example, If the file containing the `//go:generate` directive is `main.go` then the derived file will be named `main_antithesis.go`.
 
-Add a Go directive somewhere in the main package for
-a module that has Antithesis assertions added to it.  The
-general form is like this:
-
-`//go:generate exigen my-module-name`
-
-Example:
-
-`//go:generate exigen antithesis.com/go/sample-project`
-
-A good place to add this directive is in the top-level
-driver for an executable (often this is `main.go`)
-
-With the directive in place, add a `go generate` build step, prior to 
-the typical compile/link build step `go build <path>`.  The `go generate`
-step will scan Golang source code files.  Any generate commands 
-encountered will be executed as part of the `go generate`
-process.  When exigen runs, it will scan for packages in the specified
-module indicated in the corresponding //go:generate directive.  
-
-All of the files in each package of the module will be scanned for 
-assertions, and result in a regsitration call to be created
-for each assertion that was scanned.  These registrations 
-will be written to a new file whose name is derived from the name of the file that
-contains the //go:generate directive.  
-
-If the file containing the //go:generate directive is `main.go`  then the 
-derived file will be `main_exigen.go` and will include an init() function 
-containing the registration calls that were created.
-
-After running `go generate <path>` run `go build <path>` and the
-module source, along with the newly generated `main_exigen.go` file
-will be compiled and linked.
+After running `go generate <path>` run `go build <path>` and the module source, along with the newly generated `main_antithesis.go` file will be compiled and linked.
 
 ### Building
 
@@ -79,28 +48,3 @@ will be compiled and linked.
 CC=clang go build ./assert ./random ./internal ./lifecycle 
 ```
 
-### Running Benchmarks and Tests
-
-```
-CC=clang go test -bench=. ./internal ./assert
-```
-
-Results from 30-Jan-2024
-
-```
-goos: linux
-goarch: amd64
-pkg: github.com/antithesishq/antithesis-sdk-go/internal
-cpu: Intel(R) Xeon(R) E-2224G CPU @ 3.50GHz
-BenchmarkNoEmitWithLocalEmitDisabled-4          43285894                25.65 ns/op
-BenchmarkNoEmitWithLocalEmitEnabled-4           34070612                34.24 ns/op
-PASS
-ok      github.com/antithesishq/antithesis-sdk-go/internal      2.345s
-goos: linux
-goarch: amd64
-pkg: github.com/antithesishq/antithesis-sdk-go/assert
-cpu: Intel(R) Xeon(R) E-2224G CPU @ 3.50GHz
-BenchmarkAlways-4        1330213               897.3 ns/op
-PASS
-ok      github.com/antithesishq/antithesis-sdk-go/assert        2.110s
-```
