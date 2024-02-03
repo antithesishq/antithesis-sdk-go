@@ -1,31 +1,26 @@
-// Package random provides callers with input from the [Antithesis testing platform].
+// This package is part of the [Antithesis Go SDK], which enables Go applications to integrate with the [Antithesis platform].
 //
-// When run inside of Antithesis, callers that modify program behavior
-// with the results of these calls will see greater test effeciency and
-// faster exporation of their code. Callers running outside of the Antithesis
-// environment will be provided values derived from [crypto/rand].
+// The random package provides an interface that allows your program to ask the Antithesis platform for random entropy. These functions are also safe to call outside the Antithesis environment, where they will fall back on values from [crypto/rand]. 
 //
-// [Antithesis testing platform]: https://antithesis.com
+// These functions should not be used to seed a conventional PRNG, and should not have their return values stored and used to make a decision at a later time. Doing either of these things makes it much harder for the Antithesis platform to control the history of your program's execution, and also makes it harder for Antithesis to learn which inputs provided at which times are most fruitful. Instead, you should call a function from the random package every time your program or [workload] needs to make a decision, at the moment that you need to make the decision. 
+//
+// [Antithesis Go SDK]: https://antithesis.com/docs/using_antithesis/sdk/go_sdk.html 
+// [Antithesis platform]: https://antithesis.com
+// [workload]: https://antithesis.com/docs/getting_started/workload.html
 package random
 
 import (
 	"github.com/antithesishq/antithesis-sdk-go/internal"
 )
 
-// Returns a uint64 value chosen by the Antithesis environment. Test harnesses
-// that modify behavior based on such choices will see greater test coverage
-// and faster exploration of their code. Ideally this and other functions from
-// this package are called repeatedly during the course of a test, not just
-// at startup.
+// Returns a uint64 value chosen by Antithesis. You should not store this value or use it to seed a PRNG, but should use it immediately.
 func GetRandom() uint64 {
 	return internal.Get_random()
 }
 
-// Callers allow Antithesis to select one of a set of choices. Test harnesses
-// that modify behavior based on such choices will see greater test coverage
-// and faster exploration of their code. Ideally this and other functions from
-// this package are called repeatedly during the course of a test, not just
-// at startup.
+// Returns a randomly chosen item from a list of options. You should not store this value, but should use it immediately.
+//
+// This function is not purely for convenience. Signaling to the Antithesis platform that you intend to use a random value in a structured way enables it to provide more interesting choices over time.
 func RandomChoice(things []any) any {
 	num_things := len(things)
 	if num_things < 1 {
