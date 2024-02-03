@@ -105,6 +105,7 @@ func init() {
 		if handler, err = openSharedLib(defaultNativeLibraryPath); err != nil {
 			panic(err)
 		}
+		return
 	}
 	handler = openLocalHandler()
 }
