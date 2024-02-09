@@ -40,7 +40,25 @@ import (
 //   return ((go_fuzz_get_random_fn)f)();
 // }
 //
+// typedef bool (*go_notify_coverage_fn)(size_t);
+// bool
+// go_notify_coverage(void *f, size_t edges) {
+//   return ((go_notify_coverage_fn)f)(edges);
+// }
+//
+// typedef uint64_t (*go_init_coverage_fn)(size_t num_edges, const char *symbols);
+// uint64_t
+// go_init_coverage(void *f, size_t num_edges, const char *symbols) {
+//   return ((go_init_coverage_fn)f)(edges, symbols);
+// }
+//
 import "C"
+
+
+// size_t init_coverage_module(size_t edge_count, const char* symbol_file_name);
+// bool notify_coverage(size_t edge_plus_module);
+
+
 
 func Json_data(v any) error {
 	if data, err := json.Marshal(v); err != nil {
@@ -55,9 +73,19 @@ func Get_random() uint64 {
 	return handler.random()
 }
 
+func Notify(edge uint64) bool {
+    return handler.notify(edge)
+}
+
+func InitCoverage(num_edges uint64, symbols string) uint64 {
+    return handler.init_coverage(num_edges, symbols)
+}
+
 type libHandler interface {
 	output(message string)
 	random() uint64
+    notify(edge uint64) bool
+    init_coverage() uint64
 }
 
 const localOutputEnvVar = "ANTITHESIS_SDK_LOCAL_OUTPUT"
@@ -70,6 +98,8 @@ type voidstarHandler struct {
 	fuzzJsonData  unsafe.Pointer
 	fuzzFlush     unsafe.Pointer
 	fuzzGetRandom unsafe.Pointer
+	initCoverage  unsafe.Pointer
+	notifyCoverage unsafe.Pointer
 }
 
 func (h *voidstarHandler) output(message string) {
@@ -81,6 +111,16 @@ func (h *voidstarHandler) output(message string) {
 
 func (h *voidstarHandler) random() uint64 {
 	return uint64(C.go_fuzz_get_random(h.fuzzGetRandom))
+}
+
+func (h *voidstarHandler) init_coverage(num_edge uint64, symbols string) bool {
+	cstrSymbols := C.CString(symbols)
+	defer C.free(unsafe.Pointer(cstrSymbols))
+	return C.go_init_coverage(h.initCoverage, cstrSymbols, C.ulong(num_edge))
+}
+
+func (h *voidstarHandler) notify(edge uint64) bool {
+	return C.go_notify_coverage(h.notifyCoverage, C.ulong(edge))
 }
 
 type localHandler struct {
@@ -95,6 +135,14 @@ func (h *localHandler) output(message string) {
 
 func (h *localHandler) random() uint64 {
 	return rand.Uint64()
+}
+
+func (h *localHandler) notify(edge uint64) bool {
+	return false
+}
+
+func (h *localHandler) init_coverage(num_edges uint64, symbols string) uint64 {
+	return 0
 }
 
 // If we have a file at `defaultNativeLibraryPath`, we load the shared library
@@ -145,8 +193,15 @@ func openSharedLib(path string) (*voidstarHandler, error) {
 	if err != nil {
 		return nil, err
 	}
-
-	return &voidstarHandler{fuzzJsonData, fuzzFlush, fuzzGetRandom}, nil
+	notifyCoverage, err := loadFunc("notify_coverage")
+	if err != nil {
+		return nil, err
+	}
+	initCoverage, err := loadFunc("init_coverage_module")
+	if err != nil {
+		return nil, err
+	}
+	return &voidstarHandler{fuzzJsonData, fuzzFlush, fuzzGetRandom, initCoverage, notifyCoverage}, nil
 }
 
 // If `localOutputEnvVar` is set to a non-empty path, attempt to open that path and truncate the file
