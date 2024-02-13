@@ -1,6 +1,6 @@
 // This package is part of the [Antithesis Go SDK], which enables Go applications to integrate with the [Antithesis platform].
 //
-// The assert package allows you to define new [test properties] for your program or [workload]. 
+// The assert package allows you to define new [test properties] for your program or [workload].
 //
 // Code that uses this package should be instrumented with the [antithesis-go-generator] utility. This step is required for the Always, Sometime, and Reachable methods. It is not required for the Unreachable and AlwaysOrUnreachable methods, but it will improve the experience of using them.
 //
@@ -10,7 +10,7 @@
 //
 // Each function also takes a parameter called values. This parameter allows you to optionally provide a key-value map of context information that will be viewable in the [details] tab for any example or counterexample of the associated property.
 //
-// [Antithesis Go SDK]: https://antithesis.com/docs/using_antithesis/sdk/go_sdk.html 
+// [Antithesis Go SDK]: https://antithesis.com/docs/using_antithesis/sdk/go_sdk.html
 // [Antithesis platform]: https://antithesis.com
 // [test properties]: https://antithesis.com/docs/using_antithesis/properties.html
 // [workload]: https://antithesis.com/docs/getting_started/workload.html

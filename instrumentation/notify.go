@@ -2,9 +2,9 @@ package instrumentation
 
 import (
 	"fmt"
+	"github.com/antithesishq/antithesis-sdk-go/internal"
 	"os"
 	"unsafe"
-	"github.com/antithesishq/antithesis-sdk-go/internal"
 )
 
 var moduleInitialized = false
@@ -22,10 +22,10 @@ func InitializeModule(symbolTable string, edgeCount int) uint64 {
 	// WARN Re: integer type conversion, see https://github.com/golang/go/issues/29878
 	executable, _ := os.Executable()
 	// [PH] InfoMessage(fmt.Sprintf("%s called antithesis.com/go/instrumentation.InitializeModule(%s, %d)", executable, symbolTable, edgeCount))
-    msg := fmt.Sprintf("%s called %s.InitializeModule(%s, %d)", executable, instrumentor_tag, symbolTable, edgeCount)
+	msg := fmt.Sprintf("%s called %s.InitializeModule(%s, %d)", executable, instrumentor_tag, symbolTable, edgeCount)
 	internal.Json_data(msg)
 
-    offset := internal.InitCoverage(edgeCount, symbolTable)
+	offset := internal.InitCoverage(edgeCount, symbolTable)
 	// [PH] s := C.CString(symbolTable)
 	// [PH] defer C.free(unsafe.Pointer(s))
 	// [PH] offset := C.init_coverage_module(C.ulong(edgeCount), s)
@@ -52,9 +52,8 @@ func Notify(edge int) {
 	}
 }
 
-
 // FuzzExit is inserted by the instrumentation.
 func FuzzExit(exit int) {
-    return
+	return
 	// internal.Fuzz_exit(C.int(exit))
 }

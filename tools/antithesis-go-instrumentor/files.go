@@ -4,7 +4,6 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-
 	// "github.com/golang/glog"
 )
 
@@ -76,23 +75,24 @@ func ValidateDirectories(input, output string) {
 	}
 }
 
-func createOutputDirectories(outputDirectory string) (string, string, string) {
+func createOutputDirectories(outputDirectory string) (string, string) {
 	confirmEmptyOutputDirectory(outputDirectory)
 	customer := filepath.Join(outputDirectory, "customer")
-	antithesis := filepath.Join(outputDirectory, "antithesis")
 	symbols := filepath.Join(outputDirectory, "symbols")
+
+	// no longer used
+	// antithesis := filepath.Join(outputDirectory, "antithesis")
+	// if e := os.Mkdir(antithesis, 0755); e != nil {
+	// 	logger.Fatal(e)
+	// }
+
 	if e := os.Mkdir(customer, 0755); e != nil {
-		// glog.Fatal(e)
-		logger.Fatal(e)
-	}
-	if e := os.Mkdir(antithesis, 0755); e != nil {
-		// glog.Fatal(e)
 		logger.Fatal(e)
 	}
 	if e := os.Mkdir(symbols, 0755); e != nil {
-		// glog.Fatal(e)
 		logger.Fatal(e)
 	}
 
-	return customer, antithesis, symbols
+	// return customer, antithesis, symbols
+	return customer, symbols
 }

@@ -5,9 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-
 	// "github.com/golang/glog"
-
 )
 
 // ParseExclusionsFile reads the exclusions file, skipping lines beginning with

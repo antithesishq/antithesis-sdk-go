@@ -1,7 +1,7 @@
 package main
 
 import (
-    "go/ast"
+	"go/ast"
 )
 
 type Stack []ast.Node

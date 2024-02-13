@@ -54,11 +54,8 @@ import (
 //
 import "C"
 
-
 // size_t init_coverage_module(size_t edge_count, const char* symbol_file_name);
 // bool notify_coverage(size_t edge_plus_module);
-
-
 
 func Json_data(v any) error {
 	if data, err := json.Marshal(v); err != nil {
@@ -74,18 +71,18 @@ func Get_random() uint64 {
 }
 
 func Notify(edge uint64) bool {
-    return handler.notify(edge)
+	return handler.notify(edge)
 }
 
 func InitCoverage(num_edges uint64, symbols string) uint64 {
-    return handler.init_coverage(num_edges, symbols)
+	return handler.init_coverage(num_edges, symbols)
 }
 
 type libHandler interface {
 	output(message string)
 	random() uint64
-    notify(edge uint64) bool
-    init_coverage() uint64
+	notify(edge uint64) bool
+	init_coverage() uint64
 }
 
 const localOutputEnvVar = "ANTITHESIS_SDK_LOCAL_OUTPUT"
@@ -95,10 +92,10 @@ const defaultNativeLibraryPath = "/usr/lib/libvoidstar.so"
 var handler libHandler
 
 type voidstarHandler struct {
-	fuzzJsonData  unsafe.Pointer
-	fuzzFlush     unsafe.Pointer
-	fuzzGetRandom unsafe.Pointer
-	initCoverage  unsafe.Pointer
+	fuzzJsonData   unsafe.Pointer
+	fuzzFlush      unsafe.Pointer
+	fuzzGetRandom  unsafe.Pointer
+	initCoverage   unsafe.Pointer
 	notifyCoverage unsafe.Pointer
 }
 

@@ -16,6 +16,7 @@ import (
 	// "github.com/golang/glog"
 	"golang.org/x/tools/go/ast/astutil"
 )
+
 // InstrumentationModuleName is our module wrapping
 // the necessary C functions in libvoidstar.so. Generated code will
 // be in the same package.
@@ -215,7 +216,9 @@ func (instrumentor *Instrumentor) createLineDirective(lineNumber int, node *ast.
 		return nil
 	}
 	lineStartPos := file.LineStart(p.Line)
-	logger.Printf("Creating comment for node @ %v start of line %d at %v", (*node).Pos(), p.Line, lineStartPos)
+	if verbose_level(1) {
+		logger.Printf("Creating comment for node @ %v start of line %d at %v", (*node).Pos(), p.Line, lineStartPos)
+	}
 	if (*node).Pos() == lineStartPos {
 		// This node is actually at the start of the line, so move the position back one to make sure there's no conflict.
 		// Also, set the original lineStartPos to true in the map just to make sure we don't have another item on the same
@@ -314,9 +317,9 @@ func (instrumentor *Instrumentor) TrimComments(path string, file *ast.File) {
 			}
 		default:
 			// glog.V(2).Infof("No comment revision for AST node of type %T\n", node)
-            if verbose_level(2) {
-                logger.Printf("No comment revision for AST node of type %T\n", node)
-            }
+			if verbose_level(2) {
+				logger.Printf("No comment revision for AST node of type %T\n", node)
+			}
 		}
 		return true
 	}
@@ -355,30 +358,30 @@ func hasFuncLiteral(n ast.Node) (bool, token.Pos) {
 // Instrumentor *is* the Antithesis Go source-code instrumentor.
 type Instrumentor struct {
 	// Output directory path.
-	basePath	string
+	basePath    string
 	ShimPkg     string
 	SymbolTable *SymbolTable
 	CurrentEdge int
 	fset        *token.FileSet
 	pkg         string
 	// Fully-qualified file name
-	fullName    string
+	fullName string
 	// The fully-qualified file name minus the input path
-	shortName	string
-	nodeStack   Stack // stack.Stack
-	funcStack   Stack // stack.Stack
+	shortName string
+	nodeStack Stack // stack.Stack
+	funcStack Stack // stack.Stack
 	// For this file, how many of each node type have we seen so far?
-	typeCounts  map[string]int
+	typeCounts map[string]int
 	// The current depth-first position in the file, using the ${nodetype}@${count} string as a unique identifier
-	currPos     []string
+	currPos []string
 	// Mapping fully-qualified node names (based on currPos) to their line numbers
-	nodeLines   map[string]int
+	nodeLines map[string]int
 	// Whether we've written a line directive for a given position.
-	posLines    map[token.Pos]bool
-	comments    []*ast.CommentGroup
+	posLines map[token.Pos]bool
+	comments []*ast.CommentGroup
 	// Should we add line directives in this Walk() pass?
 	// This should be false for Instrumenting and true for adding line directives.
-	addLines    bool
+	addLines bool
 }
 
 // CreateInstrumentor is the factory method.
@@ -410,12 +413,11 @@ func writeSource(source, path string) error {
 		return e
 	}
 	// glog.V(1).Infof("Wrote instrumented output to %s", path)
-    if verbose_level(1) {
-        logger.Printf("Wrote instrumented output to %s", path)
-    }
+	if verbose_level(1) {
+		logger.Printf("Wrote instrumented output to %s", path)
+	}
 	return nil
 }
-
 
 // Instrument inserts calls to the Golang bridge to the Antithesis fuzzer.
 // Errors should be logged, but are generally not fatal, since the input
@@ -466,9 +468,9 @@ func (instrumentor *Instrumentor) Instrument(path string) (string, error) {
 
 	if instrumentor.CurrentEdge == startingEdge {
 		// glog.V(1).Infof("File %s has no code to be instrumented, and will simply be copied", path)
-        if verbose_level(1) {
-            logger.Printf("File %s has no code to be instrumented, and will simply be copied", path)
-        }
+		if verbose_level(1) {
+			logger.Printf("File %s has no code to be instrumented, and will simply be copied", path)
+		}
 		return "", nil
 	}
 
@@ -546,13 +548,13 @@ func (instrumentor *Instrumentor) popType() {
 	if len(instrumentor.currPos) == 0 {
 		return
 	}
-	instrumentor.currPos = instrumentor.currPos[:len(instrumentor.currPos) - 1]
+	instrumentor.currPos = instrumentor.currPos[:len(instrumentor.currPos)-1]
 }
 
 // Get a string representing the current position in the AST, using the node identifiers defined above. E.g.,
 //
-// - *ast.File@0|*ast.FuncDecl@0|*ast.BlockStmt@0|*ast.AssignStmt@3
-//    this file |  1st function |  1st fn block  | 4th assignment statement in the file
+//   - *ast.File@0|*ast.FuncDecl@0|*ast.BlockStmt@0|*ast.AssignStmt@3
+//     this file |  1st function |  1st fn block  | 4th assignment statement in the file
 //
 // This allows us to uniquely identify any node in the AST based on a deterministic depth-first search going
 // from the top of the file to the bottom.
@@ -576,9 +578,9 @@ func (instrumentor *Instrumentor) collectLine(node ast.Node) {
 	// disconnected in the AST from the package name.
 	if "*ast.File@0|*ast.Ident@0" == path {
 		// glog.V(2).Infof("Skipping package name path %s for node (%T:%v)", path, node, node)
-        if verbose_level(2) {
-            logger.Printf("Skipping package name path %s for node (%T:%v)", path, node, node)
-        }
+		if verbose_level(2) {
+			logger.Printf("Skipping package name path %s for node (%T:%v)", path, node, node)
+		}
 		return
 	}
 	// For certain types of nodes we will not create line directives, therefore we can
@@ -598,9 +600,9 @@ func (instrumentor *Instrumentor) collectLine(node ast.Node) {
 	p := instrumentor.fset.Position(node.Pos())
 	// Map the node to the original line number.
 	// glog.V(3).Infof("collectLine(%T:%v:%s) => %d", node, node, path, p.Line)
-    if verbose_level(3) {
-        logger.Printf("collectLine(%T:%v:%s) => %d", node, node, path, p.Line)
-    }
+	if verbose_level(3) {
+		logger.Printf("collectLine(%T:%v:%s) => %d", node, node, path, p.Line)
+	}
 	instrumentor.nodeLines[path] = p.Line
 }
 
@@ -621,18 +623,18 @@ func (instrumentor *Instrumentor) getOriginalLine() int {
 func (instrumentor *Instrumentor) VisitAndInstrument(node ast.Node) ast.Visitor {
 	if node == nil {
 		instrumentor.popType()
-		top,_ := instrumentor.nodeStack.Pop()
+		top, _ := instrumentor.nodeStack.Pop()
 		if decl, isDecl := top.(*ast.FuncDecl); isDecl {
 			// glog.V(2).Infof("AddCallbacks Popping function %s", decl.Name.Name)
-            if verbose_level(2) {
-                logger.Printf("AddCallbacks Popping function %s", decl.Name.Name)
-            }
+			if verbose_level(2) {
+				logger.Printf("AddCallbacks Popping function %s", decl.Name.Name)
+			}
 			instrumentor.funcStack.Pop()
 		} else {
 			// glog.V(2).Infof("AddCallbacks Popping node: %v (%T)", top, top)
-            if verbose_level(2) {
-                logger.Printf("AddCallbacks Popping node: %v (%T)", top, top)
-            }
+			if verbose_level(2) {
+				logger.Printf("AddCallbacks Popping node: %v (%T)", top, top)
+			}
 		}
 		return instrumentor
 	}
@@ -778,15 +780,15 @@ func (instrumentor *Instrumentor) VisitAndInstrument(node ast.Node) ast.Visitor 
 	// If nil is returned, the children of the current node will not be visited. Now push the node so we can pop it later.
 	if decl, isDecl := node.(*ast.FuncDecl); isDecl {
 		// glog.V(2).Infof("AddCallbacks Entering function %s", decl.Name.Name)
-        if verbose_level(2) {
-            logger.Printf("AddCallbacks Entering function %s", decl.Name.Name)
-        }
+		if verbose_level(2) {
+			logger.Printf("AddCallbacks Entering function %s", decl.Name.Name)
+		}
 		instrumentor.funcStack.Push(node)
 	} else {
 		// glog.V(2).Infof("AddCallbacks Pushing node: %v (%T)", node, node)
-        if verbose_level(2) {
-            logger.Printf("AddCallbacks Pushing node: %v (%T)", node, node)
-        }
+		if verbose_level(2) {
+			logger.Printf("AddCallbacks Pushing node: %v (%T)", node, node)
+		}
 	}
 	instrumentor.nodeStack.Push(node)
 	return instrumentor
@@ -798,15 +800,15 @@ func (instrumentor *Instrumentor) VisitAndAddLines(node ast.Node) ast.Visitor {
 		top, _ := instrumentor.nodeStack.Pop()
 		if decl, isDecl := top.(*ast.FuncDecl); isDecl {
 			// glog.V(2).Infof("AddLines Popping function %s", decl.Name.Name)
-            if verbose_level(2) {
-                logger.Printf("AddLines Popping function %s", decl.Name.Name)
-            }
+			if verbose_level(2) {
+				logger.Printf("AddLines Popping function %s", decl.Name.Name)
+			}
 			instrumentor.funcStack.Pop()
 		} else {
 			// glog.V(2).Infof("AddLines Popping node: %v (%T)", top, top)
-            if verbose_level(2) {
-                logger.Printf("AddLines Popping node: %v (%T)", top, top)
-            }
+			if verbose_level(2) {
+				logger.Printf("AddLines Popping node: %v (%T)", top, top)
+			}
 		}
 		return instrumentor
 	}
@@ -820,21 +822,21 @@ func (instrumentor *Instrumentor) VisitAndAddLines(node ast.Node) ast.Visitor {
 		comment := instrumentor.createLineDirective(lineNum, &node)
 		if comment != nil {
 			// glog.V(3).Infof("Created line directive for %s line %d", instrumentor.currentPath(), lineNum)
-            if verbose_level(3) {
-                logger.Printf("Created line directive for %s line %d", instrumentor.currentPath(), lineNum)
-            }
+			if verbose_level(3) {
+				logger.Printf("Created line directive for %s line %d", instrumentor.currentPath(), lineNum)
+			}
 			instrumentor.comments = append(instrumentor.comments, comment)
 		} else {
 			// glog.V(3).Infof("Not creating line directive for line %d path %s", lineNum, instrumentor.currentPath())
-            if verbose_level(3) {
-                logger.Printf("Not creating line directive for line %d path %s", lineNum, instrumentor.currentPath())
-            }
+			if verbose_level(3) {
+				logger.Printf("Not creating line directive for line %d path %s", lineNum, instrumentor.currentPath())
+			}
 		}
 	} else {
 		// glog.V(3).Infof("No line number available for %v=%v", node, instrumentor.currentPath())
-        if verbose_level(3) {
-            logger.Printf("No line number available for %v=%v", node, instrumentor.currentPath())
-        }
+		if verbose_level(3) {
+			logger.Printf("No line number available for %v=%v", node, instrumentor.currentPath())
+		}
 	}
 
 	switch n := node.(type) {
@@ -885,15 +887,15 @@ func (instrumentor *Instrumentor) VisitAndAddLines(node ast.Node) ast.Visitor {
 	// If nil is returned, the children of the current node will not be visited. Now push the node so we can pop it later.
 	if decl, isDecl := node.(*ast.FuncDecl); isDecl {
 		// glog.V(2).Infof("AddLines Entering function %s", decl.Name.Name)
-        if verbose_level(2) {
-            logger.Printf("AddLines Entering function %s", decl.Name.Name)
-        }
+		if verbose_level(2) {
+			logger.Printf("AddLines Entering function %s", decl.Name.Name)
+		}
 		instrumentor.funcStack.Push(node)
 	} else {
 		// glog.V(2).Infof("AddLines Pushing node: %v (%T)", node, node)
-        if verbose_level(2) {
-            logger.Printf("AddLines Pushing node: %v (%T)", node, node)
-        }
+		if verbose_level(2) {
+			logger.Printf("AddLines Pushing node: %v (%T)", node, node)
+		}
 	}
 	instrumentor.nodeStack.Push(node)
 	return instrumentor
@@ -905,9 +907,9 @@ func (instrumentor *Instrumentor) VisitAndAddLines(node ast.Node) ast.Visitor {
 // than duplicating most of the switch statement in each function.
 func (instrumentor *Instrumentor) Visit(node ast.Node) ast.Visitor {
 	// glog.V(2).Infof("Visit(%v, %T:%v => %T:%v)", instrumentor.addLines, &node, &node, node, node)
-    if verbose_level(2) {
-        logger.Printf("Visit(%v, %T:%v => %T:%v)", instrumentor.addLines, &node, &node, node, node)
-    }
+	if verbose_level(2) {
+		logger.Printf("Visit(%v, %T:%v => %T:%v)", instrumentor.addLines, &node, &node, node, node)
+	}
 	if instrumentor.addLines {
 		return instrumentor.VisitAndAddLines(node)
 	} else {
@@ -1136,7 +1138,6 @@ func isInstrumentationCallback(n ast.Node) bool {
 	}
 	return x.Name == InstrumentationPackageAlias && sel.Sel.Name == AntithesisCallbackFunction
 }
-
 
 func (instrumentor *Instrumentor) formatInstrumentedAst(inputPath string, astFile *ast.File, addShim bool) (string, error) {
 	if addShim {

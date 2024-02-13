@@ -60,7 +60,7 @@ func (b *bitSet) Set(index int) {
 		// Go takes care of the *capacity* under the covers.
 		// So we don't need a tricky implementation, or
 		// a fixed size. Expansion is cheap.
-		extension := 1+int(slot)-len(b.slots)
+		extension := 1 + int(slot) - len(b.slots)
 		b.slots = append(b.slots, make([]uint64, extension)...)
 	}
 	mask := (uint64(1) << bit)
