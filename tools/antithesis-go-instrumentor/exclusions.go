@@ -13,11 +13,11 @@ import (
 func ParseExclusionsFile(path string, inputDirectory string) (err error, exclusions map[string]bool) {
 	exclusions = map[string]bool{}
 
-  var exclusionsFile *os.File
+	var exclusionsFile *os.File
 	exclusionsFile, err = os.Open(path)
 	if err != nil {
 		logger.Fatalf("Could not open exclusions %s: %v", path, err)
-    return
+		return
 	}
 	defer exclusionsFile.Close()
 	logger.Printf("Reading exclusions from %s; relative paths will be resolved to %s", path, inputDirectory)
@@ -35,7 +35,7 @@ func ParseExclusionsFile(path string, inputDirectory string) (err error, exclusi
 
 		if exclusion, err = filepath.Abs(exclusion); err != nil {
 			logger.Fatalf("Exclusion %s could not be resolved to an absolute path: %v", entry, err)
-      return
+			return
 		}
 
 		if _, err = os.Stat(exclusion); err == nil {
@@ -43,7 +43,7 @@ func ParseExclusionsFile(path string, inputDirectory string) (err error, exclusi
 			logger.Printf("Exclusion %s added as %s", entry, exclusion)
 		} else {
 			logger.Fatalf("File %s in exclusions does not exist or is inaccessible", entry)
-      return
+			return
 		}
 	}
 
@@ -51,5 +51,5 @@ func ParseExclusionsFile(path string, inputDirectory string) (err error, exclusi
 		logger.Fatalf("Error scanning file %s: %v", path, err)
 	}
 
-	return 
+	return
 }

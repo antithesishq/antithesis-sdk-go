@@ -273,7 +273,7 @@ func (instrumentor *Instrumentor) TrimComments(path string, file *ast.File) {
 			text := n.Doc.Text()
 			if strings.Contains(text, "go:") {
 				p := instrumentor.fset.Position(n.Pos())
-        logger.Printf("Warning: Function %s, file %s, line %d uses a go: directive. This file may have to be excluded from instrumentation.", n.Name.Name, path, p.Line)
+				logger.Printf("Warning: Function %s, file %s, line %d uses a go: directive. This file may have to be excluded from instrumentation.", n.Name.Name, path, p.Line)
 			}
 			n.Doc = nil
 		case *ast.GenDecl:
@@ -282,7 +282,7 @@ func (instrumentor *Instrumentor) TrimComments(path string, file *ast.File) {
 				spec := n.Specs[0].(*ast.ImportSpec)
 				if spec.Path.Value == "\"C\"" {
 					p := instrumentor.fset.Position(spec.Pos())
-          logger.Printf("Warning: File %s, line %d imports a C declaration. This file may have to be excluded from instrumentation.", path, p.Line)
+					logger.Printf("Warning: File %s, line %d imports a C declaration. This file may have to be excluded from instrumentation.", path, p.Line)
 					commentGroups = append(commentGroups, n.Doc)
 				}
 			} else {
@@ -394,13 +394,13 @@ func writeSource(source, path string) error {
 	// Any errors here are fatal anyway, so I'm not checking.
 	f, e := os.Create(path)
 	if e != nil {
-    logger.Printf("Warning: Could not create %s", path)
+		logger.Printf("Warning: Could not create %s", path)
 		return e
 	}
 	defer f.Close()
 	_, e = f.WriteString(source)
 	if e != nil {
-    logger.Printf("Warning: Could not write instrumented source to %s", path)
+		logger.Printf("Warning: Could not write instrumented source to %s", path)
 		return e
 	}
 	if verbose_level(1) {
@@ -1114,13 +1114,13 @@ func (instrumentor *Instrumentor) formatInstrumentedAst(inputPath string, astFil
 	writer := strings.Builder{}
 	formatError := format.Node(&writer, instrumentor.fset, astFile)
 	if formatError != nil {
-    logger.Printf("Error: Could not write instrumented AST from %s: %v", inputPath, formatError)
+		logger.Printf("Error: Could not write instrumented AST from %s: %v", inputPath, formatError)
 		return "", formatError
 	}
 
 	source := writer.String()
 	if _, parseError := parser.ParseFile(&token.FileSet{}, inputPath, source, parser.ParseComments); parseError != nil {
-    logger.Printf("Error: Instrumented source for %s could not reparsed; simply copying original: %s", inputPath, parseError)
+		logger.Printf("Error: Instrumented source for %s could not reparsed; simply copying original: %s", inputPath, parseError)
 		return "", parseError
 	}
 

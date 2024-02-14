@@ -1,30 +1,30 @@
-package main 
+package main
 
 import (
 	_ "embed"
-  "flag"
-  "fmt"
-  "log"
-  "os"
-  "os/exec"
-  "path/filepath"
-  "regexp"
-  "strings"
+	"flag"
+	"fmt"
+	"log"
+	"os"
+	"os/exec"
+	"path/filepath"
+	"regexp"
+	"strings"
 
 	"golang.org/x/mod/modfile"
 )
 
 type CommandArgs struct {
-  ShowVersion bool 
-  InvalidArgs bool
-  ExcludeFile string
-  Prefix string 
-  Logger *log.Logger
-  Verbosity int 
-  WantsInstrumentor bool
-  CatalogDir string 
-  InputDir string
-  OutputDir string
+	ShowVersion       bool
+	InvalidArgs       bool
+	ExcludeFile       string
+	Prefix            string
+	Logger            *log.Logger
+	Verbosity         int
+	WantsInstrumentor bool
+	CatalogDir        string
+	InputDir          string
+	OutputDir         string
 }
 
 //go:embed version.txt
@@ -40,30 +40,30 @@ func parse_args() *CommandArgs {
 	catalogDirPtr := flag.String("catalog_dir", "", "file path where assertion catalog will be generated")
 	flag.Parse()
 
-  cmd_args := CommandArgs{
-    InvalidArgs: false,
-    ShowVersion: *versionPtr,
-  }
+	cmd_args := CommandArgs{
+		InvalidArgs: false,
+		ShowVersion: *versionPtr,
+	}
 
 	if cmd_args.ShowVersion {
-    return &cmd_args
+		return &cmd_args
 	}
 
 	wrx := os.Stderr
-  logfile_path := strings.TrimSpace(*logfilePtr)
+	logfile_path := strings.TrimSpace(*logfilePtr)
 	if logfile_path != "" {
 		if fp, erx := os.Create(logfile_path); erx == nil {
 			wrx = fp
 		}
 	}
-  cmd_args.Logger = log.New(wrx, "", log.LstdFlags|log.Lshortfile)
-  cmd_args.Verbosity = *verbosePtr
+	cmd_args.Logger = log.New(wrx, "", log.LstdFlags|log.Lshortfile)
+	cmd_args.Verbosity = *verbosePtr
 	cmd_args.WantsInstrumentor = !*assertOnlyPtr
-  cmd_args.Prefix = strings.TrimSpace(*prefixPtr)
-  cmd_args.CatalogDir = strings.TrimSpace(*catalogDirPtr)
-  cmd_args.ExcludeFile = strings.TrimSpace(*exclusionsPtr)
+	cmd_args.Prefix = strings.TrimSpace(*prefixPtr)
+	cmd_args.CatalogDir = strings.TrimSpace(*catalogDirPtr)
+	cmd_args.ExcludeFile = strings.TrimSpace(*exclusionsPtr)
 
-  // Verify we have the non-flag arguments we expect
+	// Verify we have the non-flag arguments we expect
 	num_args_required := 1
 	if cmd_args.WantsInstrumentor {
 		num_args_required++
@@ -71,78 +71,73 @@ func parse_args() *CommandArgs {
 
 	if flag.NArg() < num_args_required {
 		fmt.Fprintf(os.Stderr, strings.TrimSpace(versionString))
-    fmt.Fprintf(os.Stderr, "\n\n")
-    fmt.Fprintf(os.Stderr, "For assertions support:\n")
-    fmt.Fprintf(os.Stderr, "  $ antithesis-go-instrumentor -assert_only [options] go_project_dir\n")
-    fmt.Fprintf(os.Stderr, "\n")
-    fmt.Fprintf(os.Stderr, "  - The go_project_dir should contain a valid go.mod file\n")
-    fmt.Fprintf(os.Stderr, "\n\n")
-    fmt.Fprintf(os.Stderr, "For full instrumentations (including assertions support):\n")
-    fmt.Fprintf(os.Stderr, "  $ antithesis-go-instrumentor [options] go_project_dir target_dir\n")
-    fmt.Fprintf(os.Stderr, "\n")
-    fmt.Fprintf(os.Stderr, "  - The go_project_dir should contain a valid go.mod file\n")
-    fmt.Fprintf(os.Stderr, "  - The target_dir should be an existing, but empty directory\n")
-    fmt.Fprintf(os.Stderr, "\n\n")
-    fmt.Fprintf(os.Stderr, "The Assertions catalog will be registered in a generated file:\n")
-    fmt.Fprintf(os.Stderr, "  <module-name>_antithesis_catalog.go\n")
-    fmt.Fprintf(os.Stderr, "\n")
-    fmt.Fprintf(os.Stderr, "  - For assertions support, the catalog will be created in the go_project_dir\n")
-    fmt.Fprintf(os.Stderr, "  - Override this directory using '-catalog_dir path_to-directory'\n")
-    fmt.Fprintf(os.Stderr, "  - For full instrumentation, the catalog will be created under the target_dir\n")
-    fmt.Fprintf(os.Stderr, "\n\n")
+		fmt.Fprintf(os.Stderr, "\n\n")
+		fmt.Fprintf(os.Stderr, "For assertions support:\n")
+		fmt.Fprintf(os.Stderr, "  $ antithesis-go-instrumentor -assert_only [options] go_project_dir\n")
+		fmt.Fprintf(os.Stderr, "\n")
+		fmt.Fprintf(os.Stderr, "  - The go_project_dir should contain a valid go.mod file\n")
+		fmt.Fprintf(os.Stderr, "\n\n")
+		fmt.Fprintf(os.Stderr, "For full instrumentations (including assertions support):\n")
+		fmt.Fprintf(os.Stderr, "  $ antithesis-go-instrumentor [options] go_project_dir target_dir\n")
+		fmt.Fprintf(os.Stderr, "\n")
+		fmt.Fprintf(os.Stderr, "  - The go_project_dir should contain a valid go.mod file\n")
+		fmt.Fprintf(os.Stderr, "  - The target_dir should be an existing, but empty directory\n")
+		fmt.Fprintf(os.Stderr, "\n\n")
+		fmt.Fprintf(os.Stderr, "The Assertions catalog will be registered in a generated file:\n")
+		fmt.Fprintf(os.Stderr, "  <module-name>_antithesis_catalog.go\n")
+		fmt.Fprintf(os.Stderr, "\n")
+		fmt.Fprintf(os.Stderr, "  - For assertions support, the catalog will be created in the go_project_dir\n")
+		fmt.Fprintf(os.Stderr, "  - Override this directory using '-catalog_dir path_to-directory'\n")
+		fmt.Fprintf(os.Stderr, "  - For full instrumentation, the catalog will be created under the target_dir\n")
+		fmt.Fprintf(os.Stderr, "\n\n")
 		flag.Usage()
-		// fmt.Fprint(os.Stderr, "\nThis program requires:\n")
-		// fmt.Fprintf(os.Stderr, "- An input directory of 'Go' source to be instrumented\n")
-		// if num_args_required > 1 {
-		// 	fmt.Fprintf(os.Stderr, "- An output directory for the instrumented results\n")
-		// }
-    cmd_args.InvalidArgs = true
-    return &cmd_args
+		cmd_args.InvalidArgs = true
+		return &cmd_args
 	}
 
 	if cmd_args.Prefix != "" {
 		m, _ := regexp.MatchString(`^[a-z]+$`, *prefixPtr)
 		if !m {
 			fmt.Fprint(os.Stderr, "A prefix must consist of lower-case ASCII letters.")
-    	cmd_args.InvalidArgs = true
-    	return &cmd_args
+			cmd_args.InvalidArgs = true
+			return &cmd_args
 		}
 	}
 
-  cmd_args.InputDir = flag.Arg(0)
-  if cmd_args.WantsInstrumentor {
-    cmd_args.OutputDir = flag.Arg(1)
-  }
+	cmd_args.InputDir = flag.Arg(0)
+	if cmd_args.WantsInstrumentor {
+		cmd_args.OutputDir = flag.Arg(1)
+	}
 
-  return &cmd_args
+	return &cmd_args
 }
 
 func (ca *CommandArgs) NewCommandFiles() (err error, cfx *CommandFiles) {
-  outputDirectory := ""
-  customerInputDirectory := GetAbsoluteDirectory(ca.InputDir)
-  if ca.WantsInstrumentor {
-    outputDirectory = GetAbsoluteDirectory(ca.OutputDir)
-    err = ValidateDirectories(customerInputDirectory, outputDirectory)
-  }
+	outputDirectory := ""
+	customerInputDirectory := GetAbsoluteDirectory(ca.InputDir)
+	if ca.WantsInstrumentor {
+		outputDirectory = GetAbsoluteDirectory(ca.OutputDir)
+		err = ValidateDirectories(customerInputDirectory, outputDirectory)
+	}
 
-  symtable_prefix := ""
-  if ca.Prefix != "" {
-    symtable_prefix = ca.Prefix + "-"
-  }
+	symtable_prefix := ""
+	if ca.Prefix != "" {
+		symtable_prefix = ca.Prefix + "-"
+	}
 
-  module_name := ""
-  if err == nil {
-    err, module_name = GetModuleName(customerInputDirectory)
-    if err != nil {
-      err = fmt.Errorf("Unable to obtain go module name from %q", customerInputDirectory)
-    }
-  }
+	module_name := ""
+	if err == nil {
+		err, module_name = GetModuleName(customerInputDirectory)
+		if err != nil {
+			err = fmt.Errorf("Unable to obtain go module name from %q", customerInputDirectory)
+		}
+	}
 
-  customerDirectory := filepath.Join(outputDirectory, "customer")
-  symbolsDirectory := filepath.Join(outputDirectory, "symbols")
-  if err == nil {
-    CreateOutputDirectories(customerDirectory, symbolsDirectory)
-  }
+	customerDirectory := filepath.Join(outputDirectory, "customer")
+	symbolsDirectory := filepath.Join(outputDirectory, "symbols")
+	if err == nil {
+		CreateOutputDirectories(customerDirectory, symbolsDirectory)
+	}
 
 	catalogDir := ca.CatalogDir
 	if catalogDir == "" {
@@ -153,55 +148,54 @@ func (ca *CommandArgs) NewCommandFiles() (err error, cfx *CommandFiles) {
 	}
 	catalog_path := filepath.Join(catalogDir, module_name)
 
-  cfx = &CommandFiles{
-    OutputDirectory: outputDirectory,
-    InputDirectory: customerInputDirectory,
-    CustomerDirectory: customerDirectory,
-    SymbolsDirectory: symbolsDirectory,
-    CatalogPath: catalog_path,
-    exclusions: make(map[string]bool),
-    exclude_file: ca.ExcludeFile,
-    wants_instrumentor: ca.WantsInstrumentor,
-    module_name: module_name,
-    symtable_prefix: symtable_prefix,
-    symbolTableFilename: "",
-  }
-  return
+	cfx = &CommandFiles{
+		OutputDirectory:     outputDirectory,
+		InputDirectory:      customerInputDirectory,
+		CustomerDirectory:   customerDirectory,
+		SymbolsDirectory:    symbolsDirectory,
+		CatalogPath:         catalog_path,
+		exclusions:          make(map[string]bool),
+		exclude_file:        ca.ExcludeFile,
+		wants_instrumentor:  ca.WantsInstrumentor,
+		module_name:         module_name,
+		symtable_prefix:     symtable_prefix,
+		symbolTableFilename: "",
+	}
+	return
 }
-
 
 func GetModuleName(input_dir string) (err error, module_name string) {
 	var module_data []byte
-  module_name = ""
+	module_name = ""
 	var f *modfile.File = nil
 	module_filename_path := filepath.Join(input_dir, "go.mod")
 	if module_data, err = os.ReadFile(module_filename_path); err != nil {
-    return 
+		return
 	}
 
 	if f, err = modfile.ParseLax("go.mod", module_data, nil); err == nil {
-    module_name = filepath.Base(f.Module.Mod.Path)
+		module_name = filepath.Base(f.Module.Mod.Path)
 	}
 	return
 }
 
 func CreateOutputDirectories(customerDirectory, symbolsDirectory string) (err error) {
-  if err = os.Mkdir(customerDirectory, 0755); err != nil {
-    return
-  }
-  err = os.Mkdir(symbolsDirectory, 0755)
-  return
+	if err = os.Mkdir(customerDirectory, 0755); err != nil {
+		return
+	}
+	err = os.Mkdir(symbolsDirectory, 0755)
+	return
 }
 
 func IsGoAvailable() bool {
 	cmd := exec.Command("go", "version")
 	output, err := cmd.Output()
-  if err != nil {
-    return false
-  }
-  parts := strings.Split(strings.TrimSpace(string(output)), " ")
-  if len(parts) < 4 {
-    return false
-  }
-  return (parts[0] == "go") && (parts[1] == "version") && strings.HasPrefix(parts[2], "go")
+	if err != nil {
+		return false
+	}
+	parts := strings.Split(strings.TrimSpace(string(output)), " ")
+	if len(parts) < 4 {
+		return false
+	}
+	return (parts[0] == "go") && (parts[1] == "version") && strings.HasPrefix(parts[2], "go")
 }

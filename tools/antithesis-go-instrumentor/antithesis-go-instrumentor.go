@@ -77,71 +77,71 @@ func writeInstrumentedSource(source, path string) error {
 	// Any errors here are fatal anyway, so I'm not checking.
 	f, e := os.Create(path)
 	if e != nil {
-    logger.Printf("Error: could not create %s", path)
+		logger.Printf("Error: could not create %s", path)
 		return e
 	}
 	defer f.Close()
 	_, e = f.WriteString(source)
 	if e != nil {
-    logger.Printf("Error: Could not write instrumented source to %s", path)
+		logger.Printf("Error: Could not write instrumented source to %s", path)
 		return e
 	}
 	return nil
 }
 
 func main() {
-  cmd_args := parse_args()
-  if cmd_args.ShowVersion {
+	cmd_args := parse_args()
+	if cmd_args.ShowVersion {
 		fmt.Println(strings.TrimSpace(versionString))
 		os.Exit(0)
-  }
+	}
 
-  if cmd_args.InvalidArgs {
+	if cmd_args.InvalidArgs {
 		os.Exit(1)
-  }
+	}
 
-  var err error 
+	var err error
 
-  // Setup logging globals
-  // TODO Could also pass these settings inside a parameter (or inside a receiver)
-  logger = cmd_args.Logger
-  verbosity = cmd_args.Verbosity
+	// Setup logging globals
+	// TODO Could also pass these settings inside a parameter (or inside a receiver)
+	logger = cmd_args.Logger
+	verbosity = cmd_args.Verbosity
 
 	logger.Println(strings.TrimSpace(versionString))
 
-  if !IsGoAvailable() {
-    logger.Printf("Go toolchain not available")
-    os.Exit(1)
-  }
+	if !IsGoAvailable() {
+		logger.Printf("Go toolchain not available")
+		os.Exit(1)
+	}
 
-  var cmd_files *CommandFiles 
+	var cmd_files *CommandFiles
 
-  if err, cmd_files = cmd_args.NewCommandFiles(); err != nil {
-    logger.Printf(err.Error())
-    os.Exit(1)
-  }
+	if err, cmd_files = cmd_args.NewCommandFiles(); err != nil {
+		logger.Printf(err.Error())
+		os.Exit(1)
+	}
 
-  if err = cmd_files.ParseExclusionsFile(); err != nil {
-    logger.Printf(err.Error())
-    os.Exit(1)
-  }
+	if err = cmd_files.ParseExclusionsFile(); err != nil {
+		logger.Printf(err.Error())
+		os.Exit(1)
+	}
 
-  sourceFiles := []string{}
-  if err, sourceFiles = cmd_files.FindSourceCode(); err != nil {
-    logger.Printf(err.Error())
-    os.Exit(1)
-  }
+	sourceFiles := []string{}
+	if err, sourceFiles = cmd_files.FindSourceCode(); err != nil {
+		logger.Printf(err.Error())
+		os.Exit(1)
+	}
 
 	files_hash := HashFileContent(sourceFiles)[0:12]
 	var instrumentor *Instrumentor = nil
 	var symbolTableWriter *SymbolTable = nil
 
-  if cmd_args.WantsInstrumentor {
+	if cmd_args.WantsInstrumentor {
 		logger.Printf("Instrumenting %s to %s", cmd_files.InputDirectory, cmd_files.CustomerDirectory)
-    symbolTableWriter = cmd_files.CreateSymbolTableWriter(files_hash)
-    instrumentor = CreateInstrumentor(cmd_files.InputDirectory, InstrumentationModuleName, symbolTableWriter)
-  }
-  usingSymbols := cmd_files.UsingSymbols()
+		symbolTableWriter = cmd_files.CreateSymbolTableWriter(files_hash)
+		instrumentor = CreateInstrumentor(cmd_files.InputDirectory, InstrumentationModuleName, symbolTableWriter)
+	}
+	usingSymbols := cmd_files.UsingSymbols()
 	full_catalog_path := cmd_files.CatalogPath
 
 	// Setup the assertion scanner (used to create the assertion catalog)
@@ -165,7 +165,7 @@ func main() {
 			instrumented, e = instrumentor.Instrument(path)
 
 			if e != nil {
-        logger.Printf("Error: File %s produced error %s; simply copying source", path, e)
+				logger.Printf("Error: File %s produced error %s; simply copying source", path, e)
 				continue
 			}
 
@@ -183,7 +183,7 @@ func main() {
 		if cmd_files.wants_instrumentor {
 			// Strip the prefix from the input file name. We could also use strings.Rel(),
 			// but we've got absolute paths, so this will work.
-     
+
 			outputPath := filepath.Join(cmd_files.CustomerDirectory, path[len(cmd_files.InputDirectory):])
 			outputSubdirectory := filepath.Dir(outputPath)
 			os.MkdirAll(outputSubdirectory, 0755)

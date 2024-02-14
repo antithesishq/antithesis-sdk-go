@@ -1,7 +1,7 @@
 package main
 
 import (
-  "fmt"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -53,7 +53,7 @@ func confirmEmptyOutputDirectory(output string) {
 
 // ValidateDirectories checks that neither directory is a child of the other,
 // and of course that they're not the same.
-func ValidateDirectories(input, output string) (err error){
+func ValidateDirectories(input, output string) (err error) {
 	// Go does not have a type for filepaths, and will not do this for me: https://golang.org/src/path/filepath/path_unix.go?s=717:754#L16
 	// The UNIX kernel absolutely forbids slashes in filenames. So, quick and dirty:
 	input = canonicalizeDirectory(input) + "/"
@@ -61,12 +61,12 @@ func ValidateDirectories(input, output string) (err error){
 	if strings.HasPrefix(output, input) {
 		err = fmt.Errorf("The input directory %s is a prefix of the output directory %s", input, output)
 	}
-  if err == nil {
-    if strings.HasPrefix(input, output) {
-      err = fmt.Errorf("The output directory %s is a prefix of the input directory %s", output, input)
-    }
-  }
-  return
+	if err == nil {
+		if strings.HasPrefix(input, output) {
+			err = fmt.Errorf("The output directory %s is a prefix of the input directory %s", output, input)
+		}
+	}
+	return
 }
 
 func createOutputDirectories(outputDirectory string) (string, string) {

@@ -1,36 +1,36 @@
-package main 
+package main
 
 import (
-  "fmt"
-  "io/fs"
-  "path/filepath"
-  "strings"
+	"fmt"
+	"io/fs"
+	"path/filepath"
+	"strings"
 )
 
 type CommandFiles struct {
-  OutputDirectory string
-  InputDirectory string
-  CustomerDirectory string
-  SymbolsDirectory string
-  CatalogPath string
-  exclusions map[string]bool
-  exclude_file string
-  wants_instrumentor bool
-  module_name string
-  symtable_prefix string
-  symbolTableFilename string
+	OutputDirectory     string
+	InputDirectory      string
+	CustomerDirectory   string
+	SymbolsDirectory    string
+	CatalogPath         string
+	exclusions          map[string]bool
+	exclude_file        string
+	wants_instrumentor  bool
+	module_name         string
+	symtable_prefix     string
+	symbolTableFilename string
 }
 
 func (cfx *CommandFiles) ParseExclusionsFile() (err error) {
-  if cfx.exclude_file == "" {
-    return 
-  }
-  exclusions := map[string]bool{}
-  err, exclusions = ParseExclusionsFile(cfx.exclude_file, cfx.InputDirectory)
-  if err != nil {
-    cfx.exclusions = exclusions
-  }
-  return
+	if cfx.exclude_file == "" {
+		return
+	}
+	exclusions := map[string]bool{}
+	err, exclusions = ParseExclusionsFile(cfx.exclude_file, cfx.InputDirectory)
+	if err != nil {
+		cfx.exclusions = exclusions
+	}
+	return
 }
 
 // FindSourceCode scans an input directory recursively for .go files,
@@ -92,26 +92,25 @@ func (cfx *CommandFiles) FindSourceCode() (err error, paths []string) {
 	if err != nil {
 		err = fmt.Errorf("Error walking input directory %s: %v", cfx.InputDirectory, err)
 	}
-  return
+	return
 }
 
 func (cfx *CommandFiles) UsingSymbols() string {
-  usingSymbols := ""
+	usingSymbols := ""
 	if cfx.wants_instrumentor {
-    usingSymbols = cfx.symbolTableFilename
-  }
-  return usingSymbols
+		usingSymbols = cfx.symbolTableFilename
+	}
+	return usingSymbols
 }
 
 func (cfx *CommandFiles) CreateSymbolTableWriter(files_hash string) (symWriter *SymbolTable) {
 	symWriter = nil
 
 	if cfx.wants_instrumentor {
-    symbolTableFileBasename := fmt.Sprintf("%sgo-%s",cfx.symtable_prefix, files_hash)
-    cfx.symbolTableFilename = symbolTableFileBasename + ".sym.tsv"
+		symbolTableFileBasename := fmt.Sprintf("%sgo-%s", cfx.symtable_prefix, files_hash)
+		cfx.symbolTableFilename = symbolTableFileBasename + ".sym.tsv"
 		symbolsPath := filepath.Join(cfx.SymbolsDirectory, cfx.symbolTableFilename)
 		symWriter = CreateSymbolTableFile(symbolsPath, symbolTableFileBasename)
 	}
-  return
+	return
 }
-
