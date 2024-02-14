@@ -70,12 +70,32 @@ func parse_args() *CommandArgs {
 	}
 
 	if flag.NArg() < num_args_required {
+		fmt.Fprintf(os.Stderr, strings.TrimSpace(versionString))
+    fmt.Fprintf(os.Stderr, "\n\n")
+    fmt.Fprintf(os.Stderr, "For assertions support:\n")
+    fmt.Fprintf(os.Stderr, "  $ antithesis-go-instrumentor -assert_only [options] go_project_dir\n")
+    fmt.Fprintf(os.Stderr, "\n")
+    fmt.Fprintf(os.Stderr, "  - The go_project_dir should contain a valid go.mod file\n")
+    fmt.Fprintf(os.Stderr, "\n\n")
+    fmt.Fprintf(os.Stderr, "For full instrumentations (including assertions support):\n")
+    fmt.Fprintf(os.Stderr, "  $ antithesis-go-instrumentor [options] go_project_dir target_dir\n")
+    fmt.Fprintf(os.Stderr, "\n")
+    fmt.Fprintf(os.Stderr, "  - The go_project_dir should contain a valid go.mod file\n")
+    fmt.Fprintf(os.Stderr, "  - The target_dir should be an existing, but empty directory\n")
+    fmt.Fprintf(os.Stderr, "\n\n")
+    fmt.Fprintf(os.Stderr, "The Assertions catalog will be registered in a generated file:\n")
+    fmt.Fprintf(os.Stderr, "  <module-name>_antithesis_catalog.go\n")
+    fmt.Fprintf(os.Stderr, "\n")
+    fmt.Fprintf(os.Stderr, "  - For assertions support, the catalog will be created in the go_project_dir\n")
+    fmt.Fprintf(os.Stderr, "  - Override this directory using '-catalog_dir path_to-directory'\n")
+    fmt.Fprintf(os.Stderr, "  - For full instrumentation, the catalog will be created under the target_dir\n")
+    fmt.Fprintf(os.Stderr, "\n\n")
 		flag.Usage()
-		fmt.Fprint(os.Stderr, "\nThis program requires:\n")
-		fmt.Fprintf(os.Stderr, "- An input directory of Golang source to be instrumented\n")
-		if num_args_required > 1 {
-			fmt.Fprintf(os.Stderr, "- An output directory for the instrumented results\n")
-		}
+		// fmt.Fprint(os.Stderr, "\nThis program requires:\n")
+		// fmt.Fprintf(os.Stderr, "- An input directory of 'Go' source to be instrumented\n")
+		// if num_args_required > 1 {
+		// 	fmt.Fprintf(os.Stderr, "- An output directory for the instrumented results\n")
+		// }
     cmd_args.InvalidArgs = true
     return &cmd_args
 	}
