@@ -12,15 +12,12 @@ import (
 	"strconv"
 	"strings"
 
-	// "github.com/golang-collections/collections/stack"
-	// "github.com/golang/glog"
 	"golang.org/x/tools/go/ast/astutil"
 )
 
 // InstrumentationModuleName is our module wrapping
 // the necessary C functions in libvoidstar.so. Generated code will
 // be in the same package.
-// [PH] const InstrumentationModuleName = "antithesis.com/go/instrumentation"
 const InstrumentationModuleName = "github.com/antithesishq/antithesis-sdk-go/instrumentation"
 
 // InstrumentationPackageAlias will be used to prevent any collisions
@@ -211,7 +208,6 @@ func (instrumentor *Instrumentor) createLineDirective(lineNumber int, node *ast.
 	p := instrumentor.fset.Position((*node).Pos())
 	currLine := p.Line
 	if currLine == 1 {
-		// glog.Infof("Skipping inserting line position comment at very start of file")
 		logger.Printf("Skipping inserting line position comment at very start of file")
 		return nil
 	}
@@ -277,8 +273,7 @@ func (instrumentor *Instrumentor) TrimComments(path string, file *ast.File) {
 			text := n.Doc.Text()
 			if strings.Contains(text, "go:") {
 				p := instrumentor.fset.Position(n.Pos())
-				// glog.Warningf("Function %s, file %s, line %d uses a go: directive. This file may have to be excluded from instrumentation.", n.Name.Name, path, p.Line)
-				logger.Printf("\u261d Function %s, file %s, line %d uses a go: directive. This file may have to be excluded from instrumentation.", n.Name.Name, path, p.Line)
+        logger.Printf("Warning: Function %s, file %s, line %d uses a go: directive. This file may have to be excluded from instrumentation.", n.Name.Name, path, p.Line)
 			}
 			n.Doc = nil
 		case *ast.GenDecl:
@@ -287,8 +282,7 @@ func (instrumentor *Instrumentor) TrimComments(path string, file *ast.File) {
 				spec := n.Specs[0].(*ast.ImportSpec)
 				if spec.Path.Value == "\"C\"" {
 					p := instrumentor.fset.Position(spec.Pos())
-					// glog.Warningf("File %s, line %d imports a C declaration. This file may have to be excluded from instrumentation.", path, p.Line)
-					logger.Printf("\u261d File %s, line %d imports a C declaration. This file may have to be excluded from instrumentation.", path, p.Line)
+          logger.Printf("Warning: File %s, line %d imports a C declaration. This file may have to be excluded from instrumentation.", path, p.Line)
 					commentGroups = append(commentGroups, n.Doc)
 				}
 			} else {
@@ -316,7 +310,6 @@ func (instrumentor *Instrumentor) TrimComments(path string, file *ast.File) {
 				}
 			}
 		default:
-			// glog.V(2).Infof("No comment revision for AST node of type %T\n", node)
 			if verbose_level(2) {
 				logger.Printf("No comment revision for AST node of type %T\n", node)
 			}
@@ -401,18 +394,15 @@ func writeSource(source, path string) error {
 	// Any errors here are fatal anyway, so I'm not checking.
 	f, e := os.Create(path)
 	if e != nil {
-		// glog.Warningf("Could not create %s", path)
-		logger.Printf("\u274c Could not create %s", path)
+    logger.Printf("Warning: Could not create %s", path)
 		return e
 	}
 	defer f.Close()
 	_, e = f.WriteString(source)
 	if e != nil {
-		// glog.Warningf("Could not write instrumented source to %s", path)
-		logger.Printf("\u274c Could not write instrumented source to %s", path)
+    logger.Printf("Warning: Could not write instrumented source to %s", path)
 		return e
 	}
-	// glog.V(1).Infof("Wrote instrumented output to %s", path)
 	if verbose_level(1) {
 		logger.Printf("Wrote instrumented output to %s", path)
 	}
@@ -445,13 +435,11 @@ func (instrumentor *Instrumentor) Instrument(path string) (string, error) {
 	}
 
 	if ExportsFunctions(f, instrumentor.fset) {
-		// glog.Infof("File %s exports functions, and will not be instrumented", path)
 		logger.Printf("File %s exports functions, and will not be instrumented", path)
 		return "", nil
 	}
 
 	if HasLinkname(f, instrumentor.fset) {
-		// glog.Infof("File %s exports linknames, and will not be instrumented", path)
 		logger.Printf("File %s exports linknames, and will not be instrumented", path)
 		return "", nil
 	}
@@ -467,7 +455,6 @@ func (instrumentor *Instrumentor) Instrument(path string) (string, error) {
 	f.Comments = instrumentor.comments
 
 	if instrumentor.CurrentEdge == startingEdge {
-		// glog.V(1).Infof("File %s has no code to be instrumented, and will simply be copied", path)
 		if verbose_level(1) {
 			logger.Printf("File %s has no code to be instrumented, and will simply be copied", path)
 		}
@@ -478,7 +465,6 @@ func (instrumentor *Instrumentor) Instrument(path string) (string, error) {
 	// at runtime (or otherwise is incompatible with static file/line directives), instrument but
 	// do not add line annotations.
 	if !IsLineDirectiveCompatible(f, instrumentor.fset) {
-		// glog.Infof("File %s has functions which are incompatible with //line directives. Will be instrumented but not //line-annotated.", path)
 		logger.Printf("File %s has functions which are incompatible with //line directives. Will be instrumented but not //line-annotated.", path)
 		// Note that we actually insert the instrumentation callback here.
 		if sourceCode, e = instrumentor.formatInstrumentedAst(path, f, true); e != nil {
@@ -577,7 +563,6 @@ func (instrumentor *Instrumentor) collectLine(node ast.Node) {
 	// since we'll likely get that in the wrong place, due to the "Package" object being
 	// disconnected in the AST from the package name.
 	if "*ast.File@0|*ast.Ident@0" == path {
-		// glog.V(2).Infof("Skipping package name path %s for node (%T:%v)", path, node, node)
 		if verbose_level(2) {
 			logger.Printf("Skipping package name path %s for node (%T:%v)", path, node, node)
 		}
@@ -599,7 +584,6 @@ func (instrumentor *Instrumentor) collectLine(node ast.Node) {
 	// Get where this node is in the original version of the file.
 	p := instrumentor.fset.Position(node.Pos())
 	// Map the node to the original line number.
-	// glog.V(3).Infof("collectLine(%T:%v:%s) => %d", node, node, path, p.Line)
 	if verbose_level(3) {
 		logger.Printf("collectLine(%T:%v:%s) => %d", node, node, path, p.Line)
 	}
@@ -625,13 +609,11 @@ func (instrumentor *Instrumentor) VisitAndInstrument(node ast.Node) ast.Visitor 
 		instrumentor.popType()
 		top, _ := instrumentor.nodeStack.Pop()
 		if decl, isDecl := top.(*ast.FuncDecl); isDecl {
-			// glog.V(2).Infof("AddCallbacks Popping function %s", decl.Name.Name)
 			if verbose_level(2) {
 				logger.Printf("AddCallbacks Popping function %s", decl.Name.Name)
 			}
 			instrumentor.funcStack.Pop()
 		} else {
-			// glog.V(2).Infof("AddCallbacks Popping node: %v (%T)", top, top)
 			if verbose_level(2) {
 				logger.Printf("AddCallbacks Popping node: %v (%T)", top, top)
 			}
@@ -708,7 +690,6 @@ func (instrumentor *Instrumentor) VisitAndInstrument(node ast.Node) ast.Visitor 
 		case *ast.BlockStmt:
 			stmt.Lbrace = n.Body.End() // Start at end of the "if" block so the covered part looks like it starts at the "else".
 		default:
-			// glog.Fatalf("Unexpected node type in if : %v (%T)", n, n)
 			logger.Fatalf("Unexpected node type in if : %v (%T)", n, n)
 		}
 		ast.Walk(instrumentor, n.Else)
@@ -771,21 +752,17 @@ func (instrumentor *Instrumentor) VisitAndInstrument(node ast.Node) ast.Visitor 
 			n.Y = compareClosureInvocationToTrue
 		}
 	case *ast.BadExpr:
-		// glog.Fatalf("Invalid input: %v (%T)", node, node)
 		logger.Fatalf("Invalid input: %v (%T)", node, node)
 	case *ast.BadDecl:
-		// glog.Fatalf("Invalid input: %v (%T)", node, node)
 		logger.Fatalf("Invalid input: %v (%T)", node, node)
 	}
 	// If nil is returned, the children of the current node will not be visited. Now push the node so we can pop it later.
 	if decl, isDecl := node.(*ast.FuncDecl); isDecl {
-		// glog.V(2).Infof("AddCallbacks Entering function %s", decl.Name.Name)
 		if verbose_level(2) {
 			logger.Printf("AddCallbacks Entering function %s", decl.Name.Name)
 		}
 		instrumentor.funcStack.Push(node)
 	} else {
-		// glog.V(2).Infof("AddCallbacks Pushing node: %v (%T)", node, node)
 		if verbose_level(2) {
 			logger.Printf("AddCallbacks Pushing node: %v (%T)", node, node)
 		}
@@ -799,13 +776,11 @@ func (instrumentor *Instrumentor) VisitAndAddLines(node ast.Node) ast.Visitor {
 		instrumentor.popType()
 		top, _ := instrumentor.nodeStack.Pop()
 		if decl, isDecl := top.(*ast.FuncDecl); isDecl {
-			// glog.V(2).Infof("AddLines Popping function %s", decl.Name.Name)
 			if verbose_level(2) {
 				logger.Printf("AddLines Popping function %s", decl.Name.Name)
 			}
 			instrumentor.funcStack.Pop()
 		} else {
-			// glog.V(2).Infof("AddLines Popping node: %v (%T)", top, top)
 			if verbose_level(2) {
 				logger.Printf("AddLines Popping node: %v (%T)", top, top)
 			}
@@ -821,19 +796,16 @@ func (instrumentor *Instrumentor) VisitAndAddLines(node ast.Node) ast.Visitor {
 	if lineNum > 0 {
 		comment := instrumentor.createLineDirective(lineNum, &node)
 		if comment != nil {
-			// glog.V(3).Infof("Created line directive for %s line %d", instrumentor.currentPath(), lineNum)
 			if verbose_level(3) {
 				logger.Printf("Created line directive for %s line %d", instrumentor.currentPath(), lineNum)
 			}
 			instrumentor.comments = append(instrumentor.comments, comment)
 		} else {
-			// glog.V(3).Infof("Not creating line directive for line %d path %s", lineNum, instrumentor.currentPath())
 			if verbose_level(3) {
 				logger.Printf("Not creating line directive for line %d path %s", lineNum, instrumentor.currentPath())
 			}
 		}
 	} else {
-		// glog.V(3).Infof("No line number available for %v=%v", node, instrumentor.currentPath())
 		if verbose_level(3) {
 			logger.Printf("No line number available for %v=%v", node, instrumentor.currentPath())
 		}
@@ -886,13 +858,11 @@ func (instrumentor *Instrumentor) VisitAndAddLines(node ast.Node) ast.Visitor {
 	}
 	// If nil is returned, the children of the current node will not be visited. Now push the node so we can pop it later.
 	if decl, isDecl := node.(*ast.FuncDecl); isDecl {
-		// glog.V(2).Infof("AddLines Entering function %s", decl.Name.Name)
 		if verbose_level(2) {
 			logger.Printf("AddLines Entering function %s", decl.Name.Name)
 		}
 		instrumentor.funcStack.Push(node)
 	} else {
-		// glog.V(2).Infof("AddLines Pushing node: %v (%T)", node, node)
 		if verbose_level(2) {
 			logger.Printf("AddLines Pushing node: %v (%T)", node, node)
 		}
@@ -906,7 +876,6 @@ func (instrumentor *Instrumentor) VisitAndAddLines(node ast.Node) ast.Visitor {
 // single Visit() function, and just switch on control flow based on the addLines boolean, rather
 // than duplicating most of the switch statement in each function.
 func (instrumentor *Instrumentor) Visit(node ast.Node) ast.Visitor {
-	// glog.V(2).Infof("Visit(%v, %T:%v => %T:%v)", instrumentor.addLines, &node, &node, node, node)
 	if verbose_level(2) {
 		logger.Printf("Visit(%v, %T:%v => %T:%v)", instrumentor.addLines, &node, &node, node, node)
 	}
@@ -1077,7 +1046,6 @@ func (instrumentor *Instrumentor) newEdge(start, end token.Pos) ast.Stmt {
 		Edge:        instrumentor.CurrentEdge,
 	})
 	if err != nil {
-		// glog.Fatalf("Could not write symbol table line: %s", err.Error())
 		logger.Fatalf("Could not write symbol table line: %s", err.Error())
 	}
 
@@ -1146,15 +1114,13 @@ func (instrumentor *Instrumentor) formatInstrumentedAst(inputPath string, astFil
 	writer := strings.Builder{}
 	formatError := format.Node(&writer, instrumentor.fset, astFile)
 	if formatError != nil {
-		// glog.Errorf("Could not write instrumented AST from %s: %v", inputPath, formatError)
-		logger.Printf("\u274c Could not write instrumented AST from %s: %v", inputPath, formatError)
+    logger.Printf("Error: Could not write instrumented AST from %s: %v", inputPath, formatError)
 		return "", formatError
 	}
 
 	source := writer.String()
 	if _, parseError := parser.ParseFile(&token.FileSet{}, inputPath, source, parser.ParseComments); parseError != nil {
-		// glog.Errorf("Instrumented source for %s could not reparsed; simply copying original: %s", inputPath, parseError)
-		logger.Printf("\u274c Instrumented source for %s could not reparsed; simply copying original: %s", inputPath, parseError)
+    logger.Printf("Error: Instrumented source for %s could not reparsed; simply copying original: %s", inputPath, parseError)
 		return "", parseError
 	}
 

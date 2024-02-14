@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"os"
 	"strings"
-	// "github.com/golang/glog"
 )
 
 // SymbolTable is the serialization of the
@@ -24,7 +23,6 @@ func CreateSymbolTableFile(symbolTablePath, instrumentedModule string) *SymbolTa
 	executable, _ := os.Executable()
 	symbolTable := &SymbolTable{Path: symbolTablePath, writer: w, executable: executable}
 	if err := symbolTable.writeHeader(instrumentedModule); err != nil {
-		// glog.Fatalf("Could not write symbol table header: %s", err.Error())
 		logger.Fatalf("Could not write symbol table header: %s", err.Error())
 	}
 	return symbolTable
@@ -86,7 +84,6 @@ type symbolTableWriter interface {
 func createFileSymbolTableWriter(name string) symbolTableWriter {
 	f, err := os.Create(name)
 	if err != nil {
-		// glog.Fatalf(err.Error())
 		logger.Fatalf(err.Error())
 	}
 	return &fileSymbolTableWriter{f: f, writer: bufio.NewWriter(f)}
@@ -118,7 +115,6 @@ func (w *fileSymbolTableWriter) Close() error {
 }
 
 func (fileSymbolTableWriter) String() string {
-	// glog.Fatalf("fileSymbolTableWriter does not support String method")
 	logger.Fatalf("fileSymbolTableWriter does not support String method")
 	return ""
 }
