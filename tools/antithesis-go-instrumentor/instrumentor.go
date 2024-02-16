@@ -212,7 +212,7 @@ func (instrumentor *Instrumentor) createLineDirective(lineNumber int, node *ast.
 		return nil
 	}
 	lineStartPos := file.LineStart(p.Line)
-	if verbose_level(1) {
+	if VerboseLevel(1) {
 		logger.Printf("Creating comment for node @ %v start of line %d at %v", (*node).Pos(), p.Line, lineStartPos)
 	}
 	if (*node).Pos() == lineStartPos {
@@ -310,7 +310,7 @@ func (instrumentor *Instrumentor) TrimComments(path string, file *ast.File) {
 				}
 			}
 		default:
-			if verbose_level(2) {
+			if VerboseLevel(2) {
 				logger.Printf("No comment revision for AST node of type %T\n", node)
 			}
 		}
@@ -403,7 +403,7 @@ func writeSource(source, path string) error {
 		logger.Printf("Warning: Could not write instrumented source to %s", path)
 		return e
 	}
-	if verbose_level(1) {
+	if VerboseLevel(1) {
 		logger.Printf("Wrote instrumented output to %s", path)
 	}
 	return nil
@@ -455,7 +455,7 @@ func (instrumentor *Instrumentor) Instrument(path string) (string, error) {
 	f.Comments = instrumentor.comments
 
 	if instrumentor.CurrentEdge == startingEdge {
-		if verbose_level(1) {
+		if VerboseLevel(1) {
 			logger.Printf("File %s has no code to be instrumented, and will simply be copied", path)
 		}
 		return "", nil
@@ -563,7 +563,7 @@ func (instrumentor *Instrumentor) collectLine(node ast.Node) {
 	// since we'll likely get that in the wrong place, due to the "Package" object being
 	// disconnected in the AST from the package name.
 	if "*ast.File@0|*ast.Ident@0" == path {
-		if verbose_level(2) {
+		if VerboseLevel(2) {
 			logger.Printf("Skipping package name path %s for node (%T:%v)", path, node, node)
 		}
 		return
@@ -584,7 +584,7 @@ func (instrumentor *Instrumentor) collectLine(node ast.Node) {
 	// Get where this node is in the original version of the file.
 	p := instrumentor.fset.Position(node.Pos())
 	// Map the node to the original line number.
-	if verbose_level(3) {
+	if VerboseLevel(3) {
 		logger.Printf("collectLine(%T:%v:%s) => %d", node, node, path, p.Line)
 	}
 	instrumentor.nodeLines[path] = p.Line
@@ -609,12 +609,12 @@ func (instrumentor *Instrumentor) VisitAndInstrument(node ast.Node) ast.Visitor 
 		instrumentor.popType()
 		top, _ := instrumentor.nodeStack.Pop()
 		if decl, isDecl := top.(*ast.FuncDecl); isDecl {
-			if verbose_level(2) {
+			if VerboseLevel(2) {
 				logger.Printf("AddCallbacks Popping function %s", decl.Name.Name)
 			}
 			instrumentor.funcStack.Pop()
 		} else {
-			if verbose_level(2) {
+			if VerboseLevel(2) {
 				logger.Printf("AddCallbacks Popping node: %v (%T)", top, top)
 			}
 		}
@@ -758,12 +758,12 @@ func (instrumentor *Instrumentor) VisitAndInstrument(node ast.Node) ast.Visitor 
 	}
 	// If nil is returned, the children of the current node will not be visited. Now push the node so we can pop it later.
 	if decl, isDecl := node.(*ast.FuncDecl); isDecl {
-		if verbose_level(2) {
+		if VerboseLevel(2) {
 			logger.Printf("AddCallbacks Entering function %s", decl.Name.Name)
 		}
 		instrumentor.funcStack.Push(node)
 	} else {
-		if verbose_level(2) {
+		if VerboseLevel(2) {
 			logger.Printf("AddCallbacks Pushing node: %v (%T)", node, node)
 		}
 	}
@@ -776,12 +776,12 @@ func (instrumentor *Instrumentor) VisitAndAddLines(node ast.Node) ast.Visitor {
 		instrumentor.popType()
 		top, _ := instrumentor.nodeStack.Pop()
 		if decl, isDecl := top.(*ast.FuncDecl); isDecl {
-			if verbose_level(2) {
+			if VerboseLevel(2) {
 				logger.Printf("AddLines Popping function %s", decl.Name.Name)
 			}
 			instrumentor.funcStack.Pop()
 		} else {
-			if verbose_level(2) {
+			if VerboseLevel(2) {
 				logger.Printf("AddLines Popping node: %v (%T)", top, top)
 			}
 		}
@@ -796,17 +796,17 @@ func (instrumentor *Instrumentor) VisitAndAddLines(node ast.Node) ast.Visitor {
 	if lineNum > 0 {
 		comment := instrumentor.createLineDirective(lineNum, &node)
 		if comment != nil {
-			if verbose_level(3) {
+			if VerboseLevel(3) {
 				logger.Printf("Created line directive for %s line %d", instrumentor.currentPath(), lineNum)
 			}
 			instrumentor.comments = append(instrumentor.comments, comment)
 		} else {
-			if verbose_level(3) {
+			if VerboseLevel(3) {
 				logger.Printf("Not creating line directive for line %d path %s", lineNum, instrumentor.currentPath())
 			}
 		}
 	} else {
-		if verbose_level(3) {
+		if VerboseLevel(3) {
 			logger.Printf("No line number available for %v=%v", node, instrumentor.currentPath())
 		}
 	}
@@ -858,12 +858,12 @@ func (instrumentor *Instrumentor) VisitAndAddLines(node ast.Node) ast.Visitor {
 	}
 	// If nil is returned, the children of the current node will not be visited. Now push the node so we can pop it later.
 	if decl, isDecl := node.(*ast.FuncDecl); isDecl {
-		if verbose_level(2) {
+		if VerboseLevel(2) {
 			logger.Printf("AddLines Entering function %s", decl.Name.Name)
 		}
 		instrumentor.funcStack.Push(node)
 	} else {
-		if verbose_level(2) {
+		if VerboseLevel(2) {
 			logger.Printf("AddLines Pushing node: %v (%T)", node, node)
 		}
 	}
@@ -876,7 +876,7 @@ func (instrumentor *Instrumentor) VisitAndAddLines(node ast.Node) ast.Visitor {
 // single Visit() function, and just switch on control flow based on the addLines boolean, rather
 // than duplicating most of the switch statement in each function.
 func (instrumentor *Instrumentor) Visit(node ast.Node) ast.Visitor {
-	if verbose_level(2) {
+	if VerboseLevel(2) {
 		logger.Printf("Visit(%v, %T:%v => %T:%v)", instrumentor.addLines, &node, &node, node, node)
 	}
 	if instrumentor.addLines {

@@ -5,6 +5,7 @@ import (
 	"io"
 	"os"
 	"path"
+	"path/filepath"
 	"strings"
 	"text/template"
 )
@@ -22,7 +23,12 @@ type GenInfo struct {
 
 const GENERATED_SUFFIX = "_antithesis_catalog.go"
 
-func expect_output_file(dest_name string) (*os.File, error) {
+func IsGeneratedFile(file_name string) bool {
+	base_name := filepath.Base(file_name)
+	return strings.HasSuffix(base_name, GENERATED_SUFFIX)
+}
+
+func expectOutputFile(dest_name string) (*os.File, error) {
 	dest_file := os.Getenv("GOFILE")
 	if dest_file == "" {
 		dest_file = dest_name
@@ -53,42 +59,42 @@ func expect_output_file(dest_name string) (*os.File, error) {
 	return file, err
 }
 
-func assertion_name_repr(s string) string {
+func assertionNameRepr(s string) string {
 	if s == "Reachable" || s == "Unreachable" {
 		return fmt.Sprintf("%s(message, values)", s)
 	}
 	return fmt.Sprintf("%s(message, cond, values)", s)
 }
 
-func hit_repr(b bool) string {
+func hitRepr(b bool) string {
 	if !b {
 		return "not_hit"
 	}
 	return "was_hit"
 }
 
-func cond_repr(b bool) string {
+func condRepr(b bool) string {
 	if b {
 		return "cond_true"
 	}
 	return "cond_false"
 }
 
-func must_hit_repr(b bool) string {
+func mustHitRepr(b bool) string {
 	if b {
 		return "must_be_hit"
 	}
 	return "optionally_hit"
 }
 
-func expecting_repr(b bool) string {
+func expectingRepr(b bool) string {
 	if b {
 		return "expecting_true"
 	}
 	return "expecting_false"
 }
 
-func assert_type_repr(s string) string {
+func assertTypeRepr(s string) string {
 	var repr_text = "reachability_test"
 
 	switch s {
@@ -102,11 +108,11 @@ func assert_type_repr(s string) string {
 	return repr_text
 }
 
-func uses_const(cm map[string]bool, c string) bool {
+func usesConst(cm map[string]bool, c string) bool {
 	return cm[c]
 }
 
-func generate_expects(module_name string, gen_info *GenInfo) {
+func GenerateExpects(moduleName string, genInfo *GenInfo) {
 	var tmpl *template.Template
 	var err error
 
@@ -126,30 +132,30 @@ func generate_expects(module_name string, gen_info *GenInfo) {
 {{if .HasAssertions -}}
 func init() {
 
-{{if uses_const .ConstMap "cond_false"}}  const cond_false = false{{- end}}
-{{if uses_const .ConstMap "cond_true"}}  const cond_true = true {{- end}}
-  const was_hit = true
-{{if uses_const .ConstMap "not_hit"}}  const not_hit = !was_hit {{- end}}
-{{if uses_const .ConstMap "must_be_hit"}}  const must_be_hit = true {{- end}}
-{{if uses_const .ConstMap "optionally_hit"}}  const optionally_hit = false {{- end}}
-{{if uses_const .ConstMap "expecting_true"}}  const expecting_true = true {{- end}}
-{{if uses_const .ConstMap "expecting_false"}} const expecting_false = false {{- end}}
-{{if uses_const .ConstMap "universal_test"}}  const universal_test = "every" {{- end}}
-{{if uses_const .ConstMap "existential_test"}}  const existential_test = "some" {{- end}}
-{{if uses_const .ConstMap "reachability_test"}}  const reachability_test = "none" {{- end}}
+{{if usesConst .ConstMap "condFalse"}}  const condFalse = false{{- end}}
+{{if usesConst .ConstMap "condTrue"}}  const condTrue = true {{- end}}
+  const wasHit = true
+{{if usesConst .ConstMap "notHit"}}  const notHit = !wasHit {{- end}}
+{{if usesConst .ConstMap "mustBeHit"}}  const mustBeHit = true {{- end}}
+{{if usesConst .ConstMap "optionallyHit"}}  const optionallyHit = false {{- end}}
+{{if usesConst .ConstMap "expectingTrue"}}  const expectingTrue = true {{- end}}
+{{if usesConst .ConstMap "expectingFalse"}} const expectingFalse = false {{- end}}
+{{if usesConst .ConstMap "universalTest"}}  const universalTest = "every" {{- end}}
+{{if usesConst .ConstMap "existentialTest"}}  const existentialTest = "some" {{- end}}
+{{if usesConst .ConstMap "reachabilityTest"}}  const reachabilityTest = "none" {{- end}}
 
-  var no_values map[string]any = nil
+  var noValues map[string]any = nil
 	
 	{{- range .ExpectedVals }}
-	{{- $cond := cond_repr .AssertionFuncInfo.Condition -}}
-	{{- $did_hit := hit_repr false -}}
-	{{- $must_hit := must_hit_repr .AssertionFuncInfo.MustHit -}}
-	{{- $expecting := expecting_repr .AssertionFuncInfo.Expecting -}}
-	{{- $assertion_name := assertion_name_repr .Assertion -}}
-	{{- $assert_type := assert_type_repr .AssertionFuncInfo.AssertType}}
+	{{- $cond := condRepr .AssertionFuncInfo.Condition -}}
+	{{- $didHit := hitRepr false -}}
+	{{- $mustHit := mustHitRepr .AssertionFuncInfo.MustHit -}}
+	{{- $expecting := expectingRepr .AssertionFuncInfo.Expecting -}}
+	{{- $assertionName := assertionNameRepr .Assertion -}}
+	{{- $assertType := assertTypeRepr .AssertionFuncInfo.AssertType}}
 
-  // {{$assertion_name}}
-  assert.AssertRaw("{{.Message}}", {{$cond}}, no_values, "{{.Classname}}", "{{.Funcname}}", "{{.Filename}}", {{.Line}}, {{$did_hit}}, {{$must_hit}}, {{$expecting}}, {{$assert_type}})
+  // {{$assertionName}}
+  assert.AssertRaw("{{.Message}}", {{$cond}}, noValues, "{{.Classname}}", "{{.Funcname}}", "{{.Filename}}", {{.Line}}, {{$didHit}}, {{$mustHit}}, {{$expecting}}, {{$assertType}})
 	{{- end}}
 }
 {{- end}}
@@ -158,25 +164,25 @@ func init() {
 	tmpl = template.New("expector")
 
 	tmpl = tmpl.Funcs(template.FuncMap{
-		"hit_repr":            hit_repr,
-		"cond_repr":           cond_repr,
-		"must_hit_repr":       must_hit_repr,
-		"expecting_repr":      expecting_repr,
-		"assert_type_repr":    assert_type_repr,
-		"assertion_name_repr": assertion_name_repr,
-		"uses_const":          uses_const,
+		"hitRepr":           hitRepr,
+		"condRepr":          condRepr,
+		"mustHitRepr":       mustHitRepr,
+		"expectingRepr":     expectingRepr,
+		"assertTypeRepr":    assertTypeRepr,
+		"assertionNameRepr": assertionNameRepr,
+		"usesConst":         usesConst,
 	})
 
 	if tmpl, err = tmpl.Parse(expector); err != nil {
 		panic(err)
 	}
 
-	var out_file io.Writer
-	if out_file, err = expect_output_file(module_name); err != nil {
+	var outFile io.Writer
+	if outFile, err = expectOutputFile(moduleName); err != nil {
 		panic(err)
 	}
 
-	if err = tmpl.Execute(out_file, gen_info); err != nil {
+	if err = tmpl.Execute(outFile, genInfo); err != nil {
 		panic(err)
 	}
 }

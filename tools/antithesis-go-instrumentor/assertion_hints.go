@@ -10,10 +10,10 @@ type AssertionFuncInfo struct {
 
 type AssertionHints map[string]*AssertionFuncInfo
 
-func setup_hint_map() AssertionHints {
-	hint_map := make(AssertionHints)
+func SetupHintMap() AssertionHints {
+	hintMap := make(AssertionHints)
 
-	hint_map["Always"] = &AssertionFuncInfo{
+	hintMap["Always"] = &AssertionFuncInfo{
 		TargetFunc: "Always",
 		MustHit:    true,
 		Expecting:  true,
@@ -21,7 +21,7 @@ func setup_hint_map() AssertionHints {
 		Condition:  false,
 	}
 
-	hint_map["AlwaysOrUnreachable"] = &AssertionFuncInfo{
+	hintMap["AlwaysOrUnreachable"] = &AssertionFuncInfo{
 		TargetFunc: "AlwaysOrUnreachable",
 		MustHit:    false,
 		Expecting:  true,
@@ -29,7 +29,7 @@ func setup_hint_map() AssertionHints {
 		Condition:  false,
 	}
 
-	hint_map["Sometimes"] = &AssertionFuncInfo{
+	hintMap["Sometimes"] = &AssertionFuncInfo{
 		TargetFunc: "Sometimes",
 		MustHit:    true,
 		Expecting:  true,
@@ -37,7 +37,7 @@ func setup_hint_map() AssertionHints {
 		Condition:  false,
 	}
 
-	hint_map["Unreachable"] = &AssertionFuncInfo{
+	hintMap["Unreachable"] = &AssertionFuncInfo{
 		TargetFunc: "Unreachable",
 		MustHit:    false,
 		Expecting:  true,
@@ -45,17 +45,17 @@ func setup_hint_map() AssertionHints {
 		Condition:  true,
 	}
 
-	hint_map["Reachable"] = &AssertionFuncInfo{
+	hintMap["Reachable"] = &AssertionFuncInfo{
 		TargetFunc: "Reachable",
 		MustHit:    true,
 		Expecting:  true,
 		AssertType: "none",
 		Condition:  true,
 	}
-	return hint_map
+	return hintMap
 }
 
-func (m AssertionHints) hints_for_name(name string) *AssertionFuncInfo {
+func (m AssertionHints) HintsForName(name string) *AssertionFuncInfo {
 	if v, ok := m[name]; ok {
 		return v
 	}

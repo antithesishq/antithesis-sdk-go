@@ -1,11 +1,73 @@
 package main
 
 import (
+	"bytes"
+	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
+	"io/ioutil"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 )
+
+// HashFileContent reads the binary content of
+// every file in paths (assumed to be in lexical order)
+// and returns the SHA-256 digest.
+func HashFileContent(paths []string) string {
+	hasher := sha256.New()
+	for _, path := range paths {
+		bytes, err := ioutil.ReadFile(path)
+		if err != nil {
+			logger.Fatalf("Error reading file %s: %v", path, err)
+		}
+		hasher.Write(bytes)
+	}
+
+	return hex.EncodeToString(hasher.Sum(nil))[0:12]
+}
+
+func writeTextFile(text, file_name string) (err error) {
+	var f *os.File
+	if f, err = os.Create(file_name); err != nil {
+		logger.Printf("Error: could not create %s", file_name)
+		return
+	}
+	defer f.Close()
+	if _, err = f.WriteString(text); err != nil {
+		logger.Printf("Error: Could not write text to %s", file_name)
+	}
+	return
+}
+
+func copyRecursiveNoClobber(from, to string) {
+	commandLine := fmt.Sprintf("cp --update=none --recursive %s/* %s", from, to)
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+	cmd := exec.Command("bash", "-c", commandLine)
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
+	logger.Printf("%q", commandLine)
+	err := cmd.Run()
+	if err != nil {
+		logger.Fatalf("%+v", err)
+	}
+}
+
+func addDependencies(customerInputDirectory, customerOutputDirectory string) {
+	commandLine := fmt.Sprintf("(cd %s; go mod edit -require=github.com/antithesishq/antithesis-sdk-go/instrumentation@latest -print > %s/go.mod)",
+		customerInputDirectory,
+		customerOutputDirectory)
+
+	cmd := exec.Command("bash", "-c", commandLine)
+	logger.Printf("%s", commandLine)
+	_, err := cmd.Output()
+	if err != nil {
+		// Errors here are pretty mysterious.
+		logger.Fatalf("%v", err)
+	}
+}
 
 // GetAbsoluteDirectory converts a path, whether a symlink or
 // a relative path, into an absolute path.
