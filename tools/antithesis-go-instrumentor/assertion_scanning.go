@@ -70,6 +70,7 @@ func (aSI *AssertionScanningInfo) ScanFile(file_path string) {
 	}
 
 	ast.Inspect(file, aSI.node_inspector)
+	aSI.filesCataloged++
 }
 
 func (aSI *AssertionScanningInfo) WriteAssertionCatalog(edge_count int) {
@@ -301,16 +302,16 @@ func (aSI *AssertionScanningInfo) getConstMap() map[string]bool {
 	}
 
 	const_map := make(map[string]bool)
-	const_map["cond_false"] = cond_tracker[Cond_false]
-	const_map["cond_true"] = cond_tracker[Cond_true]
-	const_map["was_hit"] = cond_tracker[Was_hit]
-	const_map["not_hit"] = cond_tracker[Not_hit]
-	const_map["must_be_hit"] = cond_tracker[Must_be_hit]
-	const_map["optionally_hit"] = cond_tracker[Optionally_hit]
-	const_map["expecting_true"] = cond_tracker[Expecting_true]
-	const_map["expecting_false"] = cond_tracker[Expecting_false]
-	const_map["universal_test"] = cond_tracker[Universal_test]
-	const_map["existential_test"] = cond_tracker[Existential_test]
-	const_map["reachability_test"] = cond_tracker[Reachability_test]
+	const_map["condFalse"] = cond_tracker[Cond_false]
+	const_map["condTrue"] = cond_tracker[Cond_true]
+	const_map["wasHit"] = cond_tracker[Was_hit]
+	const_map["notHit"] = cond_tracker[Not_hit]
+	const_map["mustBeHit"] = cond_tracker[Must_be_hit]
+	const_map["optionallyHit"] = cond_tracker[Optionally_hit]
+	const_map["expectingTrue"] = cond_tracker[Expecting_true]
+	const_map["expectingFalse"] = cond_tracker[Expecting_false]
+	const_map["universalTest"] = cond_tracker[Universal_test]
+	const_map["existentialTest"] = cond_tracker[Existential_test]
+	const_map["reachabilityTest"] = cond_tracker[Reachability_test]
 	return const_map
 }

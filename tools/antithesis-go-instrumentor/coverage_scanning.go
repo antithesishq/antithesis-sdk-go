@@ -8,6 +8,7 @@ type CoverageInstrumentor struct {
 	FullCatalogPath   string
 	PreviousEdge      int
 	FilesInstrumented int
+	filesSkipped      int
 }
 
 func (cI *CoverageInstrumentor) InstrumentFile(file_name string) string {
@@ -42,13 +43,22 @@ func (cI *CoverageInstrumentor) WrapUp() (edge_count int) {
 	return
 }
 
-func (cI *CoverageInstrumentor) SummarizeWork(num_files int) {
+func pluralize(val int, singularText string) string {
+	if val == 1 {
+		return singularText
+	}
+	return singularText + "s"
+}
+
+func (cI *CoverageInstrumentor) SummarizeWork(numFiles int) {
 	if cI.GoInstrumentor == nil {
 		return
 	}
-	num_files_skipped := num_files - cI.FilesInstrumented
-	logger.Printf("%d '.go' file(s), %d file(s) skipped, %d edge(s) instrumented",
-		num_files,
-		num_files_skipped,
-		cI.GoInstrumentor.CurrentEdge)
+
+	numFilesSkipped := (numFiles - cI.FilesInstrumented) + cI.filesSkipped
+	numEdges := cI.GoInstrumentor.CurrentEdge
+	logger.Printf("%d '.go' %s instrumented, %d %s skipped, %d %s identified",
+		numFiles, pluralize(numFiles, "file"),
+		numFilesSkipped, pluralize(numFilesSkipped, "file"),
+		numEdges, pluralize(numEdges, "edge"))
 }

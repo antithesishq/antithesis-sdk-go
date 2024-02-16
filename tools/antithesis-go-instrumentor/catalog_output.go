@@ -63,49 +63,49 @@ func assertionNameRepr(s string) string {
 	if s == "Reachable" || s == "Unreachable" {
 		return fmt.Sprintf("%s(message, values)", s)
 	}
-	return fmt.Sprintf("%s(message, cond, values)", s)
+	return fmt.Sprintf("%s(cond, message, values)", s)
 }
 
 func hitRepr(b bool) string {
 	if !b {
-		return "not_hit"
+		return "notHit"
 	}
-	return "was_hit"
+	return "wasHit"
 }
 
 func condRepr(b bool) string {
 	if b {
-		return "cond_true"
+		return "condTrue"
 	}
-	return "cond_false"
+	return "condFalse"
 }
 
 func mustHitRepr(b bool) string {
 	if b {
-		return "must_be_hit"
+		return "mustBeHit"
 	}
-	return "optionally_hit"
+	return "optionallyHit"
 }
 
 func expectingRepr(b bool) string {
 	if b {
-		return "expecting_true"
+		return "expectingTrue"
 	}
-	return "expecting_false"
+	return "expectingFalse"
 }
 
 func assertTypeRepr(s string) string {
-	var repr_text = "reachability_test"
+	var reprText = "reachabilityTest"
 
 	switch s {
 	case "every":
-		repr_text = "universal_test"
+		reprText = "universalTest"
 	case "some":
-		repr_text = "existential_test"
+		reprText = "existentialTest"
 	case "none":
-		repr_text = "reachability_test"
+		reprText = "reachabilityTest"
 	}
-	return repr_text
+	return reprText
 }
 
 func usesConst(cm map[string]bool, c string) bool {

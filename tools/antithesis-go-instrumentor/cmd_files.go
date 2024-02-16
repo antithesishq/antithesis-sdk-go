@@ -22,17 +22,21 @@ type CommandFiles struct {
 	symbolTableFilename string
 	sourceFiles         []string
 	filesHash           string
+	filesSkipped        int
 }
 
 func (cfx *CommandFiles) GetSourceFiles() (err error, sourceFiles []string) {
 	sourceFiles = []string{}
+	cfx.filesSkipped = 0
 	if err = cfx.ParseExclusionsFile(); err != nil {
 		return
 	}
 
-	if err, sourceFiles = cfx.FindSourceCode(); err != nil {
+	numSkipped := 0
+	if err, sourceFiles, numSkipped = cfx.FindSourceCode(); err != nil {
 		return
 	}
+	cfx.filesSkipped = numSkipped
 
 	cfx.filesHash = HashFileContent(sourceFiles)[0:12]
 	return
@@ -56,6 +60,7 @@ func (cfx *CommandFiles) NewCoverageInstrumentor() *CoverageInstrumentor {
 		FullCatalogPath:   cfx.catalogPath,
 		PreviousEdge:      0,
 		FilesInstrumented: 0,
+		filesSkipped:      cfx.filesSkipped,
 	}
 	return &cI
 }
@@ -104,8 +109,9 @@ func (cfx *CommandFiles) ParseExclusionsFile() (err error) {
 
 // FindSourceCode scans an input directory recursively for .go files,
 // skipping any files or directories specified in exclusions.
-func (cfx *CommandFiles) FindSourceCode() (err error, paths []string) {
+func (cfx *CommandFiles) FindSourceCode() (err error, paths []string, numSkipped int) {
 	paths = []string{}
+	numSkipped = 0
 	logger.Printf("Scanning %s recursively for .go source", cfx.inputDirectory)
 	// Files are read in lexical order, i.e. we can later deterministically
 	// hash their content: https://pkg.go.dev/path/filepath#WalkDir
@@ -118,7 +124,7 @@ func (cfx *CommandFiles) FindSourceCode() (err error, paths []string) {
 
 			if b := filepath.Base(path); strings.HasPrefix(b, ".") {
 				if VerboseLevel(2) {
-					logger.Printf("Skipping %s", path)
+					logger.Printf("Ignoring 'dot' directory: %s", path)
 				}
 				if info.IsDir() {
 					return fs.SkipDir
@@ -128,16 +134,18 @@ func (cfx *CommandFiles) FindSourceCode() (err error, paths []string) {
 
 			if cfx.exclusions[path] {
 				if info.IsDir() {
-					logger.Printf("Skipping excluded directory %s and its children", path)
+					logger.Printf("Ignoring excluded directory %s and its children", path)
 					return fs.SkipDir
 				}
 				logger.Printf("Skipping excluded file %s", path)
+				numSkipped++
 				return nil
 			}
 			if info.IsDir() {
 				return nil
 			}
 			if !strings.HasSuffix(path, ".go") {
+				numSkipped++
 				return nil
 			}
 			// This is the mandatory format of unit test file names.
@@ -145,11 +153,13 @@ func (cfx *CommandFiles) FindSourceCode() (err error, paths []string) {
 				if VerboseLevel(2) {
 					logger.Printf("Skipping test file %s", path)
 				}
+				numSkipped++
 				return nil
 			} else if strings.HasSuffix(path, ".pb.go") {
 				if VerboseLevel(1) {
 					logger.Printf("Skipping generated file %s", path)
 				}
+				numSkipped++
 				return nil
 			}
 
