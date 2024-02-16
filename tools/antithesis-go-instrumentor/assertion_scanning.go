@@ -178,7 +178,7 @@ func (aSI *AssertionScanningInfo) node_inspector(x ast.Node) bool {
 			expr_text := analyzed_expr(aSI.imports, sel_expr.X)
 			target_func := sel_expr.Sel.Name
 			if func_hints := aSI.assertionHintMap.HintsForName(target_func); func_hints != nil && expr_text != "" {
-				test_name := arg_at_index(call_args, 0)
+				test_name := arg_at_index(call_args, 1)
 				expect := AntExpect{
 					Assertion:         target_func,
 					Message:           test_name,

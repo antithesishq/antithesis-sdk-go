@@ -41,15 +41,16 @@ import (
 // }
 //
 // typedef bool (*go_notify_coverage_fn)(size_t);
-// bool
+// int
 // go_notify_coverage(void *f, size_t edges) {
-//   return ((go_notify_coverage_fn)f)(edges);
+//   bool b = ((go_notify_coverage_fn)f)(edges);
+//   return b ? 1 : 0;
 // }
 //
 // typedef uint64_t (*go_init_coverage_fn)(size_t num_edges, const char *symbols);
 // uint64_t
 // go_init_coverage(void *f, size_t num_edges, const char *symbols) {
-//   return ((go_init_coverage_fn)f)(edges, symbols);
+//   return ((go_init_coverage_fn)f)(num_edges, symbols);
 // }
 //
 import "C"
@@ -82,7 +83,7 @@ type libHandler interface {
 	output(message string)
 	random() uint64
 	notify(edge uint64) bool
-	init_coverage() uint64
+	init_coverage(num_edges uint64, symbols string) uint64
 }
 
 const localOutputEnvVar = "ANTITHESIS_SDK_LOCAL_OUTPUT"
@@ -110,14 +111,18 @@ func (h *voidstarHandler) random() uint64 {
 	return uint64(C.go_fuzz_get_random(h.fuzzGetRandom))
 }
 
-func (h *voidstarHandler) init_coverage(num_edge uint64, symbols string) bool {
+func (h *voidstarHandler) init_coverage(num_edge uint64, symbols string) uint64 {
 	cstrSymbols := C.CString(symbols)
 	defer C.free(unsafe.Pointer(cstrSymbols))
-	return C.go_init_coverage(h.initCoverage, cstrSymbols, C.ulong(num_edge))
+	return uint64(C.go_init_coverage(h.initCoverage, C.ulong(num_edge), cstrSymbols))
 }
 
 func (h *voidstarHandler) notify(edge uint64) bool {
-	return C.go_notify_coverage(h.notifyCoverage, C.ulong(edge))
+  ival := int(C.go_notify_coverage(h.notifyCoverage, C.ulong(edge)))
+  if ival == 1 {
+    return true
+  }
+  return false
 }
 
 type localHandler struct {

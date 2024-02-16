@@ -10,29 +10,29 @@ type trackerInfo struct {
 type emitTracker map[string]*trackerInfo
 
 // assert_tracker (global) keeps track of the unique asserts evaluated
-var assert_tracker emitTracker = make(emitTracker)
+var assertTracker emitTracker = make(emitTracker)
 
-func (tracker emitTracker) get_tracker_entry(message_key string) *trackerInfo {
-	var tracker_entry *trackerInfo
+func (tracker emitTracker) getTrackerEntry(messageKey string) *trackerInfo {
+	var trackerEntry *trackerInfo
 	var ok bool
 
 	if tracker == nil {
 		return nil
 	}
 
-	if tracker_entry, ok = tracker[message_key]; !ok {
-		tracker_entry = newTrackerInfo()
-		tracker[message_key] = tracker_entry
+	if trackerEntry, ok = tracker[messageKey]; !ok {
+		trackerEntry = newTrackerInfo()
+		tracker[messageKey] = trackerEntry
 	}
-	return tracker_entry
+	return trackerEntry
 }
 
 func newTrackerInfo() *trackerInfo {
-	tracker_info := trackerInfo{
+	trackerInfo := trackerInfo{
 		PassCount: 0,
 		FailCount: 0,
 	}
-	return &tracker_info
+	return &trackerInfo
 }
 
 func (ti *trackerInfo) emit(ai *assertInfo) {
@@ -45,7 +45,7 @@ func (ti *trackerInfo) emit(ai *assertInfo) {
 
 	if cond {
 		if ti.PassCount == 0 {
-			err = emit_assert(ai)
+			err = emitAssert(ai)
 		}
 		if err == nil {
 			ti.PassCount++
@@ -53,13 +53,13 @@ func (ti *trackerInfo) emit(ai *assertInfo) {
 		return
 	}
 	if ti.FailCount == 0 {
-		err = emit_assert(ai)
+		err = emitAssert(ai)
 	}
 	if err == nil {
 		ti.FailCount++
 	}
 }
 
-func emit_assert(assert_info *assertInfo) error {
-	return internal.Json_data(wrappedAssertInfo{assert_info})
+func emitAssert(ai *assertInfo) error {
+	return internal.Json_data(wrappedAssertInfo{ai})
 }

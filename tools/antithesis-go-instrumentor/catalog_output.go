@@ -155,7 +155,7 @@ func init() {
 	{{- $assertType := assertTypeRepr .AssertionFuncInfo.AssertType}}
 
   // {{$assertionName}}
-  assert.AssertRaw("{{.Message}}", {{$cond}}, noValues, "{{.Classname}}", "{{.Funcname}}", "{{.Filename}}", {{.Line}}, {{$didHit}}, {{$mustHit}}, {{$expecting}}, {{$assertType}})
+  assert.AssertRaw({{$cond}}, "{{.Message}}", noValues, "{{.Classname}}", "{{.Funcname}}", "{{.Filename}}", {{.Line}}, {{$didHit}}, {{$mustHit}}, {{$expecting}}, {{$assertType}})
 	{{- end}}
 }
 {{- end}}
