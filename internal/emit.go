@@ -118,11 +118,11 @@ func (h *voidstarHandler) init_coverage(num_edge uint64, symbols string) uint64 
 }
 
 func (h *voidstarHandler) notify(edge uint64) bool {
-  ival := int(C.go_notify_coverage(h.notifyCoverage, C.ulong(edge)))
-  if ival == 1 {
-    return true
-  }
-  return false
+	ival := int(C.go_notify_coverage(h.notifyCoverage, C.ulong(edge)))
+	if ival == 1 {
+		return true
+	}
+	return false
 }
 
 type localHandler struct {
