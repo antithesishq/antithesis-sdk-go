@@ -1,7 +1,7 @@
 package common
 
 import (
-	"bytes"
+	// "bytes"
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
@@ -46,14 +46,15 @@ func WriteTextFile(text, file_name string) (err error) {
 }
 
 func CopyRecursiveNoClobber(from, to string) {
-	commandLine := fmt.Sprintf("cp -v --update=none --recursive %s/* %s", from, to)
-	var stdout bytes.Buffer
-	var stderr bytes.Buffer
+	commandLine := fmt.Sprintf("cp -v --no-clobber --recursive %s/* %s", from, to)
+	// var stdout bytes.Buffer
+	// var stderr bytes.Buffer
 	cmd := exec.Command("bash", "-c", commandLine)
-	cmd.Stdout = &stdout
-	cmd.Stderr = &stderr
+	// cmd.Stdout = &stdout
+	// cmd.Stderr = &stderr
 	logWriter.Printf("Executing %s", commandLine)
-	err := cmd.Run()
+	allOutput, err := cmd.CombinedOutput()
+  logWriter.Printf("allOutput: %s", allOutput)
 	if err != nil {
 		// logWriter.Fatalf("%+v", err)
     logWriter.Printf("Ignoring cp exit code: %+v", err)
