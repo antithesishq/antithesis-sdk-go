@@ -1,1 +1,1 @@
-Antithesis LLC Go Instrumentor v1.1.5, 2024-02-08
+Antithesis LLC Go Instrumentor v1.1.6, 2024-02-20

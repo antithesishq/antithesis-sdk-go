@@ -46,7 +46,7 @@ func WriteTextFile(text, file_name string) (err error) {
 }
 
 func CopyRecursiveNoClobber(from, to string) {
-	commandLine := fmt.Sprintf("cp --update=none --recursive %s/* %s", from, to)
+	commandLine := fmt.Sprintf("cp -v --update=none --recursive %s/* %s", from, to)
 	var stdout bytes.Buffer
 	var stderr bytes.Buffer
 	cmd := exec.Command("bash", "-c", commandLine)
@@ -55,7 +55,8 @@ func CopyRecursiveNoClobber(from, to string) {
 	logWriter.Printf("Executing %s", commandLine)
 	err := cmd.Run()
 	if err != nil {
-		logWriter.Fatalf("%+v", err)
+		// logWriter.Fatalf("%+v", err)
+    logWriter.Printf("Ignoring cp exit code: %+v", err)
 	}
 }
 
