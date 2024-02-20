@@ -137,8 +137,8 @@ func (cfx *CommandFiles) WrapUp() {
 		return
 	}
 	// Dependencies will just be the Antithesis SDK
-	common.AddDependencies(cfx.inputDirectory, cfx.customerDirectory, cfx.instrumentorVersion)
-	cfx.logWriter.Printf("Antithesis dependencies added to %s/go.mod", cfx.customerDirectory)
+	// common.AddDependencies(cfx.inputDirectory, cfx.customerDirectory, cfx.instrumentorVersion)
+	// cfx.logWriter.Printf("Antithesis dependencies added to %s/go.mod", cfx.customerDirectory)
 
 	common.CopyRecursiveNoClobber(cfx.inputDirectory, cfx.customerDirectory)
 	cfx.logWriter.Printf("All other files copied unmodified from %s to %s", cfx.inputDirectory, cfx.customerDirectory)
