@@ -106,9 +106,13 @@ type voidstarHandler struct {
 }
 
 func (h *voidstarHandler) output(message string) {
+	msg_len := len(message)
+	if msg_len == 0 {
+		return
+	}
 	cstrMessage := C.CString(message)
 	defer C.free(unsafe.Pointer(cstrMessage))
-	C.go_fuzz_json_data(h.fuzzJsonData, cstrMessage, C.ulong(len(message)))
+	C.go_fuzz_json_data(h.fuzzJsonData, cstrMessage, C.ulong(msg_len))
 	C.go_fuzz_flush(h.fuzzFlush)
 }
 
@@ -135,6 +139,10 @@ type localHandler struct {
 }
 
 func (h *localHandler) output(message string) {
+	msg_len := len(message)
+	if msg_len == 0 {
+		return
+	}
 	if h.outputFile != nil {
 		h.outputFile.WriteString(message + "\n")
 	}
