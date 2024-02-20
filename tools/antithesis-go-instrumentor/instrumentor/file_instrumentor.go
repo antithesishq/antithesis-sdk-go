@@ -12,7 +12,7 @@ import (
 	"strconv"
 	"strings"
 
-  "github.com/antithesishq/antithesis-sdk-go/tools/antithesis-go-instrumentor/common"
+	"github.com/antithesishq/antithesis-sdk-go/tools/antithesis-go-instrumentor/common"
 	"golang.org/x/tools/go/ast/astutil"
 )
 
@@ -44,16 +44,16 @@ type CoverageInstrumentor struct {
 	FilesInstrumented int
 	SymTable          *SymbolTable
 	FilesSkipped      int
-  logWriter         *common.LogWriter
+	logWriter         *common.LogWriter
 }
 
 func (cI *CoverageInstrumentor) InstrumentFile(file_name string) string {
 	if cI.GoInstrumentor == nil {
 		return ""
 	}
-  if cI.logWriter == nil {
-    cI.logWriter = common.GetLogWriter()
-  }
+	if cI.logWriter == nil {
+		cI.logWriter = common.GetLogWriter()
+	}
 	var err error
 	instrumented := ""
 	cI.logWriter.Printf("Instrumenting %s", file_name)
@@ -72,9 +72,9 @@ func (cI *CoverageInstrumentor) WrapUp() (edge_count int) {
 	var err error
 	edge_count = 0
 
-  if cI.logWriter == nil {
-    cI.logWriter = common.GetLogWriter()
-  }
+	if cI.logWriter == nil {
+		cI.logWriter = common.GetLogWriter()
+	}
 	if cI.GoInstrumentor != nil {
 		if err = cI.SymTable.Close(); err != nil {
 			cI.logWriter.Printf("Error Could not close symbol table %s: %s", cI.SymTable.Path, err)
@@ -85,14 +85,13 @@ func (cI *CoverageInstrumentor) WrapUp() (edge_count int) {
 	return
 }
 
-
 func (cI *CoverageInstrumentor) SummarizeWork(numFiles int) {
 	if cI.GoInstrumentor == nil {
 		return
 	}
-  if cI.logWriter == nil {
-    cI.logWriter = common.GetLogWriter()
-  }
+	if cI.logWriter == nil {
+		cI.logWriter = common.GetLogWriter()
+	}
 
 	numFilesSkipped := (numFiles - cI.FilesInstrumented) + cI.FilesSkipped
 	numEdges := cI.GoInstrumentor.CurrentEdge
@@ -442,8 +441,8 @@ type Instrumentor struct {
 	comments []*ast.CommentGroup
 	// Should we add line directives in this Walk() pass?
 	// This should be false for Instrumenting and true for adding line directives.
-	addLines bool
-  logWriter *common.LogWriter
+	addLines  bool
+	logWriter *common.LogWriter
 }
 
 // CreateInstrumentor is the factory method.
@@ -452,16 +451,16 @@ func CreateInstrumentor(basePath string, shimPkg string, table *SymbolTable) *In
 		basePath = basePath + "/"
 	}
 	result := &Instrumentor{
-		basePath: basePath, 
-    fset: token.NewFileSet(), 
-    ShimPkg: shimPkg,
-		SymbolTable: table, 
-    typeCounts: map[string]int{}, 
-    nodeLines: map[string]int{},
-		currPos: make([]string, 0), 
-    posLines: map[token.Pos]bool{},
-    logWriter: common.GetLogWriter(),
-  }
+		basePath:    basePath,
+		fset:        token.NewFileSet(),
+		ShimPkg:     shimPkg,
+		SymbolTable: table,
+		typeCounts:  map[string]int{},
+		nodeLines:   map[string]int{},
+		currPos:     make([]string, 0),
+		posLines:    map[token.Pos]bool{},
+		logWriter:   common.GetLogWriter(),
+	}
 	return result
 }
 

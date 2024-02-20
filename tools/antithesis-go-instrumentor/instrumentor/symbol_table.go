@@ -29,20 +29,20 @@ type SymbolTablePosition struct {
 // CreateSymbolTableFile opens an Antithesis-standard .symbols.tsv file on disk.
 func CreateSymbolTableFile(symbolTablePath, instrumentedModule string) (err error, symbolTable *SymbolTable) {
 
-  var w *fileSymbolTableWriter
+	var w *fileSymbolTableWriter
 	if err, w = createFileSymbolTableWriter(symbolTablePath); err != nil {
-    return
-  }
+		return
+	}
 
 	// There can be an error if the file has been moved!
 	executable, _ := os.Executable()
 	symbolTable = &SymbolTable{
-    Path: symbolTablePath, 
-    writer: w, 
-    executable: executable,
-  }
+		Path:       symbolTablePath,
+		writer:     w,
+		executable: executable,
+	}
 	if err = symbolTable.writeHeader(instrumentedModule); err != nil {
-    symbolTable = nil
+		symbolTable = nil
 	}
 	return
 }
@@ -102,20 +102,19 @@ type inMemorySymbolTableWriter struct {
 	writer strings.Builder
 }
 
-
 // --------------------------------------------------------------------------------
 // fileSymbolTableWriter
 // --------------------------------------------------------------------------------
 func createFileSymbolTableWriter(name string) (err error, symWriter *fileSymbolTableWriter) {
-  var f *os.File
+	var f *os.File
 	if f, err = os.Create(name); err != nil {
-    return
+		return
 	}
-  symWriter = &fileSymbolTableWriter{
-    f: f,
-    writer: bufio.NewWriter(f),
-  }
-	return 
+	symWriter = &fileSymbolTableWriter{
+		f:      f,
+		writer: bufio.NewWriter(f),
+	}
+	return
 }
 
 func (w *fileSymbolTableWriter) WriteLine(s string) error {
@@ -138,7 +137,6 @@ func (fileSymbolTableWriter) String() string {
 	// logger.Fatalf("fileSymbolTableWriter does not support String method")
 	return ""
 }
-
 
 // --------------------------------------------------------------------------------
 // inMemorySymbolTableWriter

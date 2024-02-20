@@ -18,7 +18,7 @@ import (
 // \/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/
 //
 // The commented lines below, and the `import "C"` line which must directly follow
-// the commented lines are used by CGO.  They are load-bearing, and should not be 
+// the commented lines are used by CGO.  They are load-bearing, and should not be
 // changed without first understanding how CGO uses them.
 //
 // \/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/
@@ -44,7 +44,7 @@ import (
 //
 // typedef uint64_t (*go_fuzz_get_random_fn)(void);
 // uint64_t
-// go_fuzz_get_random(void *f) { 
+// go_fuzz_get_random(void *f) {
 //   return ((go_fuzz_get_random_fn)f)();
 // }
 //

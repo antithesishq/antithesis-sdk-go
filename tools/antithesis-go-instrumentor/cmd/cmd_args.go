@@ -9,15 +9,15 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/antithesishq/antithesis-sdk-go/tools/antithesis-go-instrumentor/common"
 	"golang.org/x/mod/modfile"
-  "github.com/antithesishq/antithesis-sdk-go/tools/antithesis-go-instrumentor/common"
 )
 
 // Capitalized struct items are accessed outside this file
 type CommandArgs struct {
 	ShowVersion         bool
 	InvalidArgs         bool
-  logWriter           *common.LogWriter
+	logWriter           *common.LogWriter
 	excludeFile         string
 	symPrefix           string
 	wantsInstrumentor   bool
@@ -35,7 +35,7 @@ func ParseArgs(versionText string) *CommandArgs {
 	verbosePtr := flag.Int("V", 0, "verbosity level (default to 0)")
 	assertOnlyPtr := flag.Bool("assert_only", false, "generate assertion catalog ONLY - no coverage instrumentation (default to false)")
 	catalogDirPtr := flag.String("catalog_dir", "", "file path where assertion catalog will be generated")
-  instrVersionPtr := flag.String("instrumentor_version", "@latest", "version of the SDK instrumentation package to require")
+	instrVersionPtr := flag.String("instrumentor_version", "@latest", "version of the SDK instrumentation package to require")
 	flag.Parse()
 
 	cmdArgs := CommandArgs{
@@ -52,7 +52,7 @@ func ParseArgs(versionText string) *CommandArgs {
 	cmdArgs.symPrefix = strings.TrimSpace(*prefixPtr)
 	cmdArgs.catalogDir = strings.TrimSpace(*catalogDirPtr)
 	cmdArgs.excludeFile = strings.TrimSpace(*exclusionsPtr)
-  cmdArgs.instrumentorVersion = strings.TrimSpace(*instrVersionPtr)
+	cmdArgs.instrumentorVersion = strings.TrimSpace(*instrVersionPtr)
 
 	// Verify we have the expected number of positional arguments
 	numArgsRequired := 1
@@ -139,9 +139,9 @@ func (ca *CommandArgs) NewCommandFiles() (err error, cfx *CommandFiles) {
 		}
 	}
 
-  if err != nil {
-    return
-  }
+	if err != nil {
+		return
+	}
 
 	catalogDir := ca.catalogDir
 	if catalogDir == "" {
@@ -151,15 +151,15 @@ func (ca *CommandArgs) NewCommandFiles() (err error, cfx *CommandFiles) {
 		}
 	}
 
-  // It is possible that module names have "/" in their name
-  // It is less likely they have "\" in their name
-  // In either case, these characters are replaced with "_V_"
-  // to compose the catalogPath. This catalogPath is used as the
-  // main portion of a filepath which will contain the assertion
-  // catalog. See details in function 'expectOutputFile' found 
-  // in 'catalog_output.go'  
-  tempName := strings.ReplaceAll(moduleName, "/", "_V_")
-  flattenedModuleName := strings.ReplaceAll(tempName, "\\", "_V_")
+	// It is possible that module names have "/" in their name
+	// It is less likely they have "\" in their name
+	// In either case, these characters are replaced with "_V_"
+	// to compose the catalogPath. This catalogPath is used as the
+	// main portion of a filepath which will contain the assertion
+	// catalog. See details in function 'expectOutputFile' found
+	// in 'catalog_output.go'
+	tempName := strings.ReplaceAll(moduleName, "/", "_V_")
+	flattenedModuleName := strings.ReplaceAll(tempName, "\\", "_V_")
 	catalogPath := filepath.Join(catalogDir, flattenedModuleName)
 
 	cfx = &CommandFiles{
@@ -171,8 +171,8 @@ func (ca *CommandArgs) NewCommandFiles() (err error, cfx *CommandFiles) {
 		excludeFile:         ca.excludeFile,
 		wantsInstrumentor:   ca.wantsInstrumentor,
 		symtablePrefix:      symtablePrefix,
-    instrumentorVersion: ca.instrumentorVersion,
-    logWriter:           common.GetLogWriter(),
+		instrumentorVersion: ca.instrumentorVersion,
+		logWriter:           common.GetLogWriter(),
 	}
 	return
 }
@@ -207,12 +207,12 @@ func IsGoAvailable() bool {
 		return false
 	}
 
-  // go version is expected to output 1 line containing 4 space-delimited items
-  // Typical output expected is:
-  //
-  //   go version go1.21.5 linux/amd64
-  //
-  // verify we get this 'shape' output
+	// go version is expected to output 1 line containing 4 space-delimited items
+	// Typical output expected is:
+	//
+	//   go version go1.21.5 linux/amd64
+	//
+	// verify we get this 'shape' output
 	parts := strings.Split(strings.TrimSpace(string(output)), " ")
 	if len(parts) < 4 {
 		return false

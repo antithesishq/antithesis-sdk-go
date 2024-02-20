@@ -7,8 +7,8 @@ import (
 	"path/filepath"
 	"strings"
 
-  "github.com/antithesishq/antithesis-sdk-go/tools/antithesis-go-instrumentor/common"
-  "github.com/antithesishq/antithesis-sdk-go/tools/antithesis-go-instrumentor/instrumentor"
+	"github.com/antithesishq/antithesis-sdk-go/tools/antithesis-go-instrumentor/common"
+	"github.com/antithesishq/antithesis-sdk-go/tools/antithesis-go-instrumentor/instrumentor"
 )
 
 // Capitalized struct items are accessed outside this file
@@ -16,80 +16,80 @@ type CommandFiles struct {
 
 	// The base directry of a go module to be instrumented/cataloged
 	// Contains a go.mod file
-	inputDirectory      string
-	
+	inputDirectory string
+
 	// The instrumentation (only) base oputput directory
 	// Is required to exist, and to be empty prior to instrumentation
 	//
-	// After instrumentation, will contain the subdirectories for 
+	// After instrumentation, will contain the subdirectories for
 	// 'symbols' and 'customer'
-	outputDirectory     string
-	
+	outputDirectory string
+
 	// created and written to during instrumentation.
 	// Will contain a copy of the inputDirectory, where All
 	// non-excluded '.go' files are instrumented
-	customerDirectory   string
-	
+	customerDirectory string
+
 	// created and written during instrumentation.
 	// Will contain the corresponding .tsv file expected
 	// by the antithesis fuzzer
-	symbolsDirectory    string
-	
+	symbolsDirectory string
+
 	// The directory that the generated assertion catalog
-	// will be written to.  By default, this file will be 
+	// will be written to.  By default, this file will be
 	// written to the 'inputDirectory' when instrumentation
 	// is not performed.  If instrumentation is performed,
 	// the generated assertion catalog will be written to
-	// the customerDirectory.  In both cases, the catalogPath 
+	// the customerDirectory.  In both cases, the catalogPath
 	// is used to directly specify what directory the
 	// generated assertion catalog should be written to.
-	catalogPath         string
-	
+	catalogPath string
+
 	// Indicates that instrumentation is requested (true)
 	// If set to (false) then perform assertion catalog scanning
 	// without instrumentation, which is common
 	// when execution is outside of the Antithesis environment
-	wantsInstrumentor   bool
-	
+	wantsInstrumentor bool
+
 	// A prefix used to distinguish symbol table filenames
 	// that will be used by the antithesis fuzzer.
-	symtablePrefix      string
-	
+	symtablePrefix string
+
 	// The name of the symbol table file, which incorporates
 	// the overall 'filesHash' and 'symbtablePrefix'
 	symbolTableFilename string
-	
+
 	// Option file containing a list (one per line) of
 	// any files or directories to be excluded from both
 	// instumentation and assertion scanning.  Empty lines
 	// and lines beginining with '#' are ignored.
-	excludeFile         string
-	
+	excludeFile string
+
 	// The set of exclusions that were obtained from
 	// reading the 'excludeFile'. A map is used where
 	// the value is always 'true', in lieu of a specific
 	// 'set' abstraction not available for the version
 	// of go used for this tool.
-	exclusions          map[string]bool
-	
+	exclusions map[string]bool
+
 	// All of the files (after exclusions) to be instrumented
 	// and scanned for assertions that should appear in the
 	// assertion catalog
-	sourceFiles         []string
-	
+	sourceFiles []string
+
 	// SHA256 Hash (48-bits worth) of all the files
 	// in sourceFiles
-	filesHash           string
-	
+	filesHash string
+
 	// Number of files skipped when creating the sourceFiles
 	// list.
-	filesSkipped        int
+	filesSkipped int
 
 	// The version of SDK to use at runtime for CoverageInstrumentation
 	instrumentorVersion string
 
-  // Global logger
-  logWriter           *common.LogWriter
+	// Global logger
+	logWriter *common.LogWriter
 }
 
 func (cfx *CommandFiles) GetSourceFiles() (err error, sourceFiles []string) {
@@ -252,16 +252,16 @@ func (cfx *CommandFiles) UsingSymbols() string {
 }
 
 func (cfx *CommandFiles) CreateSymbolTableWriter(filesHash string) (symWriter *instrumentor.SymbolTable) {
-  var err error
+	var err error
 	cfx.symbolTableFilename = ""
 	if cfx.wantsInstrumentor {
 		symbolTableFileBasename := fmt.Sprintf("%sgo-%s", cfx.symtablePrefix, filesHash)
 		cfx.symbolTableFilename = symbolTableFileBasename + ".sym.tsv"
 		symbolsPath := filepath.Join(cfx.symbolsDirectory, cfx.symbolTableFilename)
 		err, symWriter = instrumentor.CreateSymbolTableFile(symbolsPath, symbolTableFileBasename)
-    if err != nil {
-      cfx.logWriter.Fatalf("Could not write symbol table header: %s", err.Error())
-    }
+		if err != nil {
+			cfx.logWriter.Fatalf("Could not write symbol table header: %s", err.Error())
+		}
 	}
 	return
 }

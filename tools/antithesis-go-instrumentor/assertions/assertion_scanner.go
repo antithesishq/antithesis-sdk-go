@@ -8,7 +8,7 @@ import (
 	"path"
 	"strconv"
 
-  "github.com/antithesishq/antithesis-sdk-go/tools/antithesis-go-instrumentor/common"
+	"github.com/antithesishq/antithesis-sdk-go/tools/antithesis-go-instrumentor/common"
 )
 
 type AntExpect struct {
@@ -35,7 +35,7 @@ type AssertionScanner struct {
 	assertionHintMap AssertionHints
 	symbolTableName  string
 	filesCataloged   int
-  logWriter        *common.LogWriter
+	logWriter        *common.LogWriter
 }
 
 const NAME_NOT_AVAILABLE = "anonymous"
@@ -43,7 +43,7 @@ const ANTITHESIS_SDK_PACKAGE = "github.com/antithesishq/antithesis-sdk-go/assert
 const INSTRUMENTATION_PACKAGE_NAME = "github.com/antithesishq/antithesis-sdk-go/instrumentation"
 
 func NewAssertionScanner(verbose bool, moduleName string, symbolTableName string) *AssertionScanner {
-  logWriter := common.GetLogWriter()
+	logWriter := common.GetLogWriter()
 	if logWriter.VerboseLevel(2) {
 		logWriter.Printf(">> Module: %s\n", moduleName)
 	}
@@ -59,15 +59,14 @@ func NewAssertionScanner(verbose bool, moduleName string, symbolTableName string
 		assertionHintMap: SetupHintMap(),
 		symbolTableName:  symbolTableName,
 		filesCataloged:   0,
-    logWriter:        logWriter,
+		logWriter:        logWriter,
 	}
 	return &aScanner
 }
 
 func (aScanner *AssertionScanner) GetLogger() *common.LogWriter {
-  return aScanner.logWriter
+	return aScanner.logWriter
 }
-
 
 func (aScanner *AssertionScanner) ScanFile(file_path string) {
 	var file *ast.File
@@ -99,7 +98,7 @@ func (aScanner *AssertionScanner) WriteAssertionCatalog(edge_count int) {
 		HasAssertions:              (len(aScanner.expects) > 0),
 		ConstMap:                   aScanner.getConstMap(),
 		NeedsCoverage:              needs_coverage,
-    logWriter:                  common.GetLogWriter(),
+		logWriter:                  common.GetLogWriter(),
 	}
 
 	// destination name is expected to be a file_path
@@ -108,7 +107,7 @@ func (aScanner *AssertionScanner) WriteAssertionCatalog(edge_count int) {
 }
 
 func (aScanner *AssertionScanner) SummarizeWork() {
-  numCataloged := aScanner.filesCataloged
+	numCataloged := aScanner.filesCataloged
 	aScanner.logWriter.Printf("%d '.go' %s cataloged", numCataloged, common.Pluralize(numCataloged, "file"))
 }
 

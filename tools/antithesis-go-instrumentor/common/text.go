@@ -1,4 +1,4 @@
-package common 
+package common
 
 func Pluralize(val int, singularText string) string {
 	if val == 1 {
@@ -6,4 +6,3 @@ func Pluralize(val int, singularText string) string {
 	}
 	return singularText + "s"
 }
-

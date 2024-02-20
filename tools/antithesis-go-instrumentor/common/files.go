@@ -14,7 +14,7 @@ import (
 
 const HashBitsUsed = 48
 const HashBytesUsed = HashBitsUsed / 8
-const EncodedHashByteLength = HashBytesUsed * 2 
+const EncodedHashByteLength = HashBytesUsed * 2
 
 // HashFileContent reads the binary content of
 // every file in paths (assumed to be in lexical order)
@@ -62,7 +62,7 @@ func CopyRecursiveNoClobber(from, to string) {
 func AddDependencies(customerInputDirectory, customerOutputDirectory, instrumentorVersion string) {
 	commandLine := fmt.Sprintf("(cd %s; go mod edit -require=github.com/antithesishq/antithesis-sdk-go/instrumentation@%s -print > %s/go.mod)",
 		customerInputDirectory,
-    instrumentorVersion,
+		instrumentorVersion,
 		customerOutputDirectory)
 
 	cmd := exec.Command("bash", "-c", commandLine)

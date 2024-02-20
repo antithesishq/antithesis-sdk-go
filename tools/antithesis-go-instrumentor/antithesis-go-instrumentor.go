@@ -6,13 +6,12 @@ import (
 	"os"
 	"strings"
 
-  "github.com/antithesishq/antithesis-sdk-go/tools/antithesis-go-instrumentor/assertions"
-  "github.com/antithesishq/antithesis-sdk-go/tools/antithesis-go-instrumentor/common"
-  "github.com/antithesishq/antithesis-sdk-go/tools/antithesis-go-instrumentor/cmd"
+	"github.com/antithesishq/antithesis-sdk-go/tools/antithesis-go-instrumentor/assertions"
+	"github.com/antithesishq/antithesis-sdk-go/tools/antithesis-go-instrumentor/cmd"
+	"github.com/antithesishq/antithesis-sdk-go/tools/antithesis-go-instrumentor/common"
 )
 
 var logWriter *common.LogWriter
-
 
 //go:embed version.txt
 var versionString string
@@ -33,7 +32,7 @@ func main() {
 		os.Exit(1)
 	}
 
-  logWriter = common.GetLogWriter()
+	logWriter = common.GetLogWriter()
 	logWriter.Printf(strings.TrimSpace(versionString))
 
 	//--------------------------------------------------------------------------------

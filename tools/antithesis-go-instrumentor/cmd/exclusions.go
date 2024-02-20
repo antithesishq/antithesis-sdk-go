@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 	"strings"
 
-  "github.com/antithesishq/antithesis-sdk-go/tools/antithesis-go-instrumentor/common"
+	"github.com/antithesishq/antithesis-sdk-go/tools/antithesis-go-instrumentor/common"
 )
 
 // ParseExclusionsFile reads the exclusions file, skipping lines beginning with
@@ -14,8 +14,8 @@ import (
 // code from the interwebs, we'll just return a map.
 func ParseExclusionsFile(path string, inputDirectory string) (err error, exclusions map[string]bool) {
 
-  exclusions = map[string]bool{}
-  logWriter := common.GetLogWriter()
+	exclusions = map[string]bool{}
+	logWriter := common.GetLogWriter()
 	var exclusionsFile *os.File
 	if exclusionsFile, err = os.Open(path); err != nil {
 		logWriter.Fatalf("Could not open exclusions %s: %v", path, err)

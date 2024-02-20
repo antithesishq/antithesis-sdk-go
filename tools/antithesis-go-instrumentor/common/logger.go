@@ -17,8 +17,8 @@ import (
 // ------------------------------------------------------------
 
 type LogWriter struct {
-  verbosity int
-  logger *log.Logger
+	verbosity int
+	logger    *log.Logger
 }
 
 // var logger *log.Logger
@@ -26,9 +26,9 @@ type LogWriter struct {
 var logWriter *LogWriter
 
 func NewLogWriter(logfileName string, vLevel int) *LogWriter {
-  if logWriter != nil {
-    return logWriter
-  }
+	if logWriter != nil {
+		return logWriter
+	}
 
 	var erx error
 	var fp *os.File
@@ -42,38 +42,38 @@ func NewLogWriter(logfileName string, vLevel int) *LogWriter {
 	}
 
 	// Setting up the globals
-  logger := log.New(wrx, "", log.LstdFlags|log.Lshortfile)
-  verbosity := vLevel
+	logger := log.New(wrx, "", log.LstdFlags|log.Lshortfile)
+	verbosity := vLevel
 
-  // Advise if the requested logfile was not created
+	// Advise if the requested logfile was not created
 	if erx != nil {
 		logger.Printf("WARNING Unable to Create/Open requested logfile: %q", logfilePath)
 	}
-  
-  logWriter = &LogWriter{verbosity, logger}
-  return logWriter
+
+	logWriter = &LogWriter{verbosity, logger}
+	return logWriter
 }
 
 func GetLogWriter() *LogWriter {
-  return NewLogWriter("", 0);
+	return NewLogWriter("", 0)
 }
 
-func (lW *LogWriter)IsVerbose() bool {
+func (lW *LogWriter) IsVerbose() bool {
 	return (lW.verbosity > 0)
 }
 
-func (lW *LogWriter)VerboseLevel(v int) bool {
+func (lW *LogWriter) VerboseLevel(v int) bool {
 	return (v <= lW.verbosity)
 }
 
-func (lW *LogWriter)Printf(format string, v ...any) {
-  lW.logger.Printf(format, v...)
+func (lW *LogWriter) Printf(format string, v ...any) {
+	lW.logger.Printf(format, v...)
 }
 
-func (lW *LogWriter)Fatal(v ...any) {
-  lW.logger.Fatal(v...)
+func (lW *LogWriter) Fatal(v ...any) {
+	lW.logger.Fatal(v...)
 }
 
-func (lW *LogWriter)Fatalf(format string, v ...any) {
-  lW.logger.Fatalf(format, v...)
+func (lW *LogWriter) Fatalf(format string, v ...any) {
+	lW.logger.Fatalf(format, v...)
 }
