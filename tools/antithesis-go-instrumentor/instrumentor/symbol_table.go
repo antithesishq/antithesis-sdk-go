@@ -1,4 +1,4 @@
-package main
+package instrumentor
 
 import (
 	"bufio"
@@ -16,16 +16,35 @@ type SymbolTable struct {
 	executable string
 }
 
+type SymbolTablePosition struct {
+	Path        string
+	Function    string
+	StartLine   int
+	StartColumn int
+	EndLine     int
+	EndColumn   int
+	Edge        int
+}
+
 // CreateSymbolTableFile opens an Antithesis-standard .symbols.tsv file on disk.
-func CreateSymbolTableFile(symbolTablePath, instrumentedModule string) *SymbolTable {
-	w := createFileSymbolTableWriter(symbolTablePath)
+func CreateSymbolTableFile(symbolTablePath, instrumentedModule string) (err error, symbolTable *SymbolTable) {
+
+  var w *fileSymbolTableWriter
+	if err, w = createFileSymbolTableWriter(symbolTablePath); err != nil {
+    return
+  }
+
 	// There can be an error if the file has been moved!
 	executable, _ := os.Executable()
-	symbolTable := &SymbolTable{Path: symbolTablePath, writer: w, executable: executable}
-	if err := symbolTable.writeHeader(instrumentedModule); err != nil {
-		logger.Fatalf("Could not write symbol table header: %s", err.Error())
+	symbolTable = &SymbolTable{
+    Path: symbolTablePath, 
+    writer: w, 
+    executable: executable,
+  }
+	if err = symbolTable.writeHeader(instrumentedModule); err != nil {
+    symbolTable = nil
 	}
-	return symbolTable
+	return
 }
 
 // CreateInMemorySymbolTable creates an in memory symbol table for testing.
@@ -65,37 +84,38 @@ func (t *SymbolTable) String() string {
 	return t.writer.String()
 }
 
-type SymbolTablePosition struct {
-	Path        string
-	Function    string
-	StartLine   int
-	StartColumn int
-	EndLine     int
-	EndColumn   int
-	Edge        int
-}
-
+// --------------------------------------------------------------------------------
+// symbolTableWriter
+// --------------------------------------------------------------------------------
 type symbolTableWriter interface {
 	WriteLine(s string) error
 	Close() error
 	String() string
 }
 
-func createFileSymbolTableWriter(name string) symbolTableWriter {
-	f, err := os.Create(name)
-	if err != nil {
-		logger.Fatalf(err.Error())
-	}
-	return &fileSymbolTableWriter{f: f, writer: bufio.NewWriter(f)}
-}
-
-func createInMemorySymbolTableWriter() symbolTableWriter {
-	return &inMemorySymbolTableWriter{}
-}
-
 type fileSymbolTableWriter struct {
 	f      *os.File
 	writer *bufio.Writer
+}
+
+type inMemorySymbolTableWriter struct {
+	writer strings.Builder
+}
+
+
+// --------------------------------------------------------------------------------
+// fileSymbolTableWriter
+// --------------------------------------------------------------------------------
+func createFileSymbolTableWriter(name string) (err error, symWriter *fileSymbolTableWriter) {
+  var f *os.File
+	if f, err = os.Create(name); err != nil {
+    return
+	}
+  symWriter = &fileSymbolTableWriter{
+    f: f,
+    writer: bufio.NewWriter(f),
+  }
+	return 
 }
 
 func (w *fileSymbolTableWriter) WriteLine(s string) error {
@@ -115,12 +135,16 @@ func (w *fileSymbolTableWriter) Close() error {
 }
 
 func (fileSymbolTableWriter) String() string {
-	logger.Fatalf("fileSymbolTableWriter does not support String method")
+	// logger.Fatalf("fileSymbolTableWriter does not support String method")
 	return ""
 }
 
-type inMemorySymbolTableWriter struct {
-	writer strings.Builder
+
+// --------------------------------------------------------------------------------
+// inMemorySymbolTableWriter
+// --------------------------------------------------------------------------------
+func createInMemorySymbolTableWriter() symbolTableWriter {
+	return &inMemorySymbolTableWriter{}
 }
 
 func (w *inMemorySymbolTableWriter) WriteLine(s string) error {
@@ -128,7 +152,7 @@ func (w *inMemorySymbolTableWriter) WriteLine(s string) error {
 	return err
 }
 
-func (inMemorySymbolTableWriter) Close() error {
+func (w *inMemorySymbolTableWriter) Close() error {
 	return nil
 }
 

@@ -18,12 +18,12 @@ type bitSet struct {
 	mutex sync.RWMutex
 }
 
-func (b *bitSet) _slotAndBit(index int) (int, int) {
+func (b *bitSet) slotAndBit(index int) (int, int) {
 	// One assumes that the compiler will optimize these.
 	return index / 64, index % 64
 }
 
-func (b *bitSet) _get(slot, bit int) bool {
+func (b *bitSet) get(slot, bit int) bool {
 	if slot >= len(b.slots) {
 		return false
 	}
@@ -31,31 +31,19 @@ func (b *bitSet) _get(slot, bit int) bool {
 	return (b.slots[slot] & mask) != 0
 }
 
-// Size is needed only for unit tests; it's not
-// required to be fast.
-func (b *bitSet) Size() int {
-	result := 0
-	b.mutex.RLock()
-	defer b.mutex.RUnlock()
-	for _, slot := range b.slots {
-		result += bits.OnesCount64(slot)
-	}
-	return result
-}
-
 // Get returns the value at this index.
 func (b *bitSet) Get(index int) bool {
+	slot, bit := b.slotAndBit(index)
 	b.mutex.RLock()
 	defer b.mutex.RUnlock()
-	slot, bit := b._slotAndBit(index)
-	return b._get(slot, bit)
+	return b.get(slot, bit)
 }
 
 // Set will only switch a bit on.
 func (b *bitSet) Set(index int) {
+	slot, bit := b.slotAndBit(index)
 	b.mutex.Lock()
 	defer b.mutex.Unlock()
-	slot, bit := b._slotAndBit(index)
 	if slot >= len(b.slots) {
 		// Go takes care of the *capacity* under the covers.
 		// So we don't need a tricky implementation, or

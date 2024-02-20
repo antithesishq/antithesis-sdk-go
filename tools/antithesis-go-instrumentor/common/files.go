@@ -1,4 +1,4 @@
-package main
+package common
 
 import (
 	"bytes"
@@ -12,6 +12,10 @@ import (
 	"strings"
 )
 
+const HashBitsUsed = 48
+const HashBytesUsed = HashBitsUsed / 8
+const EncodedHashByteLength = HashBytesUsed * 2 
+
 // HashFileContent reads the binary content of
 // every file in paths (assumed to be in lexical order)
 // and returns the SHA-256 digest.
@@ -20,52 +24,53 @@ func HashFileContent(paths []string) string {
 	for _, path := range paths {
 		bytes, err := ioutil.ReadFile(path)
 		if err != nil {
-			logger.Fatalf("Error reading file %s: %v", path, err)
+			logWriter.Fatalf("Error reading file %s: %v", path, err)
 		}
 		hasher.Write(bytes)
 	}
 
-	return hex.EncodeToString(hasher.Sum(nil))[0:12]
+	return hex.EncodeToString(hasher.Sum(nil))[0:EncodedHashByteLength]
 }
 
-func writeTextFile(text, file_name string) (err error) {
+func WriteTextFile(text, file_name string) (err error) {
 	var f *os.File
 	if f, err = os.Create(file_name); err != nil {
-		logger.Printf("Error: could not create %s", file_name)
+		logWriter.Printf("Error: could not create %s", file_name)
 		return
 	}
 	defer f.Close()
 	if _, err = f.WriteString(text); err != nil {
-		logger.Printf("Error: Could not write text to %s", file_name)
+		logWriter.Printf("Error: Could not write text to %s", file_name)
 	}
 	return
 }
 
-func copyRecursiveNoClobber(from, to string) {
+func CopyRecursiveNoClobber(from, to string) {
 	commandLine := fmt.Sprintf("cp --update=none --recursive %s/* %s", from, to)
 	var stdout bytes.Buffer
 	var stderr bytes.Buffer
 	cmd := exec.Command("bash", "-c", commandLine)
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr
-	logger.Printf("%q", commandLine)
+	logWriter.Printf("Executing %s", commandLine)
 	err := cmd.Run()
 	if err != nil {
-		logger.Fatalf("%+v", err)
+		logWriter.Fatalf("%+v", err)
 	}
 }
 
-func addDependencies(customerInputDirectory, customerOutputDirectory string) {
-	commandLine := fmt.Sprintf("(cd %s; go mod edit -require=github.com/antithesishq/antithesis-sdk-go/instrumentation@latest -print > %s/go.mod)",
+func AddDependencies(customerInputDirectory, customerOutputDirectory, instrumentorVersion string) {
+	commandLine := fmt.Sprintf("(cd %s; go mod edit -require=github.com/antithesishq/antithesis-sdk-go/instrumentation@%s -print > %s/go.mod)",
 		customerInputDirectory,
+    instrumentorVersion,
 		customerOutputDirectory)
 
 	cmd := exec.Command("bash", "-c", commandLine)
-	logger.Printf("%s", commandLine)
+	logWriter.Printf("Executing %s", commandLine)
 	_, err := cmd.Output()
 	if err != nil {
 		// Errors here are pretty mysterious.
-		logger.Fatalf("%v", err)
+		logWriter.Fatalf("%v", err)
 	}
 }
 
@@ -73,13 +78,13 @@ func addDependencies(customerInputDirectory, customerOutputDirectory string) {
 // a relative path, into an absolute path.
 func GetAbsoluteDirectory(path string) string {
 	if absolute, e := filepath.Abs(path); e != nil {
-		logger.Fatalf("Could not evaluate %s as an absolute path: %v", path, e)
+		logWriter.Fatalf("Could not evaluate %s as an absolute path: %v", path, e)
 	} else {
 		if s, err := os.Stat(absolute); err != nil {
-			logger.Fatalf("%v", err)
+			logWriter.Fatalf("%v", err)
 		} else {
 			if !s.IsDir() {
-				logger.Fatalf("%s is not a directory", absolute)
+				logWriter.Fatalf("%s is not a directory", absolute)
 			}
 			return absolute
 		}
@@ -91,12 +96,12 @@ func GetAbsoluteDirectory(path string) string {
 func canonicalizeDirectory(d string) string {
 	target, e := filepath.EvalSymlinks(d)
 	if e != nil {
-		logger.Fatalf("filepath.EvalSymlinks(%s) failed: %v", d, e)
+		logWriter.Fatalf("filepath.EvalSymlinks(%s) failed: %v", d, e)
 	}
 
 	a, e := filepath.Abs(target)
 	if e != nil {
-		logger.Fatalf("filepath.Abs(%s) failed: %v", target, e)
+		logWriter.Fatalf("filepath.Abs(%s) failed: %v", target, e)
 	}
 	return a
 }
@@ -104,12 +109,12 @@ func canonicalizeDirectory(d string) string {
 func confirmEmptyOutputDirectory(output string) {
 	d, e := os.Open(output)
 	if e != nil {
-		logger.Fatalf("Could not open %s: %v", output, e)
+		logWriter.Fatalf("Could not open %s: %v", output, e)
 	}
 	defer d.Close()
 	// See the documentation on File.Readdirnames().
 	if names, _ := d.Readdirnames(1); len(names) > 0 {
-		logger.Fatalf("Output directory %s must be empty.", output)
+		logWriter.Fatalf("Output directory %s must be empty.", output)
 	}
 }
 
@@ -122,11 +127,10 @@ func ValidateDirectories(input, output string) (err error) {
 	output = canonicalizeDirectory(output) + "/"
 	if strings.HasPrefix(output, input) {
 		err = fmt.Errorf("The input directory %s is a prefix of the output directory %s", input, output)
+		return
 	}
-	if err == nil {
-		if strings.HasPrefix(input, output) {
-			err = fmt.Errorf("The output directory %s is a prefix of the input directory %s", output, input)
-		}
+	if strings.HasPrefix(input, output) {
+		err = fmt.Errorf("The output directory %s is a prefix of the input directory %s", output, input)
 	}
 	return
 }
@@ -137,10 +141,10 @@ func createOutputDirectories(outputDirectory string) (string, string) {
 	symbols := filepath.Join(outputDirectory, "symbols")
 
 	if e := os.Mkdir(customer, 0755); e != nil {
-		logger.Fatal(e)
+		logWriter.Fatal(e)
 	}
 	if e := os.Mkdir(symbols, 0755); e != nil {
-		logger.Fatal(e)
+		logWriter.Fatal(e)
 	}
 
 	return customer, symbols

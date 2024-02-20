@@ -15,6 +15,14 @@ import (
 // CC=clang CGO_ENABLED=1 go run ./main.go
 // --------------------------------------------------------------------------------
 
+// \/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/
+//
+// The commented lines below, and the `import "C"` line which must directly follow
+// the commented lines are used by CGO.  They are load-bearing, and should not be 
+// changed without first understanding how CGO uses them.
+//
+// \/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/
+
 // #cgo LDFLAGS: -ldl
 //
 // #include <dlfcn.h>
@@ -36,7 +44,7 @@ import (
 //
 // typedef uint64_t (*go_fuzz_get_random_fn)(void);
 // uint64_t
-// go_fuzz_get_random(void *f) {
+// go_fuzz_get_random(void *f) { 
 //   return ((go_fuzz_get_random_fn)f)();
 // }
 //
@@ -54,9 +62,6 @@ import (
 // }
 //
 import "C"
-
-// size_t init_coverage_module(size_t edge_count, const char* symbol_file_name);
-// bool notify_coverage(size_t edge_plus_module);
 
 func Json_data(v any) error {
 	if data, err := json.Marshal(v); err != nil {

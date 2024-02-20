@@ -1,4 +1,4 @@
-package main
+package assertions
 
 type AssertionFuncInfo struct {
 	TargetFunc string

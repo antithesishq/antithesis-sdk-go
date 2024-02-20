@@ -1,7 +1,6 @@
-package main
+package cmd
 
 import (
-	_ "embed"
 	"flag"
 	"fmt"
 	"os"
@@ -11,24 +10,24 @@ import (
 	"strings"
 
 	"golang.org/x/mod/modfile"
+  "github.com/antithesishq/antithesis-sdk-go/tools/antithesis-go-instrumentor/common"
 )
 
 // Capitalized struct items are accessed outside this file
 type CommandArgs struct {
-	ShowVersion       bool
-	InvalidArgs       bool
-	excludeFile       string
-	symPrefix         string
-	wantsInstrumentor bool
-	catalogDir        string
-	inputDir          string
-	outputDir         string
+	ShowVersion         bool
+	InvalidArgs         bool
+  logWriter           *common.LogWriter
+	excludeFile         string
+	symPrefix           string
+	wantsInstrumentor   bool
+	catalogDir          string
+	inputDir            string
+	outputDir           string
+	instrumentorVersion string
 }
 
-//go:embed version.txt
-var versionString string
-
-func ParseArgs() *CommandArgs {
+func ParseArgs(versionText string) *CommandArgs {
 	versionPtr := flag.Bool("version", false, "the current version of this application")
 	exclusionsPtr := flag.String("exclude", "", "the path to a file listing files and directories to exclude from instrumentation (optional)")
 	prefixPtr := flag.String("prefix", "", "a string to prepend to the symbol table (optional)")
@@ -36,6 +35,7 @@ func ParseArgs() *CommandArgs {
 	verbosePtr := flag.Int("V", 0, "verbosity level (default to 0)")
 	assertOnlyPtr := flag.Bool("assert_only", false, "generate assertion catalog ONLY - no coverage instrumentation (default to false)")
 	catalogDirPtr := flag.String("catalog_dir", "", "file path where assertion catalog will be generated")
+  instrVersionPtr := flag.String("instrumentor_version", "@latest", "version of the SDK instrumentation package to require")
 	flag.Parse()
 
 	cmdArgs := CommandArgs{
@@ -47,22 +47,21 @@ func ParseArgs() *CommandArgs {
 		return &cmdArgs
 	}
 
-	CreateGlobalLogger(*logfilePtr, *verbosePtr)
-	logger.Println(strings.TrimSpace(versionString))
-
+	cmdArgs.logWriter = common.NewLogWriter(*logfilePtr, *verbosePtr)
 	cmdArgs.wantsInstrumentor = !*assertOnlyPtr
 	cmdArgs.symPrefix = strings.TrimSpace(*prefixPtr)
 	cmdArgs.catalogDir = strings.TrimSpace(*catalogDirPtr)
 	cmdArgs.excludeFile = strings.TrimSpace(*exclusionsPtr)
+  cmdArgs.instrumentorVersion = strings.TrimSpace(*instrVersionPtr)
 
-	// Verify we have the non-flag arguments we expect
+	// Verify we have the expected number of positional arguments
 	numArgsRequired := 1
 	if cmdArgs.wantsInstrumentor {
 		numArgsRequired++
 	}
 
 	if flag.NArg() < numArgsRequired {
-		fmt.Fprintf(os.Stderr, strings.TrimSpace(versionString))
+		fmt.Fprintf(os.Stderr, strings.TrimSpace(versionText))
 		fmt.Fprintf(os.Stderr, "\n\n")
 		fmt.Fprintf(os.Stderr, "For assertions support:\n")
 		fmt.Fprintf(os.Stderr, "  $ antithesis-go-instrumentor -assert_only [options] go_project_dir\n")
@@ -90,7 +89,7 @@ func ParseArgs() *CommandArgs {
 	if cmdArgs.symPrefix != "" {
 		m, _ := regexp.MatchString(`^[a-z]+$`, *prefixPtr)
 		if !m {
-			fmt.Fprint(os.Stderr, "A prefix must consist of lower-case ASCII letters.")
+			fmt.Fprint(os.Stderr, "A prefix must consist of lower-case ASCII letters.\n")
 			cmdArgs.InvalidArgs = true
 			return &cmdArgs
 		}
@@ -102,7 +101,7 @@ func ParseArgs() *CommandArgs {
 	}
 
 	if !IsGoAvailable() {
-		fmt.Fprint(os.Stderr, "Go toolchain not available")
+		fmt.Fprint(os.Stderr, "Go toolchain not available\n")
 		cmdArgs.InvalidArgs = true
 	}
 
@@ -111,10 +110,10 @@ func ParseArgs() *CommandArgs {
 
 func (ca *CommandArgs) NewCommandFiles() (err error, cfx *CommandFiles) {
 	outputDirectory := ""
-	customerInputDirectory := GetAbsoluteDirectory(ca.inputDir)
+	customerInputDirectory := common.GetAbsoluteDirectory(ca.inputDir)
 	if ca.wantsInstrumentor {
-		outputDirectory = GetAbsoluteDirectory(ca.outputDir)
-		err = ValidateDirectories(customerInputDirectory, outputDirectory)
+		outputDirectory = common.GetAbsoluteDirectory(ca.outputDir)
+		err = common.ValidateDirectories(customerInputDirectory, outputDirectory)
 	}
 
 	symtablePrefix := ""
@@ -130,11 +129,19 @@ func (ca *CommandArgs) NewCommandFiles() (err error, cfx *CommandFiles) {
 		}
 	}
 
-	customerDirectory := filepath.Join(outputDirectory, "customer")
-	symbolsDirectory := filepath.Join(outputDirectory, "symbols")
-	if err == nil {
-		CreateOutputDirectories(customerDirectory, symbolsDirectory)
+	customerDirectory := ""
+	symbolsDirectory := ""
+	if ca.wantsInstrumentor {
+		customerDirectory = filepath.Join(outputDirectory, "customer")
+		symbolsDirectory = filepath.Join(outputDirectory, "symbols")
+		if err == nil {
+			err = CreateOutputDirectories(customerDirectory, symbolsDirectory)
+		}
 	}
+
+  if err != nil {
+    return
+  }
 
 	catalogDir := ca.catalogDir
 	if catalogDir == "" {
@@ -143,17 +150,29 @@ func (ca *CommandArgs) NewCommandFiles() (err error, cfx *CommandFiles) {
 			catalogDir = customerDirectory
 		}
 	}
-	catalogPath := filepath.Join(catalogDir, moduleName)
+
+  // It is possible that module names have "/" in their name
+  // It is less likely they have "\" in their name
+  // In either case, these characters are replaced with "_V_"
+  // to compose the catalogPath. This catalogPath is used as the
+  // main portion of a filepath which will contain the assertion
+  // catalog. See details in function 'expectOutputFile' found 
+  // in 'catalog_output.go'  
+  tempName := strings.ReplaceAll(moduleName, "/", "_V_")
+  flattenedModuleName := strings.ReplaceAll(tempName, "\\", "_V_")
+	catalogPath := filepath.Join(catalogDir, flattenedModuleName)
 
 	cfx = &CommandFiles{
-		outputDirectory:   outputDirectory,
-		inputDirectory:    customerInputDirectory,
-		customerDirectory: customerDirectory,
-		symbolsDirectory:  symbolsDirectory,
-		catalogPath:       catalogPath,
-		excludeFile:       ca.excludeFile,
-		wantsInstrumentor: ca.wantsInstrumentor,
-		symtablePrefix:    symtablePrefix,
+		outputDirectory:     outputDirectory,
+		inputDirectory:      customerInputDirectory,
+		customerDirectory:   customerDirectory,
+		symbolsDirectory:    symbolsDirectory,
+		catalogPath:         catalogPath,
+		excludeFile:         ca.excludeFile,
+		wantsInstrumentor:   ca.wantsInstrumentor,
+		symtablePrefix:      symtablePrefix,
+    instrumentorVersion: ca.instrumentorVersion,
+    logWriter:           common.GetLogWriter(),
 	}
 	return
 }
@@ -187,6 +206,13 @@ func IsGoAvailable() bool {
 	if err != nil {
 		return false
 	}
+
+  // go version is expected to output 1 line containing 4 space-delimited items
+  // Typical output expected is:
+  //
+  //   go version go1.21.5 linux/amd64
+  //
+  // verify we get this 'shape' output
 	parts := strings.Split(strings.TrimSpace(string(output)), " ")
 	if len(parts) < 4 {
 		return false

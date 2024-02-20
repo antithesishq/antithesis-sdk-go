@@ -21,17 +21,12 @@ func InitializeModule(symbolTable string, edgeCount int) uint64 {
 	}
 	// WARN Re: integer type conversion, see https://github.com/golang/go/issues/29878
 	executable, _ := os.Executable()
-	// [PH] InfoMessage(fmt.Sprintf("%s called antithesis.com/go/instrumentation.InitializeModule(%s, %d)", executable, symbolTable, edgeCount))
 	msg := fmt.Sprintf("%s called %s.InitializeModule(%s, %d)", executable, instrumentor_tag, symbolTable, edgeCount)
 	internal.Json_data(msg)
 
 	offset := internal.InitCoverage(edgeCount, symbolTable)
-	// [PH] s := C.CString(symbolTable)
-	// [PH] defer C.free(unsafe.Pointer(s))
-	// [PH] offset := C.init_coverage_module(C.ulong(edgeCount), s)
 	moduleOffset = uint64(offset)
 	moduleInitialized = true
-	// TODO Determine if any custom code would ever want this; return void if not.
 	return moduleOffset
 }
 

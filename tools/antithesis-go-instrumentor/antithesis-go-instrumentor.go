@@ -1,10 +1,21 @@
 package main
 
 import (
+	_ "embed"
 	"fmt"
 	"os"
 	"strings"
+
+  "github.com/antithesishq/antithesis-sdk-go/tools/antithesis-go-instrumentor/assertions"
+  "github.com/antithesishq/antithesis-sdk-go/tools/antithesis-go-instrumentor/common"
+  "github.com/antithesishq/antithesis-sdk-go/tools/antithesis-go-instrumentor/cmd"
 )
+
+var logWriter *common.LogWriter
+
+
+//go:embed version.txt
+var versionString string
 
 func main() {
 	var err error
@@ -13,7 +24,7 @@ func main() {
 	// Parse and validate command arguments
 	// Establish global logging
 	//--------------------------------------------------------------------------------
-	cmd_args := ParseArgs()
+	cmd_args := cmd.ParseArgs(versionString)
 	if cmd_args.ShowVersion {
 		fmt.Println(strings.TrimSpace(versionString))
 		os.Exit(0)
@@ -22,19 +33,22 @@ func main() {
 		os.Exit(1)
 	}
 
+  logWriter = common.GetLogWriter()
+	logWriter.Printf(strings.TrimSpace(versionString))
+
 	//--------------------------------------------------------------------------------
 	// Verify Directories and Files are all as expected
 	// Prepare instrumentation output directories
 	//--------------------------------------------------------------------------------
-	var cmd_files *CommandFiles
+	var cmd_files *cmd.CommandFiles
 	if err, cmd_files = cmd_args.NewCommandFiles(); err != nil {
-		logger.Printf(err.Error())
+		logWriter.Printf(err.Error())
 		os.Exit(1)
 	}
 
-	source_files := []string{}
+	var source_files []string
 	if err, source_files = cmd_files.GetSourceFiles(); err != nil {
-		logger.Printf(err.Error())
+		logWriter.Printf(err.Error())
 		os.Exit(1)
 	}
 
@@ -42,14 +56,14 @@ func main() {
 	// Setup coverage and assertion processors
 	//--------------------------------------------------------------------------------
 	cI := cmd_files.NewCoverageInstrumentor()
-	aSI := NewScanningInfo(verbosity > 0, cI.FullCatalogPath, cI.UsingSymbols)
+	aScanner := assertions.NewAssertionScanner(logWriter.IsVerbose(), cI.FullCatalogPath, cI.UsingSymbols)
 
 	//--------------------------------------------------------------------------------
 	// Process all files (ignore previously generated assertion catalogs)
 	//--------------------------------------------------------------------------------
 	for _, file_name := range source_files {
-		if IsGeneratedFile(file_name) {
-			logger.Printf("Skipping %s", file_name)
+		if assertions.IsGeneratedFile(file_name) {
+			logWriter.Printf("Skipping %s", file_name)
 			continue
 		}
 
@@ -57,7 +71,7 @@ func main() {
 			cmd_files.WriteInstrumentedOutput(file_name, instrumented_source, cI)
 		}
 
-		aSI.ScanFile(file_name)
+		aScanner.ScanFile(file_name)
 	}
 
 	//--------------------------------------------------------------------------------
@@ -67,6 +81,6 @@ func main() {
 	edge_count := cI.WrapUp()
 	cI.SummarizeWork(len(source_files))
 
-	aSI.WriteAssertionCatalog(edge_count)
-	aSI.SummarizeWork()
+	aScanner.WriteAssertionCatalog(edge_count)
+	aScanner.SummarizeWork()
 }

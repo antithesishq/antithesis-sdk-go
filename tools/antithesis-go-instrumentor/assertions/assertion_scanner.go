@@ -1,4 +1,4 @@
-package main
+package assertions
 
 import (
 	"go/ast"
@@ -7,6 +7,8 @@ import (
 	"go/types"
 	"path"
 	"strconv"
+
+  "github.com/antithesishq/antithesis-sdk-go/tools/antithesis-go-instrumentor/common"
 )
 
 type AntExpect struct {
@@ -21,7 +23,7 @@ type AntExpect struct {
 }
 
 // Capitalized struct items are accessed outside this file
-type AssertionScanningInfo struct {
+type AssertionScanner struct {
 	moduleName       string
 	fset             *token.FileSet
 	imports          []string
@@ -33,17 +35,19 @@ type AssertionScanningInfo struct {
 	assertionHintMap AssertionHints
 	symbolTableName  string
 	filesCataloged   int
+  logWriter        *common.LogWriter
 }
 
 const NAME_NOT_AVAILABLE = "anonymous"
 const ANTITHESIS_SDK_PACKAGE = "github.com/antithesishq/antithesis-sdk-go/assert"
 const INSTRUMENTATION_PACKAGE_NAME = "github.com/antithesishq/antithesis-sdk-go/instrumentation"
 
-func NewScanningInfo(verbose bool, moduleName string, symbolTableName string) *AssertionScanningInfo {
-	if VerboseLevel(2) {
-		logger.Printf(">> Module: %s\n", moduleName)
+func NewAssertionScanner(verbose bool, moduleName string, symbolTableName string) *AssertionScanner {
+  logWriter := common.GetLogWriter()
+	if logWriter.VerboseLevel(2) {
+		logWriter.Printf(">> Module: %s\n", moduleName)
 	}
-	aSI := AssertionScanningInfo{
+	aScanner := AssertionScanner{
 		moduleName:       moduleName,
 		fset:             token.NewFileSet(),
 		imports:          []string{},
@@ -55,61 +59,69 @@ func NewScanningInfo(verbose bool, moduleName string, symbolTableName string) *A
 		assertionHintMap: SetupHintMap(),
 		symbolTableName:  symbolTableName,
 		filesCataloged:   0,
+    logWriter:        logWriter,
 	}
-	return &aSI
+	return &aScanner
 }
 
-func (aSI *AssertionScanningInfo) ScanFile(file_path string) {
+func (aScanner *AssertionScanner) GetLogger() *common.LogWriter {
+  return aScanner.logWriter
+}
+
+
+func (aScanner *AssertionScanner) ScanFile(file_path string) {
 	var file *ast.File
 	var err error
 
-	logger.Printf("Cataloging %s", file_path)
-	aSI.reset_for_file(file_path)
-	if file, err = parser.ParseFile(aSI.fset, file_path, nil, 0); err != nil {
+	aScanner.logWriter.Printf("Cataloging %s", file_path)
+	aScanner.reset_for_file(file_path)
+	if file, err = parser.ParseFile(aScanner.fset, file_path, nil, 0); err != nil {
 		panic(err)
 	}
 
-	ast.Inspect(file, aSI.node_inspector)
-	aSI.filesCataloged++
+	ast.Inspect(file, aScanner.node_inspector)
+	aScanner.filesCataloged++
 }
 
-func (aSI *AssertionScanningInfo) WriteAssertionCatalog(edge_count int) {
+func (aScanner *AssertionScanner) WriteAssertionCatalog(edge_count int) {
 	using_symbols := ""
 	needs_coverage := false
-	if len(aSI.symbolTableName) > 0 {
-		using_symbols = aSI.symbolTableName
+	if len(aScanner.symbolTableName) > 0 {
+		using_symbols = aScanner.symbolTableName
 		needs_coverage = true
 	}
 	genInfo := GenInfo{
-		ExpectedVals:               aSI.expects,
+		ExpectedVals:               aScanner.expects,
 		ExpectPackageName:          ANTITHESIS_SDK_PACKAGE,
 		InstrumentationPackageName: INSTRUMENTATION_PACKAGE_NAME,
 		SymbolTableName:            using_symbols,
 		EdgeCount:                  edge_count,
-		HasAssertions:              (len(aSI.expects) > 0),
-		ConstMap:                   aSI.getConstMap(),
+		HasAssertions:              (len(aScanner.expects) > 0),
+		ConstMap:                   aScanner.getConstMap(),
 		NeedsCoverage:              needs_coverage,
+    logWriter:                  common.GetLogWriter(),
 	}
 
 	// destination name is expected to be a file_path
 	// destination name will have '_antithesis_catalog.go' appended to it
-	GenerateExpects(aSI.moduleName, &genInfo)
+	GenerateExpects(aScanner.moduleName, &genInfo)
 }
 
-func (aSI *AssertionScanningInfo) SummarizeWork() {
-	logger.Printf("%d '.go' files cataloged", aSI.filesCataloged)
+func (aScanner *AssertionScanner) SummarizeWork() {
+  numCataloged := aScanner.filesCataloged
+	aScanner.logWriter.Printf("%d '.go' %s cataloged", numCataloged, common.Pluralize(numCataloged, "file"))
 }
 
-func (aSI *AssertionScanningInfo) reset_for_file(file_path string) {
-	if VerboseLevel(2) {
-		logger.Printf(">>     File: %s\n", file_path)
+func (aScanner *AssertionScanner) reset_for_file(file_path string) {
+	if aScanner.logWriter.VerboseLevel(2) {
+		aScanner.logWriter.Printf(">>     File: %s\n", file_path)
 	}
-	aSI.imports = []string{}
-	aSI.funcName = ""
-	aSI.receiver = ""
+	aScanner.imports = []string{}
+	aScanner.funcName = ""
+	aScanner.receiver = ""
 }
 
-func (aSI *AssertionScanningInfo) node_inspector(x ast.Node) bool {
+func (aScanner *AssertionScanner) node_inspector(x ast.Node) bool {
 	var call_expr *ast.CallExpr
 	var func_decl *ast.FuncDecl
 	var import_spec *ast.ImportSpec
@@ -129,7 +141,7 @@ func (aSI *AssertionScanningInfo) node_inspector(x ast.Node) bool {
 			if alias != "" {
 				call_qualifier = alias
 			}
-			aSI.imports = append(aSI.imports, call_qualifier)
+			aScanner.imports = append(aScanner.imports, call_qualifier)
 		}
 
 		return true // you deal with this
@@ -137,22 +149,22 @@ func (aSI *AssertionScanningInfo) node_inspector(x ast.Node) bool {
 
 	// Track current funcName and receiver (type)
 	if func_decl, ok = x.(*ast.FuncDecl); ok {
-		aSI.funcName = NAME_NOT_AVAILABLE
+		aScanner.funcName = NAME_NOT_AVAILABLE
 		if func_ident := func_decl.Name; func_ident != nil {
-			aSI.funcName = func_ident.Name
+			aScanner.funcName = func_ident.Name
 		}
-		aSI.receiver = ""
+		aScanner.receiver = ""
 		if recv := func_decl.Recv; recv != nil {
 			if num_fields := recv.NumFields(); num_fields > 0 {
 				if field_list := recv.List; field_list != nil {
 					if recv_type := field_list[0].Type; recv_type != nil {
-						aSI.receiver = types.ExprString(recv_type)
+						aScanner.receiver = types.ExprString(recv_type)
 					}
 				}
 			}
 		}
-		if VerboseLevel(2) {
-			logger.Printf(">>       Func: %s %s\n", aSI.funcName, aSI.receiver)
+		if aScanner.logWriter.VerboseLevel(2) {
+			aScanner.logWriter.Printf(">>       Func: %s %s\n", aScanner.funcName, aScanner.receiver)
 		}
 	}
 
@@ -174,22 +186,22 @@ func (aSI *AssertionScanningInfo) node_inspector(x ast.Node) bool {
 
 		var sel_expr *ast.SelectorExpr
 		if sel_expr, ok = fun_expr.(*ast.SelectorExpr); ok {
-			full_position := aSI.fset.Position(sel_expr.Pos())
-			expr_text := analyzed_expr(aSI.imports, sel_expr.X)
+			full_position := aScanner.fset.Position(sel_expr.Pos())
+			expr_text := analyzed_expr(aScanner.imports, sel_expr.X)
 			target_func := sel_expr.Sel.Name
-			if func_hints := aSI.assertionHintMap.HintsForName(target_func); func_hints != nil && expr_text != "" {
+			if func_hints := aScanner.assertionHintMap.HintsForName(target_func); func_hints != nil && expr_text != "" {
 				test_name := arg_at_index(call_args, 1)
 				expect := AntExpect{
 					Assertion:         target_func,
 					Message:           test_name,
-					Classname:         aSI.packageName,
-					Funcname:          aSI.funcName,
-					Receiver:          aSI.receiver,
+					Classname:         aScanner.packageName,
+					Funcname:          aScanner.funcName,
+					Receiver:          aScanner.receiver,
 					Filename:          full_position.Filename,
 					Line:              full_position.Line,
 					AssertionFuncInfo: func_hints,
 				}
-				aSI.expects = append(aSI.expects, &expect)
+				aScanner.expects = append(aScanner.expects, &expect)
 			}
 			return false
 		}
@@ -268,12 +280,12 @@ const (
 	Num_conditions
 )
 
-func (aSI *AssertionScanningInfo) getConstMap() map[string]bool {
+func (aScanner *AssertionScanner) getConstMap() map[string]bool {
 	cond_tracker := make([]bool, Num_conditions, Num_conditions)
-	if len(aSI.expects) > 0 {
+	if len(aScanner.expects) > 0 {
 		cond_tracker[Not_hit] = true
 	}
-	for _, an_expect := range aSI.expects {
+	for _, an_expect := range aScanner.expects {
 		pAFI := an_expect.AssertionFuncInfo
 		if pAFI.MustHit {
 			cond_tracker[Must_be_hit] = true
