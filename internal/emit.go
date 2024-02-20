@@ -15,6 +15,14 @@ import (
 // CC=clang CGO_ENABLED=1 go run ./main.go
 // --------------------------------------------------------------------------------
 
+// \/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/
+//
+// The commented lines below, and the `import "C"` line which must directly follow
+// the commented lines are used by CGO.  They are load-bearing, and should not be
+// changed without first understanding how CGO uses them.
+//
+// \/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/
+
 // #cgo LDFLAGS: -ldl
 //
 // #include <dlfcn.h>
@@ -40,6 +48,19 @@ import (
 //   return ((go_fuzz_get_random_fn)f)();
 // }
 //
+// typedef bool (*go_notify_coverage_fn)(size_t);
+// int
+// go_notify_coverage(void *f, size_t edges) {
+//   bool b = ((go_notify_coverage_fn)f)(edges);
+//   return b ? 1 : 0;
+// }
+//
+// typedef uint64_t (*go_init_coverage_fn)(size_t num_edges, const char *symbols);
+// uint64_t
+// go_init_coverage(void *f, size_t num_edges, const char *symbols) {
+//   return ((go_init_coverage_fn)f)(num_edges, symbols);
+// }
+//
 import "C"
 
 func Json_data(v any) error {
@@ -55,9 +76,19 @@ func Get_random() uint64 {
 	return handler.random()
 }
 
+func Notify(edge uint64) bool {
+	return handler.notify(edge)
+}
+
+func InitCoverage(num_edges uint64, symbols string) uint64 {
+	return handler.init_coverage(num_edges, symbols)
+}
+
 type libHandler interface {
 	output(message string)
 	random() uint64
+	notify(edge uint64) bool
+	init_coverage(num_edges uint64, symbols string) uint64
 }
 
 const localOutputEnvVar = "ANTITHESIS_SDK_LOCAL_OUTPUT"
@@ -67,15 +98,21 @@ const defaultNativeLibraryPath = "/usr/lib/libvoidstar.so"
 var handler libHandler
 
 type voidstarHandler struct {
-	fuzzJsonData  unsafe.Pointer
-	fuzzFlush     unsafe.Pointer
-	fuzzGetRandom unsafe.Pointer
+	fuzzJsonData   unsafe.Pointer
+	fuzzFlush      unsafe.Pointer
+	fuzzGetRandom  unsafe.Pointer
+	initCoverage   unsafe.Pointer
+	notifyCoverage unsafe.Pointer
 }
 
 func (h *voidstarHandler) output(message string) {
+	msg_len := len(message)
+	if msg_len == 0 {
+		return
+	}
 	cstrMessage := C.CString(message)
 	defer C.free(unsafe.Pointer(cstrMessage))
-	C.go_fuzz_json_data(h.fuzzJsonData, cstrMessage, C.ulong(len(message)))
+	C.go_fuzz_json_data(h.fuzzJsonData, cstrMessage, C.ulong(msg_len))
 	C.go_fuzz_flush(h.fuzzFlush)
 }
 
@@ -83,11 +120,29 @@ func (h *voidstarHandler) random() uint64 {
 	return uint64(C.go_fuzz_get_random(h.fuzzGetRandom))
 }
 
+func (h *voidstarHandler) init_coverage(num_edge uint64, symbols string) uint64 {
+	cstrSymbols := C.CString(symbols)
+	defer C.free(unsafe.Pointer(cstrSymbols))
+	return uint64(C.go_init_coverage(h.initCoverage, C.ulong(num_edge), cstrSymbols))
+}
+
+func (h *voidstarHandler) notify(edge uint64) bool {
+	ival := int(C.go_notify_coverage(h.notifyCoverage, C.ulong(edge)))
+	if ival == 1 {
+		return true
+	}
+	return false
+}
+
 type localHandler struct {
 	outputFile *os.File // can be nil
 }
 
 func (h *localHandler) output(message string) {
+	msg_len := len(message)
+	if msg_len == 0 {
+		return
+	}
 	if h.outputFile != nil {
 		h.outputFile.WriteString(message + "\n")
 	}
@@ -95,6 +150,14 @@ func (h *localHandler) output(message string) {
 
 func (h *localHandler) random() uint64 {
 	return rand.Uint64()
+}
+
+func (h *localHandler) notify(edge uint64) bool {
+	return false
+}
+
+func (h *localHandler) init_coverage(num_edges uint64, symbols string) uint64 {
+	return 0
 }
 
 // If we have a file at `defaultNativeLibraryPath`, we load the shared library
@@ -145,8 +208,15 @@ func openSharedLib(path string) (*voidstarHandler, error) {
 	if err != nil {
 		return nil, err
 	}
-
-	return &voidstarHandler{fuzzJsonData, fuzzFlush, fuzzGetRandom}, nil
+	notifyCoverage, err := loadFunc("notify_coverage")
+	if err != nil {
+		return nil, err
+	}
+	initCoverage, err := loadFunc("init_coverage_module")
+	if err != nil {
+		return nil, err
+	}
+	return &voidstarHandler{fuzzJsonData, fuzzFlush, fuzzGetRandom, initCoverage, notifyCoverage}, nil
 }
 
 // If `localOutputEnvVar` is set to a non-empty path, attempt to open that path and truncate the file
