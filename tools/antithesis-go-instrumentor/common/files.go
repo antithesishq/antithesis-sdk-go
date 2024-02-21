@@ -50,7 +50,8 @@ func CopyRecursiveNoClobber(from, to string) {
 	cmd := exec.Command("bash", "-c", commandLine)
 	logWriter.Printf("Executing %s", commandLine)
 	allOutput, err := cmd.CombinedOutput()
-  lines := strings.Split(allOutput, "\n")
+  allText := strings.TrimSpace(string(allOutput))
+  lines := strings.Split(allText, "\n")
   for _, line := range lines {
     logWriter.Printf("cp: %s", line)
   }
