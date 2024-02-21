@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"github.com/antithesishq/antithesis-sdk-go/internal"
 	"os"
-	"unsafe"
 )
 
 var moduleInitialized = false
@@ -24,7 +23,7 @@ func InitializeModule(symbolTable string, edgeCount int) uint64 {
 	msg := fmt.Sprintf("%s called %s.InitializeModule(%s, %d)", executable, instrumentor_tag, symbolTable, edgeCount)
 	internal.Json_data(msg)
 
-	offset := internal.InitCoverage(edgeCount, symbolTable)
+	offset := internal.InitCoverage(uint64(edgeCount), symbolTable)
 	moduleOffset = uint64(offset)
 	moduleInitialized = true
 	return moduleOffset

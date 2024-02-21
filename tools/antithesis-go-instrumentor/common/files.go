@@ -47,34 +47,32 @@ func WriteTextFile(text, file_name string) (err error) {
 
 func CopyRecursiveNoClobber(from, to string) {
 	commandLine := fmt.Sprintf("cp -v --no-clobber --recursive %s/* %s", from, to)
-	// var stdout bytes.Buffer
-	// var stderr bytes.Buffer
 	cmd := exec.Command("bash", "-c", commandLine)
-	// cmd.Stdout = &stdout
-	// cmd.Stderr = &stderr
 	logWriter.Printf("Executing %s", commandLine)
 	allOutput, err := cmd.CombinedOutput()
-  logWriter.Printf("allOutput: %s", allOutput)
+  lines := strings.Split(allOutput, "\n")
+  for _, line := range lines {
+    logWriter.Printf("cp: %s", line)
+  }
 	if err != nil {
-		// logWriter.Fatalf("%+v", err)
     logWriter.Printf("Ignoring cp exit code: %+v", err)
 	}
 }
 
-func AddDependencies(customerInputDirectory, customerOutputDirectory, instrumentorVersion string) {
-	commandLine := fmt.Sprintf("(cd %s; go mod edit -require=github.com/antithesishq/antithesis-sdk-go/instrumentation@%s -print > %s/go.mod)",
-		customerInputDirectory,
-		instrumentorVersion,
-		customerOutputDirectory)
-
-	cmd := exec.Command("bash", "-c", commandLine)
-	logWriter.Printf("Executing %s", commandLine)
-	_, err := cmd.Output()
-	if err != nil {
-		// Errors here are pretty mysterious.
-		logWriter.Fatalf("%v", err)
-	}
-}
+// func AddDependencies(customerInputDirectory, customerOutputDirectory, instrumentorVersion string) {
+// 	commandLine := fmt.Sprintf("(cd %s; go mod edit -require=github.com/antithesishq/antithesis-sdk-go/instrumentation@%s -print > %s/go.mod)",
+// 		customerInputDirectory,
+// 		instrumentorVersion,
+// 		customerOutputDirectory)
+// 
+// 	cmd := exec.Command("bash", "-c", commandLine)
+// 	logWriter.Printf("Executing %s", commandLine)
+// 	_, err := cmd.Output()
+// 	if err != nil {
+// 		// Errors here are pretty mysterious.
+// 		logWriter.Fatalf("%v", err)
+// 	}
+// }
 
 // GetAbsoluteDirectory converts a path, whether a symlink or
 // a relative path, into an absolute path.

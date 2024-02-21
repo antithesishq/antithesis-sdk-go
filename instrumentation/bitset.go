@@ -1,7 +1,6 @@
 package instrumentation
 
 import (
-	"math/bits"
 	"sync"
 )
 
