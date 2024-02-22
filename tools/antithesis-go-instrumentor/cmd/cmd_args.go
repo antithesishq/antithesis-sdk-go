@@ -15,15 +15,15 @@ import (
 
 // Capitalized struct items are accessed outside this file
 type CommandArgs struct {
-	ShowVersion         bool
-	InvalidArgs         bool
-	logWriter           *common.LogWriter
-	excludeFile         string
-	symPrefix           string
-	wantsInstrumentor   bool
-	catalogDir          string
-	inputDir            string
-	outputDir           string
+	ShowVersion       bool
+	InvalidArgs       bool
+	logWriter         *common.LogWriter
+	excludeFile       string
+	symPrefix         string
+	wantsInstrumentor bool
+	catalogDir        string
+	inputDir          string
+	outputDir         string
 }
 
 func ParseArgs(versionText string) *CommandArgs {
@@ -160,15 +160,15 @@ func (ca *CommandArgs) NewCommandFiles() (err error, cfx *CommandFiles) {
 	catalogPath := filepath.Join(catalogDir, flattenedModuleName)
 
 	cfx = &CommandFiles{
-		outputDirectory:     outputDirectory,
-		inputDirectory:      customerInputDirectory,
-		customerDirectory:   customerDirectory,
-		symbolsDirectory:    symbolsDirectory,
-		catalogPath:         catalogPath,
-		excludeFile:         ca.excludeFile,
-		wantsInstrumentor:   ca.wantsInstrumentor,
-		symtablePrefix:      symtablePrefix,
-		logWriter:           common.GetLogWriter(),
+		outputDirectory:   outputDirectory,
+		inputDirectory:    customerInputDirectory,
+		customerDirectory: customerDirectory,
+		symbolsDirectory:  symbolsDirectory,
+		catalogPath:       catalogPath,
+		excludeFile:       ca.excludeFile,
+		wantsInstrumentor: ca.wantsInstrumentor,
+		symtablePrefix:    symtablePrefix,
+		logWriter:         common.GetLogWriter(),
 	}
 	return
 }
