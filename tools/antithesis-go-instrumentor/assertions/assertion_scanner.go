@@ -189,7 +189,7 @@ func (aScanner *AssertionScanner) node_inspector(x ast.Node) bool {
 			expr_text := analyzed_expr(aScanner.imports, sel_expr.X)
 			target_func := sel_expr.Sel.Name
 			if func_hints := aScanner.assertionHintMap.HintsForName(target_func); func_hints != nil && expr_text != "" {
-				test_name := arg_at_index(call_args, 1)
+				test_name := arg_at_index(call_args, func_hints.MessageArg)
 				expect := AntExpect{
 					Assertion:         target_func,
 					Message:           test_name,

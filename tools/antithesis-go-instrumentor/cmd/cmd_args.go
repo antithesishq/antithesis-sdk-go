@@ -24,7 +24,6 @@ type CommandArgs struct {
 	catalogDir          string
 	inputDir            string
 	outputDir           string
-	instrumentorVersion string
 }
 
 func ParseArgs(versionText string) *CommandArgs {
@@ -35,7 +34,6 @@ func ParseArgs(versionText string) *CommandArgs {
 	verbosePtr := flag.Int("V", 0, "verbosity level (default to 0)")
 	assertOnlyPtr := flag.Bool("assert_only", false, "generate assertion catalog ONLY - no coverage instrumentation (default to false)")
 	catalogDirPtr := flag.String("catalog_dir", "", "file path where assertion catalog will be generated")
-	instrVersionPtr := flag.String("instrumentor_version", "latest", "version of the SDK instrumentation package to require")
 	flag.Parse()
 
 	cmdArgs := CommandArgs{
@@ -52,7 +50,6 @@ func ParseArgs(versionText string) *CommandArgs {
 	cmdArgs.symPrefix = strings.TrimSpace(*prefixPtr)
 	cmdArgs.catalogDir = strings.TrimSpace(*catalogDirPtr)
 	cmdArgs.excludeFile = strings.TrimSpace(*exclusionsPtr)
-	cmdArgs.instrumentorVersion = strings.TrimSpace(*instrVersionPtr)
 
 	// Verify we have the expected number of positional arguments
 	numArgsRequired := 1
@@ -171,7 +168,6 @@ func (ca *CommandArgs) NewCommandFiles() (err error, cfx *CommandFiles) {
 		excludeFile:         ca.excludeFile,
 		wantsInstrumentor:   ca.wantsInstrumentor,
 		symtablePrefix:      symtablePrefix,
-		instrumentorVersion: ca.instrumentorVersion,
 		logWriter:           common.GetLogWriter(),
 	}
 	return
