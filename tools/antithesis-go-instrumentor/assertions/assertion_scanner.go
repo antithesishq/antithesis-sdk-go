@@ -181,7 +181,7 @@ func (aScanner *AssertionScanner) node_inspector(x ast.Node) bool {
 		// sel_expr.Name is "HasPrefix"
 		if _, ok = fun_expr.(*ast.Ident); ok {
 			return true // recurse further
-		}
+    }
 
 		var sel_expr *ast.SelectorExpr
 		if sel_expr, ok = fun_expr.(*ast.SelectorExpr); ok {
@@ -203,8 +203,8 @@ func (aScanner *AssertionScanner) node_inspector(x ast.Node) bool {
 				aScanner.expects = append(aScanner.expects, &expect)
 			}
 			return false
-		}
-		return false
+    }
+		return true
 	}
 	return true
 }
