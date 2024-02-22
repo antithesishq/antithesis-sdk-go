@@ -85,9 +85,6 @@ type CommandFiles struct {
 	// list.
 	filesSkipped int
 
-	// The version of SDK to use at runtime for CoverageInstrumentation
-	instrumentorVersion string
-
 	// Global logger
 	logWriter *common.LogWriter
 }
@@ -136,9 +133,6 @@ func (cfx *CommandFiles) WrapUp() {
 	if !cfx.wantsInstrumentor {
 		return
 	}
-	// Dependencies will just be the Antithesis SDK
-	// common.AddDependencies(cfx.inputDirectory, cfx.customerDirectory, cfx.instrumentorVersion)
-	// cfx.logWriter.Printf("Antithesis dependencies added to %s/go.mod", cfx.customerDirectory)
 
 	common.CopyRecursiveNoClobber(cfx.inputDirectory, cfx.customerDirectory)
 	cfx.logWriter.Printf("All other files copied unmodified from %s to %s", cfx.inputDirectory, cfx.customerDirectory)

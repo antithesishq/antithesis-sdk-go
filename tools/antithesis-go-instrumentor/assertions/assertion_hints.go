@@ -6,6 +6,7 @@ type AssertionFuncInfo struct {
 	Expecting  bool
 	AssertType string
 	Condition  bool
+	MessageArg int
 }
 
 type AssertionHints map[string]*AssertionFuncInfo
@@ -19,6 +20,7 @@ func SetupHintMap() AssertionHints {
 		Expecting:  true,
 		AssertType: "every",
 		Condition:  false,
+		MessageArg: 1,
 	}
 
 	hintMap["AlwaysOrUnreachable"] = &AssertionFuncInfo{
@@ -27,6 +29,7 @@ func SetupHintMap() AssertionHints {
 		Expecting:  true,
 		AssertType: "every",
 		Condition:  false,
+		MessageArg: 1,
 	}
 
 	hintMap["Sometimes"] = &AssertionFuncInfo{
@@ -35,6 +38,7 @@ func SetupHintMap() AssertionHints {
 		Expecting:  true,
 		AssertType: "some",
 		Condition:  false,
+		MessageArg: 1,
 	}
 
 	hintMap["Unreachable"] = &AssertionFuncInfo{
@@ -43,6 +47,7 @@ func SetupHintMap() AssertionHints {
 		Expecting:  true,
 		AssertType: "none",
 		Condition:  true,
+		MessageArg: 0,
 	}
 
 	hintMap["Reachable"] = &AssertionFuncInfo{
@@ -51,6 +56,7 @@ func SetupHintMap() AssertionHints {
 		Expecting:  true,
 		AssertType: "none",
 		Condition:  true,
+		MessageArg: 0,
 	}
 	return hintMap
 }

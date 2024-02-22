@@ -50,30 +50,15 @@ func CopyRecursiveNoClobber(from, to string) {
 	cmd := exec.Command("bash", "-c", commandLine)
 	logWriter.Printf("Executing %s", commandLine)
 	allOutput, err := cmd.CombinedOutput()
-  allText := strings.TrimSpace(string(allOutput))
-  lines := strings.Split(allText, "\n")
-  for _, line := range lines {
-    logWriter.Printf("cp: %s", line)
-  }
+	allText := strings.TrimSpace(string(allOutput))
+	lines := strings.Split(allText, "\n")
+	for _, line := range lines {
+		logWriter.Printf("cp: %s", line)
+	}
 	if err != nil {
-    logWriter.Printf("Ignoring cp exit code: %+v", err)
+		logWriter.Printf("Ignoring cp exit code: %+v", err)
 	}
 }
-
-// func AddDependencies(customerInputDirectory, customerOutputDirectory, instrumentorVersion string) {
-// 	commandLine := fmt.Sprintf("(cd %s; go mod edit -require=github.com/antithesishq/antithesis-sdk-go/instrumentation@%s -print > %s/go.mod)",
-// 		customerInputDirectory,
-// 		instrumentorVersion,
-// 		customerOutputDirectory)
-// 
-// 	cmd := exec.Command("bash", "-c", commandLine)
-// 	logWriter.Printf("Executing %s", commandLine)
-// 	_, err := cmd.Output()
-// 	if err != nil {
-// 		// Errors here are pretty mysterious.
-// 		logWriter.Fatalf("%v", err)
-// 	}
-// }
 
 // GetAbsoluteDirectory converts a path, whether a symlink or
 // a relative path, into an absolute path.
