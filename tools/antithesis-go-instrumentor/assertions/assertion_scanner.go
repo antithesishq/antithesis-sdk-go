@@ -204,7 +204,7 @@ func (aScanner *AssertionScanner) node_inspector(x ast.Node) bool {
 			}
 			return false
 		}
-		return false
+		return true
 	}
 	return true
 }
