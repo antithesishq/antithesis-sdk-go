@@ -57,11 +57,11 @@ let
 
   go_sdk = pkgs.buildGoModule {
     pname = "antithesis-go-sdk";
-    version = "0.0.0";
+    version = "v0.2.9";
 
     src = ./.;
 
-    vendorHash = "sha256-ZgekPCbKEzorA6S7Y9Gp/FX8IvuMzSFpwjZYOtXGNJc=";
+    vendorHash = "sha256-+TgeewwzcAgvj0tTcb25pegmJ/IhuQJkXiLrHMfLpDY=";
 
     meta = {
       description = "Antithesis go sdk.";
