@@ -85,6 +85,9 @@ type CommandFiles struct {
 	// list.
 	filesSkipped int
 
+	// The version of SDK to use at runtime for CoverageInstrumentation
+	instrumentorVersion string
+
 	// Global logger
 	logWriter *common.LogWriter
 }
@@ -129,9 +132,21 @@ func (cfx *CommandFiles) NewCoverageInstrumentor() *instrumentor.CoverageInstrum
 	return &cI
 }
 
-func (cfx *CommandFiles) WrapUp() {
+func (cfx *CommandFiles) WrapUp(hasAssertionsDefined bool) {
 	if !cfx.wantsInstrumentor {
 		return
+	}
+
+	// In case no assertions are found, ensure that
+	// the instrumentation package can be imported.
+	// This is accomplished by adding a dependecncy
+	// to the go.mod file in the customer directory
+	if !hasAssertionsDefined {
+		common.AddDependencies(cfx.inputDirectory, cfx.customerDirectory, cfx.instrumentorVersion)
+		cfx.logWriter.Printf("Antithesis dependencies added to %s/go.mod", cfx.customerDirectory)
+
+		common.FetchDependencies(cfx.customerDirectory)
+		cfx.logWriter.Printf("Downloaded Antithesis dependencies")
 	}
 
 	common.CopyRecursiveNoClobber(cfx.inputDirectory, cfx.customerDirectory)

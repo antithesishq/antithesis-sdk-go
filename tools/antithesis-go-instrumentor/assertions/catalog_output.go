@@ -84,9 +84,9 @@ func expectOutputFile(dest_path string, logWriter *common.LogWriter) (*os.File, 
 
 func assertionNameRepr(s string) string {
 	if s == "Reachable" || s == "Unreachable" {
-		return fmt.Sprintf("%s(message, values)", s)
+		return fmt.Sprintf("%s(message, details)", s)
 	}
-	return fmt.Sprintf("%s(cond, message, values)", s)
+	return fmt.Sprintf("%s(cond, message, details)", s)
 }
 
 func hitRepr(b bool) string {
@@ -195,7 +195,7 @@ func init() {
 {{if usesConst .ConstMap "existentialTest"}}  const existentialTest = "some" {{- end}}
 {{if usesConst .ConstMap "reachabilityTest"}}  const reachabilityTest = "none" {{- end}}
 
-  var noValues map[string]any = nil
+  var noDetails map[string]any = nil
 	
 	{{- range .ExpectedVals }}
 	{{- $cond := condRepr .AssertionFuncInfo.Condition -}}
@@ -206,7 +206,7 @@ func init() {
 	{{- $assertType := assertTypeRepr .AssertionFuncInfo.AssertType}}
 
   // {{$assertionName}}
-  assert.AssertRaw({{$cond}}, "{{.Message}}", noValues, "{{.Classname}}", "{{.Funcname}}", "{{.Filename}}", {{.Line}}, {{$didHit}}, {{$mustHit}}, {{$expecting}}, {{$assertType}})
+  assert.AssertRaw({{$cond}}, "{{.Message}}", noDetails, "{{.Classname}}", "{{.Funcname}}", "{{.Filename}}", {{.Line}}, {{$didHit}}, {{$mustHit}}, {{$expecting}}, {{$assertType}})
 	{{- end}}
 }
 {{- end}}

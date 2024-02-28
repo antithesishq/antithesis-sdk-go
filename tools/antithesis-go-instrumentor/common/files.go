@@ -60,6 +60,47 @@ func CopyRecursiveNoClobber(from, to string) {
 	}
 }
 
+func AddDependencies(customerInputDirectory, customerOutputDirectory, instrumentorVersion string) {
+	commandLine := fmt.Sprintf("(cd %s; go mod edit -require=github.com/antithesishq/antithesis-sdk-go@%s -print > %s/go.mod)",
+		customerInputDirectory,
+		instrumentorVersion,
+		customerOutputDirectory)
+
+	cmd := exec.Command("bash", "-c", commandLine)
+	logWriter.Printf("Executing %s", commandLine)
+	allOutput, err := cmd.CombinedOutput()
+	allText := strings.TrimSpace(string(allOutput))
+	if len(allText) > 0 {
+		lines := strings.Split(allText, "\n")
+		for _, line := range lines {
+			logWriter.Printf("go mod edit: %s", line)
+		}
+	}
+	if err != nil {
+		// Errors here are pretty mysterious.
+		logWriter.Fatalf("%v", err)
+	}
+}
+
+func FetchDependencies(customerOutputDirectory string) {
+	commandLine := fmt.Sprintf("(cd %s; go mod tidy)", customerOutputDirectory)
+
+	cmd := exec.Command("bash", "-c", commandLine)
+	logWriter.Printf("Executing %s", commandLine)
+	allOutput, err := cmd.CombinedOutput()
+	allText := strings.TrimSpace(string(allOutput))
+	if len(allText) > 0 {
+		lines := strings.Split(allText, "\n")
+		for _, line := range lines {
+			logWriter.Printf("go mod tidy: %s", line)
+		}
+	}
+	if err != nil {
+		// Errors here are pretty mysterious.
+		logWriter.Fatalf("%v", err)
+	}
+}
+
 // GetAbsoluteDirectory converts a path, whether a symlink or
 // a relative path, into an absolute path.
 func GetAbsoluteDirectory(path string) string {

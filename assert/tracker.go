@@ -40,6 +40,13 @@ func (ti *trackerInfo) emit(ai *assertInfo) {
 		return
 	}
 
+	// Registrations are just sent to voidstar
+	hit := ai.Hit
+	if !hit {
+		emitAssert(ai)
+		return
+	}
+
 	var err error
 	cond := ai.Condition
 

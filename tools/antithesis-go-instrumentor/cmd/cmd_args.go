@@ -15,15 +15,16 @@ import (
 
 // Capitalized struct items are accessed outside this file
 type CommandArgs struct {
-	ShowVersion       bool
-	InvalidArgs       bool
-	logWriter         *common.LogWriter
-	excludeFile       string
-	symPrefix         string
-	wantsInstrumentor bool
-	catalogDir        string
-	inputDir          string
-	outputDir         string
+	ShowVersion         bool
+	InvalidArgs         bool
+	logWriter           *common.LogWriter
+	excludeFile         string
+	symPrefix           string
+	wantsInstrumentor   bool
+	catalogDir          string
+	inputDir            string
+	outputDir           string
+	instrumentorVersion string
 }
 
 func ParseArgs(versionText string) *CommandArgs {
@@ -34,6 +35,7 @@ func ParseArgs(versionText string) *CommandArgs {
 	verbosePtr := flag.Int("V", 0, "verbosity level (default to 0)")
 	assertOnlyPtr := flag.Bool("assert_only", false, "generate assertion catalog ONLY - no coverage instrumentation (default to false)")
 	catalogDirPtr := flag.String("catalog_dir", "", "file path where assertion catalog will be generated")
+	instrVersionPtr := flag.String("instrumentor_version", "latest", "version of the SDK instrumentation package to require")
 	flag.Parse()
 
 	cmdArgs := CommandArgs{
@@ -50,6 +52,7 @@ func ParseArgs(versionText string) *CommandArgs {
 	cmdArgs.symPrefix = strings.TrimSpace(*prefixPtr)
 	cmdArgs.catalogDir = strings.TrimSpace(*catalogDirPtr)
 	cmdArgs.excludeFile = strings.TrimSpace(*exclusionsPtr)
+	cmdArgs.instrumentorVersion = strings.TrimSpace(*instrVersionPtr)
 
 	// Verify we have the expected number of positional arguments
 	numArgsRequired := 1
@@ -160,15 +163,16 @@ func (ca *CommandArgs) NewCommandFiles() (err error, cfx *CommandFiles) {
 	catalogPath := filepath.Join(catalogDir, flattenedModuleName)
 
 	cfx = &CommandFiles{
-		outputDirectory:   outputDirectory,
-		inputDirectory:    customerInputDirectory,
-		customerDirectory: customerDirectory,
-		symbolsDirectory:  symbolsDirectory,
-		catalogPath:       catalogPath,
-		excludeFile:       ca.excludeFile,
-		wantsInstrumentor: ca.wantsInstrumentor,
-		symtablePrefix:    symtablePrefix,
-		logWriter:         common.GetLogWriter(),
+		outputDirectory:     outputDirectory,
+		inputDirectory:      customerInputDirectory,
+		customerDirectory:   customerDirectory,
+		symbolsDirectory:    symbolsDirectory,
+		catalogPath:         catalogPath,
+		excludeFile:         ca.excludeFile,
+		wantsInstrumentor:   ca.wantsInstrumentor,
+		symtablePrefix:      symtablePrefix,
+		instrumentorVersion: ca.instrumentorVersion,
+		logWriter:           common.GetLogWriter(),
 	}
 	return
 }
@@ -183,7 +187,7 @@ func GetModuleName(inputDir string) (err error, moduleName string) {
 	}
 
 	if f, err = modfile.ParseLax("go.mod", moduleData, nil); err == nil {
-		moduleName = filepath.Base(f.Module.Mod.Path)
+		moduleName = f.Module.Mod.Path
 	}
 	return
 }

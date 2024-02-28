@@ -55,41 +55,41 @@ const existentialTest = "some"
 const reachabilityTest = "none"
 
 // Assert that condition is true every time this function is called, AND that it is called at least once. This test property will be viewable in the "Antithesis SDK: Always" group of your triage report.
-func Always(condition bool, message string, values map[string]any) {
+func Always(condition bool, message string, details map[string]any) {
 	locationInfo := newLocationInfo(offsetAPICaller)
-	assertImpl(condition, message, values, locationInfo, wasHit, mustBeHit, expectingTrue, universalTest)
+	assertImpl(condition, message, details, locationInfo, wasHit, mustBeHit, expectingTrue, universalTest)
 }
 
 // Assert that condition is true every time this function is called. Unlike the Always function, the test property spawned by AlwaysOrUnreachable will not be marked as failing if the function is never invoked. This test property will be viewable in the "Antithesis SDK: Always" group of your triage report.
-func AlwaysOrUnreachable(condition bool, message string, values map[string]any) {
+func AlwaysOrUnreachable(condition bool, message string, details map[string]any) {
 	locationInfo := newLocationInfo(offsetAPICaller)
-	assertImpl(condition, message, values, locationInfo, wasHit, optionallyHit, expectingTrue, universalTest)
+	assertImpl(condition, message, details, locationInfo, wasHit, optionallyHit, expectingTrue, universalTest)
 }
 
 // Assert that condition is true at least one time that this function was called. The test property spawned by Sometimes will be marked as failing if this function is never called, or if condition is false every time that it is called. This test property will be viewable in the "Antithesis SDK: Sometimes" group.
-func Sometimes(condition bool, message string, values map[string]any) {
+func Sometimes(condition bool, message string, details map[string]any) {
 	locationInfo := newLocationInfo(offsetAPICaller)
-	assertImpl(condition, message, values, locationInfo, wasHit, mustBeHit, expectingTrue, existentialTest)
+	assertImpl(condition, message, details, locationInfo, wasHit, mustBeHit, expectingTrue, existentialTest)
 }
 
 // Assert that a line of code is never reached. The test property spawned by Unreachable will be marked as failing if this function is ever called. This test property will be viewable in the "Antithesis SDK: Reachablity assertions" group.
-func Unreachable(message string, values map[string]any) {
+func Unreachable(message string, details map[string]any) {
 	locationInfo := newLocationInfo(offsetAPICaller)
-	assertImpl(true, message, values, locationInfo, wasHit, optionallyHit, expectingTrue, reachabilityTest)
+	assertImpl(true, message, details, locationInfo, wasHit, optionallyHit, expectingTrue, reachabilityTest)
 }
 
 // Assert that a line of code is reached at least once. The test property spawned by Reachable will be marked as failing if this function is never called. This test property will be viewable in the "Antithesis SDK: Reachablity assertions" group.
-func Reachable(message string, values map[string]any) {
+func Reachable(message string, details map[string]any) {
 	locationInfo := newLocationInfo(offsetAPICaller)
-	assertImpl(true, message, values, locationInfo, wasHit, mustBeHit, expectingTrue, reachabilityTest)
+	assertImpl(true, message, details, locationInfo, wasHit, mustBeHit, expectingTrue, reachabilityTest)
 }
 
 // This is a low-level method designed to be used by third-party frameworks. Regular users of the assert package should not call it.
-func AssertRaw(cond bool, message string, values map[string]any, classname, funcname, filename string, line int, hit bool, mustHit bool, expecting bool, assertType string) {
-	assertImpl(cond, message, values, &locationInfo{classname, funcname, filename, line, columnUnknown}, hit, mustHit, expecting, assertType)
+func AssertRaw(cond bool, message string, details map[string]any, classname, funcname, filename string, line int, hit bool, mustHit bool, expecting bool, assertType string) {
+	assertImpl(cond, message, details, &locationInfo{classname, funcname, filename, line, columnUnknown}, hit, mustHit, expecting, assertType)
 }
 
-func assertImpl(cond bool, message string, values map[string]any, loc *locationInfo, hit bool, mustHit bool, expecting bool, assertType string) {
+func assertImpl(cond bool, message string, details map[string]any, loc *locationInfo, hit bool, mustHit bool, expecting bool, assertType string) {
 	messageKey := makeKey(loc)
 	trackerEntry := assertTracker.getTrackerEntry(messageKey)
 
@@ -103,7 +103,7 @@ func assertImpl(cond bool, message string, values map[string]any, loc *locationI
 		Condition:  cond,
 		Id:         messageKey,
 		Location:   loc,
-		Details:    values,
+		Details:    details,
 	}
 
 	trackerEntry.emit(aI)

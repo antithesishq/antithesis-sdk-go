@@ -82,6 +82,10 @@ func (aScanner *AssertionScanner) ScanFile(file_path string) {
 	aScanner.filesCataloged++
 }
 
+func (aScanner *AssertionScanner) HasAssertionsDefined() bool {
+	return len(aScanner.expects) > 0
+}
+
 func (aScanner *AssertionScanner) WriteAssertionCatalog(edge_count int) {
 	using_symbols := ""
 	needs_coverage := false

@@ -11,3 +11,11 @@ go fmt -x github.com/antithesishq/antithesis-sdk-go/tools/antithesis-go-instrume
 go fmt -x github.com/antithesishq/antithesis-sdk-go/tools/antithesis-go-instrumentor/common
 go fmt -x github.com/antithesishq/antithesis-sdk-go/tools/antithesis-go-instrumentor/instrumentor
 go fmt -x github.com/antithesishq/antithesis-sdk-go/tools/antithesis-go-instrumentor/assertions
+
+go build assert/*.go
+go build lifecycle/*.go
+go build internal/*.go
+go build random/*.go
+go build instrumentation/*.go
+
+go install tools/antithesis-go-instrumentor/*.go

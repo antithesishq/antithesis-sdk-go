@@ -76,7 +76,7 @@ func main() {
 	//--------------------------------------------------------------------------------
 	// Wrap-up processing, summarize results in logger
 	//--------------------------------------------------------------------------------
-	cmd_files.WrapUp()
+	cmd_files.WrapUp(aScanner.HasAssertionsDefined())
 	edge_count := cI.WrapUp()
 	cI.SummarizeWork(len(source_files))
 
