@@ -1,0 +1,33 @@
+name: Zulip Notification Bot
+
+on:
+  push:
+
+permissions:
+  contents: read
+
+jobs:
+  post-to-zulip:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/github-script@v7
+        id: generate-msg
+        with:
+          script: |
+            let message = `- **${context.actor}** \`${context.ref}\` | ${context.sha.substring(0,7)} | [${context.payload.head_commit.message}](${context.payload.compare})`
+            let topic = context.repo.repo
+            core.setOutput("topic", topic);
+            core.setOutput("msg", message);
+
+      - name: Send a stream message
+        uses: zulip/github-actions-zulip/send-message@v1
+        with:
+          api-key: ${{ secrets.ZULIP_API_KEY }}
+          email: ${{ secrets.ZULIP_BOT_EMAIL }}
+          organization-url: ${{ secrets.ZULIP_ORG_URL }}
+          to: "Commits"
+          type: "stream"
+          topic: ${{ steps.generate-msg.outputs.topic }}
+          content: ${{ steps.generate-msg.outputs.msg }}
