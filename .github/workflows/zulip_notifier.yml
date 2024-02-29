@@ -16,7 +16,7 @@ jobs:
         id: generate-msg
         with:
           script: |
-            let message = `- **${context.actor}** \`${context.ref}\` | ${context.sha.substring(0,7)} | [${context.payload.head_commit.message}](${context.payload.compare})`
+            let message = `- **${context.actor}** \`${context.ref}\` | ${context.sha.substring(0,7)} | [${context.payload.head_commit.message?.split('\n')[0]}](${context.payload.compare})`
             let topic = context.repo.repo
             core.setOutput("topic", topic);
             core.setOutput("msg", message);
