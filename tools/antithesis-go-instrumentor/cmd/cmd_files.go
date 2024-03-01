@@ -13,22 +13,23 @@ import (
 
 // Capitalized struct items are accessed outside this file
 type CommandFiles struct {
+	// The set of exclusions that were obtained from
+	// reading the 'excludeFile'. A map is used where
+	// the value is always 'true', in lieu of a specific
+	// 'set' abstraction not available for the version
+	// of go used for this tool.
+	exclusions map[string]bool
 
-	// The base directry of a go module to be instrumented/cataloged
-	// Contains a go.mod file
-	inputDirectory string
+	// Global logger
+	logWriter *common.LogWriter
 
-	// The instrumentation (only) base oputput directory
-	// Is required to exist, and to be empty prior to instrumentation
-	//
-	// After instrumentation, will contain the subdirectories for
-	// 'symbols' and 'customer'
-	outputDirectory string
+	// The name of the symbol table file, which incorporates
+	// the overall 'filesHash' and 'symbtablePrefix'
+	symbolTableFilename string
 
-	// created and written to during instrumentation.
-	// Will contain a copy of the inputDirectory, where All
-	// non-excluded '.go' files are instrumented
-	customerDirectory string
+	// SHA256 Hash (48-bits worth) of all the files
+	// in sourceFiles
+	filesHash string
 
 	// created and written during instrumentation.
 	// Will contain the corresponding .tsv file expected
@@ -45,19 +46,20 @@ type CommandFiles struct {
 	// generated assertion catalog should be written to.
 	catalogPath string
 
-	// Indicates that instrumentation is requested (true)
-	// If set to (false) then perform assertion catalog scanning
-	// without instrumentation, which is common
-	// when execution is outside of the Antithesis environment
-	wantsInstrumentor bool
+	// The instrumentation (only) base oputput directory
+	// Is required to exist, and to be empty prior to instrumentation
+	//
+	// After instrumentation, will contain the subdirectories for
+	// 'symbols' and 'customer'
+	outputDirectory string
 
 	// A prefix used to distinguish symbol table filenames
 	// that will be used by the antithesis fuzzer.
 	symtablePrefix string
 
-	// The name of the symbol table file, which incorporates
-	// the overall 'filesHash' and 'symbtablePrefix'
-	symbolTableFilename string
+	// The base directry of a go module to be instrumented/cataloged
+	// Contains a go.mod file
+	inputDirectory string
 
 	// Option file containing a list (one per line) of
 	// any files or directories to be excluded from both
@@ -65,34 +67,35 @@ type CommandFiles struct {
 	// and lines beginining with '#' are ignored.
 	excludeFile string
 
-	// The set of exclusions that were obtained from
-	// reading the 'excludeFile'. A map is used where
-	// the value is always 'true', in lieu of a specific
-	// 'set' abstraction not available for the version
-	// of go used for this tool.
-	exclusions map[string]bool
+	// created and written to during instrumentation.
+	// Will contain a copy of the inputDirectory, where All
+	// non-excluded '.go' files are instrumented
+	customerDirectory string
+
+	// The version of SDK to use at runtime for CoverageInstrumentation
+	instrumentorVersion string
+
+	// created and written to during instrumentation.
+	// Will contain the antithesis notifier module (go.mod) and source (notifier.go)
+	notifierDirectory string
 
 	// All of the files (after exclusions) to be instrumented
 	// and scanned for assertions that should appear in the
 	// assertion catalog
 	sourceFiles []string
 
-	// SHA256 Hash (48-bits worth) of all the files
-	// in sourceFiles
-	filesHash string
-
 	// Number of files skipped when creating the sourceFiles
 	// list.
 	filesSkipped int
 
-	// The version of SDK to use at runtime for CoverageInstrumentation
-	instrumentorVersion string
-
-	// Global logger
-	logWriter *common.LogWriter
+	// Indicates that instrumentation is requested (true)
+	// If set to (false) then perform assertion catalog scanning
+	// without instrumentation, which is common
+	// when execution is outside of the Antithesis environment
+	wantsInstrumentor bool
 }
 
-func (cfx *CommandFiles) GetSourceFiles() (err error, sourceFiles []string) {
+func (cfx *CommandFiles) GetSourceFiles() (sourceFiles []string, err error) {
 	sourceFiles = []string{}
 	cfx.filesSkipped = 0
 	if err = cfx.ParseExclusionsFile(); err != nil {
@@ -100,24 +103,24 @@ func (cfx *CommandFiles) GetSourceFiles() (err error, sourceFiles []string) {
 	}
 
 	numSkipped := 0
-	if err, sourceFiles, numSkipped = cfx.FindSourceCode(); err != nil {
+	if sourceFiles, numSkipped, err = cfx.FindSourceCode(); err != nil {
 		return
 	}
 	cfx.filesSkipped = numSkipped
-
 	cfx.filesHash = common.HashFileContent(sourceFiles)
 	return
 }
 
 func (cfx *CommandFiles) NewCoverageInstrumentor() *instrumentor.CoverageInstrumentor {
-
 	var file_instrumentor *instrumentor.Instrumentor
 	var symTable *instrumentor.SymbolTable
+
+	notifierModuleName := common.FullNotifierName(cfx.filesHash)
 
 	if cfx.wantsInstrumentor {
 		cfx.logWriter.Printf("Writing instrumented source to %s", cfx.customerDirectory)
 		symTable = cfx.CreateSymbolTableWriter(cfx.filesHash)
-		file_instrumentor = instrumentor.CreateInstrumentor(cfx.inputDirectory, instrumentor.InstrumentationModuleName, symTable)
+		file_instrumentor = instrumentor.CreateInstrumentor(cfx.inputDirectory, notifierModuleName, symTable)
 	}
 
 	cI := instrumentor.CoverageInstrumentor{
@@ -128,6 +131,7 @@ func (cfx *CommandFiles) NewCoverageInstrumentor() *instrumentor.CoverageInstrum
 		PreviousEdge:      0,
 		FilesInstrumented: 0,
 		FilesSkipped:      cfx.filesSkipped,
+		NotifierPackage:   common.NotifierPackage(cfx.filesHash),
 	}
 	return &cI
 }
@@ -137,17 +141,13 @@ func (cfx *CommandFiles) WrapUp(hasAssertionsDefined bool) {
 		return
 	}
 
-	// In case no assertions are found, ensure that
-	// the instrumentation package can be imported.
-	// This is accomplished by adding a dependecncy
-	// to the go.mod file in the customer directory
-	if !hasAssertionsDefined {
-		common.AddDependencies(cfx.inputDirectory, cfx.customerDirectory, cfx.instrumentorVersion)
-		cfx.logWriter.Printf("Antithesis dependencies added to %s/go.mod", cfx.customerDirectory)
+	notifierModule := common.FullNotifierName(cfx.filesHash)
 
-		common.FetchDependencies(cfx.customerDirectory)
-		cfx.logWriter.Printf("Downloaded Antithesis dependencies")
-	}
+	common.AddDependencies(cfx.inputDirectory, cfx.customerDirectory, cfx.instrumentorVersion, notifierModule)
+	cfx.logWriter.Printf("Antithesis dependencies added to %s/go.mod", cfx.customerDirectory)
+
+	common.FetchDependencies(cfx.customerDirectory)
+	cfx.logWriter.Printf("Downloaded Antithesis dependencies")
 
 	common.CopyRecursiveNoClobber(cfx.inputDirectory, cfx.customerDirectory)
 	cfx.logWriter.Printf("All other files copied unmodified from %s to %s", cfx.inputDirectory, cfx.customerDirectory)
@@ -168,7 +168,14 @@ func (cfx *CommandFiles) WriteInstrumentedOutput(fileName string, instrumentedSo
 	if err := common.WriteTextFile(instrumentedSource, outputPath); err == nil {
 		cI.FilesInstrumented++
 	}
-	return
+}
+
+func (cfx *CommandFiles) CreateNotifierModule() {
+	notifierModuleName := common.NOTIFIER_MODULE_NAME
+
+	if cfx.wantsInstrumentor {
+		common.NotifierDependencies(cfx.notifierDirectory, notifierModuleName, cfx.instrumentorVersion)
+	}
 }
 
 func (cfx *CommandFiles) ParseExclusionsFile() (err error) {
@@ -178,7 +185,7 @@ func (cfx *CommandFiles) ParseExclusionsFile() (err error) {
 	cfx.exclusions = map[string]bool{}
 	var parsedExclusions map[string]bool
 
-	err, parsedExclusions = ParseExclusionsFile(cfx.excludeFile, cfx.inputDirectory)
+	parsedExclusions, err = ParseExclusionsFile(cfx.excludeFile, cfx.inputDirectory)
 	if err == nil {
 		cfx.exclusions = parsedExclusions
 	}
@@ -187,7 +194,7 @@ func (cfx *CommandFiles) ParseExclusionsFile() (err error) {
 
 // FindSourceCode scans an input directory recursively for .go files,
 // skipping any files or directories specified in exclusions.
-func (cfx *CommandFiles) FindSourceCode() (err error, paths []string, numSkipped int) {
+func (cfx *CommandFiles) FindSourceCode() (paths []string, numSkipped int, err error) {
 	paths = []string{}
 	numSkipped = 0
 	cfx.logWriter.Printf("Scanning %s recursively for .go source", cfx.inputDirectory)
@@ -245,9 +252,8 @@ func (cfx *CommandFiles) FindSourceCode() (err error, paths []string, numSkipped
 
 			return nil
 		})
-
 	if err != nil {
-		err = fmt.Errorf("Error walking input directory %s: %v", cfx.inputDirectory, err)
+		err = fmt.Errorf("error walking input directory %s: %v", cfx.inputDirectory, err)
 	}
 	return
 }
@@ -264,13 +270,17 @@ func (cfx *CommandFiles) CreateSymbolTableWriter(filesHash string) (symWriter *i
 	var err error
 	cfx.symbolTableFilename = ""
 	if cfx.wantsInstrumentor {
-		symbolTableFileBasename := fmt.Sprintf("%sgo-%s", cfx.symtablePrefix, filesHash)
-		cfx.symbolTableFilename = symbolTableFileBasename + ".sym.tsv"
+		symbolTableFileBasename := fmt.Sprintf("%s%s-%s", cfx.symtablePrefix, common.SYMBOLS_FILE_HASH_PREFIX, filesHash)
+		cfx.symbolTableFilename = symbolTableFileBasename + common.SYMBOLS_FILE_SUFFIX
 		symbolsPath := filepath.Join(cfx.symbolsDirectory, cfx.symbolTableFilename)
-		err, symWriter = instrumentor.CreateSymbolTableFile(symbolsPath, symbolTableFileBasename)
+		symWriter, err = instrumentor.CreateSymbolTableFile(symbolsPath, symbolTableFileBasename)
 		if err != nil {
 			cfx.logWriter.Fatalf("Could not write symbol table header: %s", err.Error())
 		}
 	}
 	return
+}
+
+func (cfx *CommandFiles) GetNotifierDirectory() string {
+	return cfx.notifierDirectory
 }

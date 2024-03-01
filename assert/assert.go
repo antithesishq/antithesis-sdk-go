@@ -8,7 +8,7 @@
 //
 // Each function in this package takes a parameter called message. This value of this parameter will become part of the name of the test property defined by the function, and will be viewable in your [triage report], so it should be human interpretable. Assertions in different parts of your code with the same message value will be grouped into the same test property, but if one of them fails you will be able to see which file and line number are associated with each failure.
 //
-// Each function also takes a parameter called values. This parameter allows you to optionally provide a key-value map of context information that will be viewable in the [details] tab for any example or counterexample of the associated property.
+// Each function also takes a parameter called details. This parameter allows you to optionally provide a key-value map of context information that will be viewable in the [details] tab for any example or counterexample of the associated property.
 //
 // [Antithesis Go SDK]: https://antithesis.com/docs/using_antithesis/sdk/go_sdk.html
 // [Antithesis platform]: https://antithesis.com

@@ -16,11 +16,6 @@ import (
 	"golang.org/x/tools/go/ast/astutil"
 )
 
-// InstrumentationModuleName is our module wrapping
-// the necessary C functions in libvoidstar.so. Generated code will
-// be in the same package.
-const InstrumentationModuleName = "github.com/antithesishq/antithesis-sdk-go/instrumentation"
-
 // InstrumentationPackageAlias will be used to prevent any collisions
 // between possible other packages named "instrumentation". Underscore
 // characters are considered bad style, which is why I'm using them:
@@ -38,13 +33,38 @@ var compilationRelevantCommentRegex, _ = regexp.Compile(`(?sm)^\s*(go:|\+build)`
 // Capitalized struct items are accessed outside this file
 type CoverageInstrumentor struct {
 	GoInstrumentor    *Instrumentor
+	SymTable          *SymbolTable
+	logWriter         *common.LogWriter
 	UsingSymbols      string
 	FullCatalogPath   string
+	NotifierPackage   string
 	PreviousEdge      int
 	FilesInstrumented int
-	SymTable          *SymbolTable
 	FilesSkipped      int
-	logWriter         *common.LogWriter
+}
+
+type NotifierInfo struct {
+	logWriter                  *common.LogWriter
+	InstrumentationPackageName string
+	SymbolTableName            string
+	NotifierPackage            string
+	EdgeCount                  int
+}
+
+func (cI *CoverageInstrumentor) WriteNotifierSource(notifierDir string, edge_count int) {
+	if cI.GoInstrumentor == nil {
+		return
+	}
+
+	notifierInfo := NotifierInfo{
+		InstrumentationPackageName: common.InstrumentationPackageName(),
+		SymbolTableName:            cI.UsingSymbols,
+		EdgeCount:                  edge_count,
+		NotifierPackage:            cI.NotifierPackage,
+		logWriter:                  common.GetLogWriter(),
+	}
+
+	GenerateNotifierSource(notifierDir, &notifierInfo)
 }
 
 func (cI *CoverageInstrumentor) InstrumentFile(file_name string) string {
@@ -59,7 +79,6 @@ func (cI *CoverageInstrumentor) InstrumentFile(file_name string) string {
 	cI.logWriter.Printf("Instrumenting %s", file_name)
 	cI.PreviousEdge = cI.GoInstrumentor.CurrentEdge
 	instrumented, err = cI.GoInstrumentor.Instrument(file_name)
-
 	if err != nil {
 		cI.logWriter.Printf("Error: File %s produced error %s; simply copying source", file_name, err)
 		return ""
@@ -79,7 +98,7 @@ func (cI *CoverageInstrumentor) WrapUp() (edge_count int) {
 		if err = cI.SymTable.Close(); err != nil {
 			cI.logWriter.Printf("Error Could not close symbol table %s: %s", cI.SymTable.Path, err)
 		}
-		cI.logWriter.Printf("Wrote symbol table to %s", cI.SymTable.Path)
+		cI.logWriter.Printf("Symbol table: %s", cI.SymTable.Path)
 		edge_count = cI.GoInstrumentor.CurrentEdge
 	}
 	return
@@ -232,6 +251,13 @@ func commentContainsDirective(group *ast.CommentGroup) bool {
 	return compilationRelevantCommentRegex.MatchString(group.Text())
 }
 
+func runeInclusive(r, from, to rune) bool {
+	if r < from || r > to {
+		return false
+	}
+	return true
+}
+
 // From go/ast/ast.go
 func isDirective(c string) bool {
 	// TODO: Not sure if line directives may affect instrumentation so excluding
@@ -259,7 +285,9 @@ func isDirective(c string) bool {
 			continue
 		}
 		b := c[i]
-		if !('a' <= b && b <= 'z' || '0' <= b && b <= '9') {
+
+		isValidRune := runeInclusive(rune(b), 'a', 'z') || runeInclusive(rune(b), '0', '9')
+		if !isValidRune {
 			return false
 		}
 	}
@@ -417,32 +445,23 @@ func hasFuncLiteral(n ast.Node) (bool, token.Pos) {
 
 // Instrumentor *is* the Antithesis Go source-code instrumentor.
 type Instrumentor struct {
-	// Output directory path.
+	nodeLines   map[string]int
+	posLines    map[token.Pos]bool
+	logWriter   *common.LogWriter
+	fset        *token.FileSet
+	SymbolTable *SymbolTable
+	typeCounts  map[string]int
+	fullName    string
+	pkg         string
+	shortName   string
 	basePath    string
 	ShimPkg     string
-	SymbolTable *SymbolTable
+	funcStack   Stack
+	currPos     []string
+	comments    []*ast.CommentGroup
+	nodeStack   Stack
 	CurrentEdge int
-	fset        *token.FileSet
-	pkg         string
-	// Fully-qualified file name
-	fullName string
-	// The fully-qualified file name minus the input path
-	shortName string
-	nodeStack Stack // stack.Stack
-	funcStack Stack // stack.Stack
-	// For this file, how many of each node type have we seen so far?
-	typeCounts map[string]int
-	// The current depth-first position in the file, using the ${nodetype}@${count} string as a unique identifier
-	currPos []string
-	// Mapping fully-qualified node names (based on currPos) to their line numbers
-	nodeLines map[string]int
-	// Whether we've written a line directive for a given position.
-	posLines map[token.Pos]bool
-	comments []*ast.CommentGroup
-	// Should we add line directives in this Walk() pass?
-	// This should be false for Instrumenting and true for adding line directives.
-	addLines  bool
-	logWriter *common.LogWriter
+	addLines    bool
 }
 
 // CreateInstrumentor is the factory method.
@@ -637,7 +656,7 @@ func (instrumentor *Instrumentor) collectLine(node ast.Node) {
 	// The first Ident will pretty much always be the package name. Don't add a //line directive
 	// since we'll likely get that in the wrong place, due to the "Package" object being
 	// disconnected in the AST from the package name.
-	if "*ast.File@0|*ast.Ident@0" == path {
+	if path == "*ast.File@0|*ast.Ident@0" {
 		if instrumentor.logWriter.VerboseLevel(2) {
 			instrumentor.logWriter.Printf("Skipping package name path %s for node (%T:%v)", path, node, node)
 		}
@@ -1106,7 +1125,7 @@ func (instrumentor *Instrumentor) newEdge(start, end token.Pos) ast.Stmt {
 	e := instrumentor.fset.Position(end)
 	maybe_decl, _ := instrumentor.funcStack.Peek()
 	decl, isDecl := maybe_decl.(*ast.FuncDecl)
-	var fname string = ""
+	fname := ""
 	if isDecl {
 		fname = decl.Name.Name
 	}
@@ -1195,7 +1214,7 @@ func (instrumentor *Instrumentor) formatInstrumentedAst(inputPath string, astFil
 
 	source := writer.String()
 	if _, parseError := parser.ParseFile(&token.FileSet{}, inputPath, source, parser.ParseComments); parseError != nil {
-		instrumentor.logWriter.Printf("Error: Instrumented source for %s could not reparsed; simply copying original: %s", inputPath, parseError)
+		instrumentor.logWriter.Printf("Error: Instrumented source for %s could not be parsed; simply copying original: %s", inputPath, parseError)
 		return "", parseError
 	}
 

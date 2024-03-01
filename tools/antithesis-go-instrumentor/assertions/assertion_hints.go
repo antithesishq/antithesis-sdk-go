@@ -2,9 +2,9 @@ package assertions
 
 type AssertionFuncInfo struct {
 	TargetFunc string
+	AssertType string
 	MustHit    bool
 	Expecting  bool
-	AssertType string
 	Condition  bool
 	MessageArg int
 }
