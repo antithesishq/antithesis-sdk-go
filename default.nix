@@ -57,7 +57,7 @@ let
 
   go_sdk = pkgs.buildGoModule {
     pname = "antithesis-go-sdk";
-    version = "v0.2.9";
+    version = "v0.2.10";
 
     src = ./.;
 
