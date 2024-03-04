@@ -77,13 +77,16 @@ func main() {
 	// Wrap-up processing and generate assertions catalog and notifier module
 	//--------------------------------------------------------------------------------
 	edge_count := cI.WrapUp()
-	notifierDir := cmd_files.GetNotifierDirectory()
+	if edge_count > 0 {
+		notifierDir := cmd_files.GetNotifierDirectory()
+		cI.WriteNotifierSource(notifierDir, edge_count)
+		cmd_files.CreateNotifierModule()
+	}
 
-	aScanner.WriteAssertionCatalog()
-	cI.WriteNotifierSource(notifierDir, edge_count)
-
-	cmd_files.CreateNotifierModule()
-	cmd_files.WrapUp(aScanner.HasAssertionsDefined())
+	if aScanner.HasAssertionsDefined() {
+		aScanner.WriteAssertionCatalog()
+	}
+	cmd_files.WrapUp()
 
 	//--------------------------------------------------------------------------------
 	// Summarize results in logger
