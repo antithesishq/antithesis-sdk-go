@@ -15,15 +15,16 @@ import (
 
 // Capitalized struct items are accessed outside this file
 type CommandArgs struct {
-	ShowVersion       bool
-	InvalidArgs       bool
-	logWriter         *common.LogWriter
-	excludeFile       string
-	symPrefix         string
-	wantsInstrumentor bool
-	catalogDir        string
-	inputDir          string
-	outputDir         string
+	logWriter           *common.LogWriter
+	excludeFile         string
+	symPrefix           string
+	catalogDir          string
+	inputDir            string
+	outputDir           string
+	instrumentorVersion string
+	ShowVersion         bool
+	InvalidArgs         bool
+	wantsInstrumentor   bool
 }
 
 func ParseArgs(versionText string) *CommandArgs {
@@ -34,6 +35,7 @@ func ParseArgs(versionText string) *CommandArgs {
 	verbosePtr := flag.Int("V", 0, "verbosity level (default to 0)")
 	assertOnlyPtr := flag.Bool("assert_only", false, "generate assertion catalog ONLY - no coverage instrumentation (default to false)")
 	catalogDirPtr := flag.String("catalog_dir", "", "file path where assertion catalog will be generated")
+	instrVersionPtr := flag.String("instrumentor_version", "latest", "version of the SDK instrumentation package to require")
 	flag.Parse()
 
 	cmdArgs := CommandArgs{
@@ -50,6 +52,7 @@ func ParseArgs(versionText string) *CommandArgs {
 	cmdArgs.symPrefix = strings.TrimSpace(*prefixPtr)
 	cmdArgs.catalogDir = strings.TrimSpace(*catalogDirPtr)
 	cmdArgs.excludeFile = strings.TrimSpace(*exclusionsPtr)
+	cmdArgs.instrumentorVersion = strings.TrimSpace(*instrVersionPtr)
 
 	// Verify we have the expected number of positional arguments
 	numArgsRequired := 1
@@ -58,7 +61,7 @@ func ParseArgs(versionText string) *CommandArgs {
 	}
 
 	if flag.NArg() < numArgsRequired {
-		fmt.Fprintf(os.Stderr, strings.TrimSpace(versionText))
+		fmt.Fprintf(os.Stderr, "%s", strings.TrimSpace(versionText))
 		fmt.Fprintf(os.Stderr, "\n\n")
 		fmt.Fprintf(os.Stderr, "For assertions support:\n")
 		fmt.Fprintf(os.Stderr, "  $ antithesis-go-instrumentor -assert_only [options] go_project_dir\n")
@@ -105,7 +108,7 @@ func ParseArgs(versionText string) *CommandArgs {
 	return &cmdArgs
 }
 
-func (ca *CommandArgs) NewCommandFiles() (err error, cfx *CommandFiles) {
+func (ca *CommandArgs) NewCommandFiles() (cfx *CommandFiles, err error) {
 	outputDirectory := ""
 	customerInputDirectory := common.GetAbsoluteDirectory(ca.inputDir)
 	if ca.wantsInstrumentor {
@@ -120,19 +123,20 @@ func (ca *CommandArgs) NewCommandFiles() (err error, cfx *CommandFiles) {
 
 	moduleName := ""
 	if err == nil {
-		err, moduleName = GetModuleName(customerInputDirectory)
-		if err != nil {
-			err = fmt.Errorf("Unable to obtain go module name from %q", customerInputDirectory)
+		if moduleName, err = GetModuleName(customerInputDirectory); err != nil {
+			err = fmt.Errorf("unable to obtain go module name from %q", customerInputDirectory)
 		}
 	}
 
 	customerDirectory := ""
+	notifierDirectory := ""
 	symbolsDirectory := ""
 	if ca.wantsInstrumentor {
-		customerDirectory = filepath.Join(outputDirectory, "customer")
-		symbolsDirectory = filepath.Join(outputDirectory, "symbols")
+		customerDirectory = filepath.Join(outputDirectory, common.INSTRUMENTED_SOURCE_FOLDER)
+		notifierDirectory = filepath.Join(outputDirectory, common.NOTIFIER_FOLDER)
+		symbolsDirectory = filepath.Join(outputDirectory, common.SYMBOLS_FOLDER)
 		if err == nil {
-			err = CreateOutputDirectories(customerDirectory, symbolsDirectory)
+			err = CreateOutputDirectories(customerDirectory, notifierDirectory, symbolsDirectory)
 		}
 	}
 
@@ -160,20 +164,22 @@ func (ca *CommandArgs) NewCommandFiles() (err error, cfx *CommandFiles) {
 	catalogPath := filepath.Join(catalogDir, flattenedModuleName)
 
 	cfx = &CommandFiles{
-		outputDirectory:   outputDirectory,
-		inputDirectory:    customerInputDirectory,
-		customerDirectory: customerDirectory,
-		symbolsDirectory:  symbolsDirectory,
-		catalogPath:       catalogPath,
-		excludeFile:       ca.excludeFile,
-		wantsInstrumentor: ca.wantsInstrumentor,
-		symtablePrefix:    symtablePrefix,
-		logWriter:         common.GetLogWriter(),
+		outputDirectory:     outputDirectory,
+		inputDirectory:      customerInputDirectory,
+		customerDirectory:   customerDirectory,
+		notifierDirectory:   notifierDirectory,
+		symbolsDirectory:    symbolsDirectory,
+		catalogPath:         catalogPath,
+		excludeFile:         ca.excludeFile,
+		wantsInstrumentor:   ca.wantsInstrumentor,
+		symtablePrefix:      symtablePrefix,
+		instrumentorVersion: ca.instrumentorVersion,
+		logWriter:           common.GetLogWriter(),
 	}
 	return
 }
 
-func GetModuleName(inputDir string) (err error, moduleName string) {
+func GetModuleName(inputDir string) (moduleName string, err error) {
 	var moduleData []byte
 	moduleName = ""
 	var f *modfile.File = nil
@@ -183,13 +189,16 @@ func GetModuleName(inputDir string) (err error, moduleName string) {
 	}
 
 	if f, err = modfile.ParseLax("go.mod", moduleData, nil); err == nil {
-		moduleName = filepath.Base(f.Module.Mod.Path)
+		moduleName = f.Module.Mod.Path
 	}
 	return
 }
 
-func CreateOutputDirectories(customerDirectory, symbolsDirectory string) (err error) {
+func CreateOutputDirectories(customerDirectory, notifierDirectory, symbolsDirectory string) (err error) {
 	if err = os.Mkdir(customerDirectory, 0755); err != nil {
+		return
+	}
+	if err = os.Mkdir(notifierDirectory, 0755); err != nil {
 		return
 	}
 	err = os.Mkdir(symbolsDirectory, 0755)

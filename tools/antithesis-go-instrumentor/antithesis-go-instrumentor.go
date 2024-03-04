@@ -40,13 +40,13 @@ func main() {
 	// Prepare instrumentation output directories
 	//--------------------------------------------------------------------------------
 	var cmd_files *cmd.CommandFiles
-	if err, cmd_files = cmd_args.NewCommandFiles(); err != nil {
+	if cmd_files, err = cmd_args.NewCommandFiles(); err != nil {
 		logWriter.Printf(err.Error())
 		os.Exit(1)
 	}
 
 	var source_files []string
-	if err, source_files = cmd_files.GetSourceFiles(); err != nil {
+	if source_files, err = cmd_files.GetSourceFiles(); err != nil {
 		logWriter.Printf(err.Error())
 		os.Exit(1)
 	}
@@ -74,12 +74,20 @@ func main() {
 	}
 
 	//--------------------------------------------------------------------------------
-	// Wrap-up processing, summarize results in logger
+	// Wrap-up processing and generate assertions catalog and notifier module
 	//--------------------------------------------------------------------------------
-	cmd_files.WrapUp()
 	edge_count := cI.WrapUp()
-	cI.SummarizeWork(len(source_files))
+	notifierDir := cmd_files.GetNotifierDirectory()
 
-	aScanner.WriteAssertionCatalog(edge_count)
+	aScanner.WriteAssertionCatalog()
+	cI.WriteNotifierSource(notifierDir, edge_count)
+
+	cmd_files.CreateNotifierModule()
+	cmd_files.WrapUp(aScanner.HasAssertionsDefined())
+
+	//--------------------------------------------------------------------------------
+	// Summarize results in logger
+	//--------------------------------------------------------------------------------
+	cI.SummarizeWork(len(source_files))
 	aScanner.SummarizeWork()
 }

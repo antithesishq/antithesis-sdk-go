@@ -17,8 +17,8 @@ import (
 // ------------------------------------------------------------
 
 type LogWriter struct {
-	verbosity int
 	logger    *log.Logger
+	verbosity int
 }
 
 // var logger *log.Logger
@@ -50,7 +50,7 @@ func NewLogWriter(logfileName string, vLevel int) *LogWriter {
 		logger.Printf("WARNING Unable to Create/Open requested logfile: %q", logfilePath)
 	}
 
-	logWriter = &LogWriter{verbosity, logger}
+	logWriter = &LogWriter{logger, verbosity}
 	return logWriter
 }
 

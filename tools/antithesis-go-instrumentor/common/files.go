@@ -5,16 +5,17 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
 )
 
-const HashBitsUsed = 48
-const HashBytesUsed = HashBitsUsed / 8
-const EncodedHashByteLength = HashBytesUsed * 2
+const (
+	HashBitsUsed          = 48
+	HashBytesUsed         = HashBitsUsed / 8
+	EncodedHashByteLength = HashBytesUsed * 2
+)
 
 // HashFileContent reads the binary content of
 // every file in paths (assumed to be in lexical order)
@@ -22,7 +23,7 @@ const EncodedHashByteLength = HashBytesUsed * 2
 func HashFileContent(paths []string) string {
 	hasher := sha256.New()
 	for _, path := range paths {
-		bytes, err := ioutil.ReadFile(path)
+		bytes, err := os.ReadFile(path)
 		if err != nil {
 			logWriter.Fatalf("Error reading file %s: %v", path, err)
 		}
@@ -56,7 +57,75 @@ func CopyRecursiveNoClobber(from, to string) {
 		logWriter.Printf("cp: %s", line)
 	}
 	if err != nil {
-		logWriter.Printf("Ignoring cp exit code: %+v", err)
+		logWriter.Printf("cp completed with %+v", err)
+	}
+}
+
+func AddDependencies(customerInputDirectory, customerOutputDirectory, instrumentorVersion, notifierModule string) {
+	destGoModFile := fmt.Sprintf("%s/go.mod", customerOutputDirectory)
+	sdkModule := fmt.Sprintf("%s@%s", ANTITHESIS_SDK_MODULE, instrumentorVersion)
+	localNotifier := fmt.Sprintf("../%s", NOTIFIER_FOLDER)
+
+	cmd1 := fmt.Sprintf("cd %s", customerInputDirectory)
+	cmd2 := fmt.Sprintf("go mod edit -require=%s -require=%s@v0.0.0 -replace=%s=%s -print > %s",
+		sdkModule, notifierModule, notifierModule, localNotifier, destGoModFile)
+	commandLine := fmt.Sprintf("(%s; %s)", cmd1, cmd2)
+
+	cmd := exec.Command("bash", "-c", commandLine)
+	logWriter.Printf("Executing %s", commandLine)
+	allOutput, err := cmd.CombinedOutput()
+	allText := strings.TrimSpace(string(allOutput))
+	if len(allText) > 0 {
+		lines := strings.Split(allText, "\n")
+		for _, line := range lines {
+			logWriter.Printf("go mod edit: %s", line)
+		}
+	}
+	if err != nil {
+		// Errors here are pretty mysterious.
+		logWriter.Fatalf("%v", err)
+	}
+}
+
+func FetchDependencies(customerOutputDirectory string) {
+	commandLine := fmt.Sprintf("(cd %s; go mod tidy)", customerOutputDirectory)
+
+	cmd := exec.Command("bash", "-c", commandLine)
+	logWriter.Printf("Executing %s", commandLine)
+	allOutput, err := cmd.CombinedOutput()
+	allText := strings.TrimSpace(string(allOutput))
+	if len(allText) > 0 {
+		lines := strings.Split(allText, "\n")
+		for _, line := range lines {
+			logWriter.Printf("go mod tidy: %s", line)
+		}
+	}
+	if err != nil {
+		// Errors here are pretty mysterious.
+		logWriter.Fatalf("%v", err)
+	}
+}
+
+func NotifierDependencies(notifierOutputDirectory, notifierModuleName, instrumentorVersion string) {
+	commandLine := fmt.Sprintf("(cd %s; go mod init %s; go get %s@%s; go mod tidy)",
+		notifierOutputDirectory,
+		notifierModuleName,
+		ANTITHESIS_SDK_MODULE,
+		instrumentorVersion)
+
+	cmd := exec.Command("bash", "-c", commandLine)
+	logWriter.Printf("Executing %s", commandLine)
+	allOutput, err := cmd.CombinedOutput()
+	allText := strings.TrimSpace(string(allOutput))
+	if len(allText) > 0 {
+		lines := strings.Split(allText, "\n")
+		for _, line := range lines {
+			logWriter.Printf("go mod (notifier): %s", line)
+		}
+	}
+	if err != nil {
+		// Errors here are pretty mysterious.
+		logWriter.Fatalf("%v", err)
 	}
 }
 
@@ -112,26 +181,11 @@ func ValidateDirectories(input, output string) (err error) {
 	input = canonicalizeDirectory(input) + "/"
 	output = canonicalizeDirectory(output) + "/"
 	if strings.HasPrefix(output, input) {
-		err = fmt.Errorf("The input directory %s is a prefix of the output directory %s", input, output)
+		err = fmt.Errorf("input directory %s is a prefix of the output directory %s", input, output)
 		return
 	}
 	if strings.HasPrefix(input, output) {
-		err = fmt.Errorf("The output directory %s is a prefix of the input directory %s", output, input)
+		err = fmt.Errorf("output directory %s is a prefix of the input directory %s", output, input)
 	}
 	return
-}
-
-func createOutputDirectories(outputDirectory string) (string, string) {
-	confirmEmptyOutputDirectory(outputDirectory)
-	customer := filepath.Join(outputDirectory, "customer")
-	symbols := filepath.Join(outputDirectory, "symbols")
-
-	if e := os.Mkdir(customer, 0755); e != nil {
-		logWriter.Fatal(e)
-	}
-	if e := os.Mkdir(symbols, 0755); e != nil {
-		logWriter.Fatal(e)
-	}
-
-	return customer, symbols
 }

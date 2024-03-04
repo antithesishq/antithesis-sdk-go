@@ -2,6 +2,7 @@ package instrumentation
 
 import (
 	"fmt"
+	"github.com/antithesishq/antithesis-sdk-go/assert"
 	"github.com/antithesishq/antithesis-sdk-go/internal"
 	"os"
 )
@@ -18,11 +19,16 @@ func InitializeModule(symbolTable string, edgeCount int) uint64 {
 		// We cannot support incorrect workflows.
 		panic("InitializeModule() has already been called!")
 	}
-	// WARN Re: integer type conversion, see https://github.com/golang/go/issues/29878
-	executable, _ := os.Executable()
-	msg := fmt.Sprintf("%s called %s.InitializeModule(%s, %d)", executable, instrumentor_tag, symbolTable, edgeCount)
-	internal.Json_data(msg)
 
+	executable, _ := os.Executable()
+	details := map[string]any{
+		"executable":  executable,
+		"symbolTable": symbolTable,
+		"edgeCount":   edgeCount,
+	}
+	assert.Reachable("init_coverage_module() invoked", details)
+
+	// WARN Re: integer type conversion, see https://github.com/golang/go/issues/29878
 	offset := internal.InitCoverage(uint64(edgeCount), symbolTable)
 	moduleOffset = uint64(offset)
 	moduleInitialized = true

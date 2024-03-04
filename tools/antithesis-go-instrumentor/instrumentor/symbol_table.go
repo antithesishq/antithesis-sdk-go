@@ -27,10 +27,9 @@ type SymbolTablePosition struct {
 }
 
 // CreateSymbolTableFile opens an Antithesis-standard .symbols.tsv file on disk.
-func CreateSymbolTableFile(symbolTablePath, instrumentedModule string) (err error, symbolTable *SymbolTable) {
-
+func CreateSymbolTableFile(symbolTablePath, instrumentedModule string) (symbolTable *SymbolTable, err error) {
 	var w *fileSymbolTableWriter
-	if err, w = createFileSymbolTableWriter(symbolTablePath); err != nil {
+	if w, err = createFileSymbolTableWriter(symbolTablePath); err != nil {
 		return
 	}
 
@@ -105,7 +104,7 @@ type inMemorySymbolTableWriter struct {
 // --------------------------------------------------------------------------------
 // fileSymbolTableWriter
 // --------------------------------------------------------------------------------
-func createFileSymbolTableWriter(name string) (err error, symWriter *fileSymbolTableWriter) {
+func createFileSymbolTableWriter(name string) (symWriter *fileSymbolTableWriter, err error) {
 	var f *os.File
 	if f, err = os.Create(name); err != nil {
 		return

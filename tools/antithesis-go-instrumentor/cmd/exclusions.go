@@ -12,8 +12,7 @@ import (
 // ParseExclusionsFile reads the exclusions file, skipping lines beginning with
 // #. Golang does not have a set class, so, rather than waste space copy-pastaing
 // code from the interwebs, we'll just return a map.
-func ParseExclusionsFile(path string, inputDirectory string) (err error, exclusions map[string]bool) {
-
+func ParseExclusionsFile(path string, inputDirectory string) (exclusions map[string]bool, err error) {
 	exclusions = map[string]bool{}
 	logWriter := common.GetLogWriter()
 	var exclusionsFile *os.File

@@ -12,6 +12,7 @@ import (
 )
 
 type AntExpect struct {
+	*AssertionFuncInfo
 	Assertion string
 	Message   string
 	Classname string
@@ -19,34 +20,32 @@ type AntExpect struct {
 	Receiver  string
 	Filename  string
 	Line      int
-	*AssertionFuncInfo
 }
 
 // Capitalized struct items are accessed outside this file
 type AssertionScanner struct {
-	moduleName       string
-	fset             *token.FileSet
-	imports          []string
-	expects          []*AntExpect
-	verbose          bool
-	funcName         string
-	receiver         string
-	packageName      string
-	assertionHintMap AssertionHints
-	symbolTableName  string
-	filesCataloged   int
-	logWriter        *common.LogWriter
+	assertionHintMap   AssertionHints
+	fset               *token.FileSet
+	logWriter          *common.LogWriter
+	symbolTableName    string
+	funcName           string
+	receiver           string
+	packageName        string
+	moduleName         string
+	notifierPackage    string
+	notifierModuleName string
+	expects            []*AntExpect
+	imports            []string
+	filesCataloged     int
+	verbose            bool
 }
 
-const NAME_NOT_AVAILABLE = "anonymous"
-const ANTITHESIS_SDK_PACKAGE = "github.com/antithesishq/antithesis-sdk-go/assert"
-const INSTRUMENTATION_PACKAGE_NAME = "github.com/antithesishq/antithesis-sdk-go/instrumentation"
-
-func NewAssertionScanner(verbose bool, moduleName string, symbolTableName string) *AssertionScanner {
+func NewAssertionScanner(verbose bool, moduleName string, symbolTableName string /*, notifierPackage string*/) *AssertionScanner {
 	logWriter := common.GetLogWriter()
 	if logWriter.VerboseLevel(2) {
 		logWriter.Printf(">> Module: %s\n", moduleName)
 	}
+
 	aScanner := AssertionScanner{
 		moduleName:       moduleName,
 		fset:             token.NewFileSet(),
@@ -82,28 +81,22 @@ func (aScanner *AssertionScanner) ScanFile(file_path string) {
 	aScanner.filesCataloged++
 }
 
-func (aScanner *AssertionScanner) WriteAssertionCatalog(edge_count int) {
-	using_symbols := ""
-	needs_coverage := false
-	if len(aScanner.symbolTableName) > 0 {
-		using_symbols = aScanner.symbolTableName
-		needs_coverage = true
-	}
+func (aScanner *AssertionScanner) HasAssertionsDefined() bool {
+	return len(aScanner.expects) > 0
+}
+
+func (aScanner *AssertionScanner) WriteAssertionCatalog() {
 	genInfo := GenInfo{
-		ExpectedVals:               aScanner.expects,
-		ExpectPackageName:          ANTITHESIS_SDK_PACKAGE,
-		InstrumentationPackageName: INSTRUMENTATION_PACKAGE_NAME,
-		SymbolTableName:            using_symbols,
-		EdgeCount:                  edge_count,
-		HasAssertions:              (len(aScanner.expects) > 0),
-		ConstMap:                   aScanner.getConstMap(),
-		NeedsCoverage:              needs_coverage,
-		logWriter:                  common.GetLogWriter(),
+		ExpectedVals:      aScanner.expects,
+		AssertPackageName: common.AssertPackageName(),
+		HasAssertions:     (len(aScanner.expects) > 0),
+		ConstMap:          aScanner.getConstMap(),
+		logWriter:         common.GetLogWriter(),
 	}
 
 	// destination name is expected to be a file_path
 	// destination name will have '_antithesis_catalog.go' appended to it
-	GenerateExpects(aScanner.moduleName, &genInfo)
+	GenerateAssertionsCatalog(aScanner.moduleName, &genInfo)
 }
 
 func (aScanner *AssertionScanner) SummarizeWork() {
@@ -129,13 +122,15 @@ func (aScanner *AssertionScanner) node_inspector(x ast.Node) bool {
 	var ok bool
 	var path_name string
 
+	assertPackageName := common.AssertPackageName()
+
 	if import_spec, ok = x.(*ast.ImportSpec); ok {
 		path_name, _ = strconv.Unquote(import_spec.Path.Value)
 		alias := ""
 		if import_spec.Name != nil {
 			alias = import_spec.Name.Name
 		}
-		if path_name == ANTITHESIS_SDK_PACKAGE {
+		if path_name == assertPackageName {
 			call_qualifier := path.Base(path_name)
 			if alias != "" {
 				call_qualifier = alias
@@ -148,7 +143,7 @@ func (aScanner *AssertionScanner) node_inspector(x ast.Node) bool {
 
 	// Track current funcName and receiver (type)
 	if func_decl, ok = x.(*ast.FuncDecl); ok {
-		aScanner.funcName = NAME_NOT_AVAILABLE
+		aScanner.funcName = common.NAME_NOT_AVAILABLE
 		if func_ident := func_decl.Name; func_ident != nil {
 			aScanner.funcName = func_ident.Name
 		}
@@ -211,7 +206,7 @@ func (aScanner *AssertionScanner) node_inspector(x ast.Node) bool {
 
 func arg_at_index(args []ast.Expr, idx int) string {
 	if args == nil || idx < 0 || len(args) <= idx {
-		return NAME_NOT_AVAILABLE
+		return common.NAME_NOT_AVAILABLE
 	}
 	arg := args[idx]
 
@@ -248,11 +243,11 @@ func arg_at_index(args []ast.Expr, idx int) string {
 		}
 		return ident.String()
 	}
-	return NAME_NOT_AVAILABLE
+	return common.NAME_NOT_AVAILABLE
 }
 
 func analyzed_expr(imports []string, expr ast.Expr) string {
-	var expr_name string = ""
+	expr_name := ""
 	if expr_id, ok := expr.(*ast.Ident); ok {
 		expr_name = expr_id.Name
 	}
@@ -280,7 +275,7 @@ const (
 )
 
 func (aScanner *AssertionScanner) getConstMap() map[string]bool {
-	cond_tracker := make([]bool, Num_conditions, Num_conditions)
+	cond_tracker := make([]bool, Num_conditions)
 	if len(aScanner.expects) > 0 {
 		cond_tracker[Not_hit] = true
 	}
