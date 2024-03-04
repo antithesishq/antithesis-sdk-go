@@ -136,7 +136,7 @@ func (cfx *CommandFiles) NewCoverageInstrumentor() *instrumentor.CoverageInstrum
 	return &cI
 }
 
-func (cfx *CommandFiles) WrapUp(hasAssertionsDefined bool) {
+func (cfx *CommandFiles) WrapUp() {
 	if !cfx.wantsInstrumentor {
 		return
 	}
@@ -146,11 +146,11 @@ func (cfx *CommandFiles) WrapUp(hasAssertionsDefined bool) {
 	common.AddDependencies(cfx.inputDirectory, cfx.customerDirectory, cfx.instrumentorVersion, notifierModule)
 	cfx.logWriter.Printf("Antithesis dependencies added to %s/go.mod", cfx.customerDirectory)
 
-	common.FetchDependencies(cfx.customerDirectory)
-	cfx.logWriter.Printf("Downloaded Antithesis dependencies")
-
 	common.CopyRecursiveNoClobber(cfx.inputDirectory, cfx.customerDirectory)
 	cfx.logWriter.Printf("All other files copied unmodified from %s to %s", cfx.inputDirectory, cfx.customerDirectory)
+
+	common.FetchDependencies(cfx.customerDirectory)
+	cfx.logWriter.Printf("Downloaded and tidied Antithesis dependencies")
 }
 
 func (cfx *CommandFiles) WriteInstrumentedOutput(fileName string, instrumentedSource string, cI *instrumentor.CoverageInstrumentor) {
@@ -210,6 +210,16 @@ func (cfx *CommandFiles) FindSourceCode() (paths []string, numSkipped int, err e
 			if b := filepath.Base(path); strings.HasPrefix(b, ".") {
 				if cfx.logWriter.VerboseLevel(2) {
 					cfx.logWriter.Printf("Ignoring 'dot' directory: %s", path)
+				}
+				if info.IsDir() {
+					return fs.SkipDir
+				}
+				return nil
+			}
+
+			if b := filepath.Base(path); b == "testdata" {
+				if cfx.logWriter.VerboseLevel(2) {
+					cfx.logWriter.Printf("Ignoring 'testdata' directory: %s", path)
 				}
 				if info.IsDir() {
 					return fs.SkipDir
