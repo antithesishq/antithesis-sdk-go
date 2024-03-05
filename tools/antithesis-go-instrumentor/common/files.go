@@ -63,12 +63,11 @@ func CopyRecursiveNoClobber(from, to string) {
 
 func AddDependencies(customerInputDirectory, customerOutputDirectory, instrumentorVersion, notifierModule string) {
 	destGoModFile := fmt.Sprintf("%s/go.mod", customerOutputDirectory)
-	sdkModule := fmt.Sprintf("%s@%s", ANTITHESIS_SDK_MODULE, instrumentorVersion)
 	localNotifier := fmt.Sprintf("../%s", NOTIFIER_FOLDER)
 
 	cmd1 := fmt.Sprintf("cd %s", customerInputDirectory)
-	cmd2 := fmt.Sprintf("go mod edit -require=%s -require=%s@v0.0.0 -replace=%s=%s -print > %s",
-		sdkModule, notifierModule, notifierModule, localNotifier, destGoModFile)
+	cmd2 := fmt.Sprintf("go mod edit -require=%s@v0.0.0 -replace=%s=%s -print > %s",
+		notifierModule, notifierModule, localNotifier, destGoModFile)
 	commandLine := fmt.Sprintf("(%s; %s)", cmd1, cmd2)
 
 	cmd := exec.Command("bash", "-c", commandLine)
@@ -87,31 +86,20 @@ func AddDependencies(customerInputDirectory, customerOutputDirectory, instrument
 	}
 }
 
-func FetchDependencies(customerOutputDirectory string) {
-	commandLine := fmt.Sprintf("(cd %s; go mod tidy)", customerOutputDirectory)
-
-	cmd := exec.Command("bash", "-c", commandLine)
-	logWriter.Printf("Executing %s", commandLine)
-	allOutput, err := cmd.CombinedOutput()
-	allText := strings.TrimSpace(string(allOutput))
-	if len(allText) > 0 {
-		lines := strings.Split(allText, "\n")
-		for _, line := range lines {
-			logWriter.Printf("go mod tidy: %s", line)
-		}
-	}
-	if err != nil {
-		// Errors here are pretty mysterious.
-		logWriter.Fatalf("%v", err)
-	}
-}
-
-func NotifierDependencies(notifierOutputDirectory, notifierModuleName, instrumentorVersion string) {
-	commandLine := fmt.Sprintf("(cd %s; go mod init %s; go get %s@%s; go mod tidy)",
-		notifierOutputDirectory,
-		notifierModuleName,
+func NotifierDependencies(notifierOutputDirectory, notifierModuleName, instrumentorVersion, localSDKPath string) {
+	dependencyRef := fmt.Sprintf("go get %s@%s",
 		ANTITHESIS_SDK_MODULE,
 		instrumentorVersion)
+
+	if localSDKPath != "" {
+		dependencyRef = fmt.Sprintf("go mod edit -require=%s@v0.0.0 -replace=%s=%s",
+			ANTITHESIS_SDK_MODULE, ANTITHESIS_SDK_MODULE, localSDKPath)
+	}
+
+	commandLine := fmt.Sprintf("(cd %s; go mod init %s; %s; go mod tidy)",
+		notifierOutputDirectory,
+		notifierModuleName,
+		dependencyRef)
 
 	cmd := exec.Command("bash", "-c", commandLine)
 	logWriter.Printf("Executing %s", commandLine)

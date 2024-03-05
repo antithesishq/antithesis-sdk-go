@@ -22,6 +22,7 @@ type CommandArgs struct {
 	inputDir            string
 	outputDir           string
 	instrumentorVersion string
+	localSDKPath        string
 	ShowVersion         bool
 	InvalidArgs         bool
 	wantsInstrumentor   bool
@@ -36,6 +37,7 @@ func ParseArgs(versionText string) *CommandArgs {
 	assertOnlyPtr := flag.Bool("assert_only", false, "generate assertion catalog ONLY - no coverage instrumentation (default to false)")
 	catalogDirPtr := flag.String("catalog_dir", "", "file path where assertion catalog will be generated")
 	instrVersionPtr := flag.String("instrumentor_version", "latest", "version of the SDK instrumentation package to require")
+	localSDKPathPtr := flag.String("local_sdk_path", "", "path to the local Antithesis SDK")
 	flag.Parse()
 
 	cmdArgs := CommandArgs{
@@ -53,6 +55,7 @@ func ParseArgs(versionText string) *CommandArgs {
 	cmdArgs.catalogDir = strings.TrimSpace(*catalogDirPtr)
 	cmdArgs.excludeFile = strings.TrimSpace(*exclusionsPtr)
 	cmdArgs.instrumentorVersion = strings.TrimSpace(*instrVersionPtr)
+	cmdArgs.localSDKPath = strings.TrimSpace(*localSDKPathPtr)
 
 	// Verify we have the expected number of positional arguments
 	numArgsRequired := 1
@@ -174,6 +177,7 @@ func (ca *CommandArgs) NewCommandFiles() (cfx *CommandFiles, err error) {
 		wantsInstrumentor:   ca.wantsInstrumentor,
 		symtablePrefix:      symtablePrefix,
 		instrumentorVersion: ca.instrumentorVersion,
+		localSDKPath:        ca.localSDKPath,
 		logWriter:           common.GetLogWriter(),
 	}
 	return

@@ -75,6 +75,9 @@ type CommandFiles struct {
 	// The version of SDK to use at runtime for CoverageInstrumentation
 	instrumentorVersion string
 
+	// The path to the SDK to use to create the notifier
+	localSDKPath string
+
 	// created and written to during instrumentation.
 	// Will contain the antithesis notifier module (go.mod) and source (notifier.go)
 	notifierDirectory string
@@ -148,9 +151,6 @@ func (cfx *CommandFiles) WrapUp() {
 
 	common.CopyRecursiveNoClobber(cfx.inputDirectory, cfx.customerDirectory)
 	cfx.logWriter.Printf("All other files copied unmodified from %s to %s", cfx.inputDirectory, cfx.customerDirectory)
-
-	common.FetchDependencies(cfx.customerDirectory)
-	cfx.logWriter.Printf("Downloaded and tidied Antithesis dependencies")
 }
 
 func (cfx *CommandFiles) WriteInstrumentedOutput(fileName string, instrumentedSource string, cI *instrumentor.CoverageInstrumentor) {
@@ -174,7 +174,7 @@ func (cfx *CommandFiles) CreateNotifierModule() {
 	notifierModuleName := common.NOTIFIER_MODULE_NAME
 
 	if cfx.wantsInstrumentor {
-		common.NotifierDependencies(cfx.notifierDirectory, notifierModuleName, cfx.instrumentorVersion)
+		common.NotifierDependencies(cfx.notifierDirectory, notifierModuleName, cfx.instrumentorVersion, cfx.localSDKPath)
 	}
 }
 
