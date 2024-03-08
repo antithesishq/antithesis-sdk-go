@@ -63,6 +63,11 @@ import (
 //
 import "C"
 
+// --------------------------------------------------------------------------------
+// Version
+// --------------------------------------------------------------------------------
+const SDK_Version = "v0.3.1"
+
 func Json_data(v any) error {
 	if data, err := json.Marshal(v); err != nil {
 		return err
@@ -91,9 +96,11 @@ type libHandler interface {
 	init_coverage(num_edges uint64, symbols string) uint64
 }
 
-const localOutputEnvVar = "ANTITHESIS_SDK_LOCAL_OUTPUT"
-const errorLogLinePrefix = "[* antithesis-sdk-go *]"
-const defaultNativeLibraryPath = "/usr/lib/libvoidstar.so"
+const (
+	localOutputEnvVar        = "ANTITHESIS_SDK_LOCAL_OUTPUT"
+	errorLogLinePrefix       = "[* antithesis-sdk-go *]"
+	defaultNativeLibraryPath = "/usr/lib/libvoidstar.so"
+)
 
 var handler libHandler
 
@@ -128,10 +135,7 @@ func (h *voidstarHandler) init_coverage(num_edge uint64, symbols string) uint64 
 
 func (h *voidstarHandler) notify(edge uint64) bool {
 	ival := int(C.go_notify_coverage(h.notifyCoverage, C.ulong(edge)))
-	if ival == 1 {
-		return true
-	}
-	return false
+	return ival == 1
 }
 
 type localHandler struct {

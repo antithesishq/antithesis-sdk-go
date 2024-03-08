@@ -1,6 +1,9 @@
 package assert
 
-import "github.com/antithesishq/antithesis-sdk-go/internal"
+import (
+	"github.com/antithesishq/antithesis-sdk-go/internal"
+	"github.com/antithesishq/antithesis-sdk-go/lifecycle"
+)
 
 type trackerInfo struct {
 	PassCount int
@@ -67,6 +70,13 @@ func (ti *trackerInfo) emit(ai *assertInfo) {
 	}
 }
 
+// package-level flag
+var hasEmitted = false
+
 func emitAssert(ai *assertInfo) error {
+	if !hasEmitted {
+		lifecycle.VersionMessage()
+		hasEmitted = true
+	}
 	return internal.Json_data(wrappedAssertInfo{ai})
 }

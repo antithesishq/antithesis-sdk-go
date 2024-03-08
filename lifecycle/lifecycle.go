@@ -7,6 +7,8 @@
 package lifecycle
 
 import (
+	"runtime"
+
 	"github.com/antithesishq/antithesis-sdk-go/internal"
 )
 
@@ -15,6 +17,19 @@ import (
 // Calling this function multiple times, or from multiple processes, will have no effect. Antithesis will treat the first time any process called this function as the moment that the setup was completed.
 //
 // [injecting faults]: https://antithesis.com/docs/applications/reliability/fault_injection.html
-func SetupComplete() {
-	internal.Json_data(map[string]string{"setup_status": "complete"})
+func SetupComplete(details any) {
+	statusBlock := map[string]any{
+		"status":  "complete",
+		"details": details,
+	}
+	internal.Json_data(map[string]any{"antithesis_setup": statusBlock})
+}
+
+func VersionMessage() {
+	versionBlock := map[string]any{
+		"language":         "Go",
+		"language_version": runtime.Version(),
+		"sdk_version":      internal.SDK_Version,
+	}
+	internal.Json_data(map[string]any{"antithesis_sdk": versionBlock})
 }

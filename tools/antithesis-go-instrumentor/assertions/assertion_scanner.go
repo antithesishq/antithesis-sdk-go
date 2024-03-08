@@ -7,6 +7,7 @@ import (
 	"go/types"
 	"path"
 	"strconv"
+	"time"
 
 	"github.com/antithesishq/antithesis-sdk-go/tools/antithesis-go-instrumentor/common"
 )
@@ -85,10 +86,15 @@ func (aScanner *AssertionScanner) HasAssertionsDefined() bool {
 	return len(aScanner.expects) > 0
 }
 
-func (aScanner *AssertionScanner) WriteAssertionCatalog() {
+func (aScanner *AssertionScanner) WriteAssertionCatalog(versionText string) {
+	now := time.Now()
+	createDate := now.Format("Mon Jan 2 15:04:05 MST 2006")
+
 	genInfo := GenInfo{
 		ExpectedVals:      aScanner.expects,
 		AssertPackageName: common.AssertPackageName(),
+		VersionText:       versionText,
+		CreateDate:        createDate,
 		HasAssertions:     (len(aScanner.expects) > 0),
 		ConstMap:          aScanner.getConstMap(),
 		logWriter:         common.GetLogWriter(),
