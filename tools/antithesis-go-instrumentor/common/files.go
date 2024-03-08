@@ -86,6 +86,25 @@ func AddDependencies(customerInputDirectory, customerOutputDirectory, instrument
 	}
 }
 
+func FetchDependencies(customerOutputDirectory string) {
+	commandLine := fmt.Sprintf("(cd %s; go mod tidy)", customerOutputDirectory)
+
+	cmd := exec.Command("bash", "-c", commandLine)
+	logWriter.Printf("Executing %s", commandLine)
+	allOutput, err := cmd.CombinedOutput()
+	allText := strings.TrimSpace(string(allOutput))
+	if len(allText) > 0 {
+		lines := strings.Split(allText, "\n")
+		for _, line := range lines {
+			logWriter.Printf("go mod tidy: %s", line)
+		}
+	}
+	if err != nil {
+		// Errors here are pretty mysterious.
+		logWriter.Fatalf("%v", err)
+	}
+}
+
 func NotifierDependencies(notifierOutputDirectory, notifierModuleName, instrumentorVersion, localSDKPath string) {
 	dependencyRef := fmt.Sprintf("go get %s@%s",
 		ANTITHESIS_SDK_MODULE,
