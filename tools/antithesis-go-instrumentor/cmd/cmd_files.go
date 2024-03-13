@@ -149,13 +149,13 @@ func (cfx *CommandFiles) WrapUp() {
 	common.AddDependencies(cfx.inputDirectory, cfx.customerDirectory, cfx.instrumentorVersion, notifierModule)
 	cfx.logWriter.Printf("Antithesis dependencies added to %s/go.mod", cfx.customerDirectory)
 
+	common.CopyRecursiveNoClobber(cfx.inputDirectory, cfx.customerDirectory)
+	cfx.logWriter.Printf("All other files copied unmodified from %s to %s", cfx.inputDirectory, cfx.customerDirectory)
+
 	if cfx.localSDKPath == "" {
 		common.FetchDependencies(cfx.customerDirectory)
 		cfx.logWriter.Printf("Downloaded Antithesis dependencies")
 	}
-
-	common.CopyRecursiveNoClobber(cfx.inputDirectory, cfx.customerDirectory)
-	cfx.logWriter.Printf("All other files copied unmodified from %s to %s", cfx.inputDirectory, cfx.customerDirectory)
 }
 
 func (cfx *CommandFiles) WriteInstrumentedOutput(fileName string, instrumentedSource string, cI *instrumentor.CoverageInstrumentor) {
