@@ -7,8 +7,6 @@
 package lifecycle
 
 import (
-	"runtime"
-
 	"github.com/antithesishq/antithesis-sdk-go/internal"
 )
 
@@ -25,11 +23,8 @@ func SetupComplete(details any) {
 	internal.Json_data(map[string]any{"antithesis_setup": statusBlock})
 }
 
-func VersionMessage() {
-	versionBlock := map[string]any{
-		"language":         "Go",
-		"language_version": runtime.Version(),
-		"sdk_version":      internal.SDK_Version,
-	}
-	internal.Json_data(map[string]any{"antithesis_sdk": versionBlock})
+// Causes an event with the name and details provided,
+// to be sent to the Fuzzer and Notebook
+func SendEvent(eventName string, details any) {
+	internal.Json_data(map[string]any{eventName: details})
 }

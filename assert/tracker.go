@@ -1,8 +1,9 @@
 package assert
 
 import (
+	"runtime"
+
 	"github.com/antithesishq/antithesis-sdk-go/internal"
-	"github.com/antithesishq/antithesis-sdk-go/lifecycle"
 )
 
 type trackerInfo struct {
@@ -70,12 +71,25 @@ func (ti *trackerInfo) emit(ai *assertInfo) {
 	}
 }
 
+func versionMessage() {
+	languageBlock := map[string]any{
+		"name":    "Go",
+		"version": runtime.Version(),
+	}
+	versionBlock := map[string]any{
+		"language":         languageBlock,
+		"sdk_version":      internal.SDK_Version, // 0.3.1
+		"protocol_version": "1.0.0",
+	}
+	internal.Json_data(map[string]any{"antithesis_sdk": versionBlock})
+}
+
 // package-level flag
 var hasEmitted = false
 
 func emitAssert(ai *assertInfo) error {
 	if !hasEmitted {
-		lifecycle.VersionMessage()
+		versionMessage()
 		hasEmitted = true
 	}
 	return internal.Json_data(wrappedAssertInfo{ai})
