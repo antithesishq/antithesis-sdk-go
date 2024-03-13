@@ -86,7 +86,7 @@ func Sometimes(condition bool, message string, details map[string]any) {
 func Unreachable(message string, details map[string]any) {
 	locationInfo := newLocationInfo(offsetAPICaller)
 	id := makeKey(message, locationInfo)
-	assertImpl(true, message, details, locationInfo, wasHit, optionallyHit, reachabilityTest, unreachableDisplay, id)
+	assertImpl(false, message, details, locationInfo, wasHit, optionallyHit, reachabilityTest, unreachableDisplay, id)
 }
 
 // Assert that a line of code is reached at least once. The test property spawned by Reachable will be marked as failing if this function is never called. This test property will be viewable in the "Antithesis SDK: Reachablity assertions" group.
