@@ -6,6 +6,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/antithesishq/antithesis-sdk-go/internal"
 	"github.com/antithesishq/antithesis-sdk-go/tools/antithesis-go-instrumentor/assertions"
 	"github.com/antithesishq/antithesis-sdk-go/tools/antithesis-go-instrumentor/cmd"
 	"github.com/antithesishq/antithesis-sdk-go/tools/antithesis-go-instrumentor/common"
@@ -14,10 +15,15 @@ import (
 var logWriter *common.LogWriter
 
 //go:embed version.txt
-var versionString string
+var versionText string
 
 func main() {
 	var err error
+
+	versionString := strings.TrimSpace(versionText)
+	if strings.Contains(versionText, "%s") {
+		versionString = fmt.Sprintf(versionString, internal.SDK_Version)
+	}
 
 	//--------------------------------------------------------------------------------
 	// Parse and validate command arguments
@@ -84,7 +90,7 @@ func main() {
 	}
 
 	if aScanner.HasAssertionsDefined() {
-		aScanner.WriteAssertionCatalog()
+		aScanner.WriteAssertionCatalog(cmd_args.VersionText)
 	}
 	cmd_files.WrapUp()
 

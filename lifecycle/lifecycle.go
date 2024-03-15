@@ -15,6 +15,16 @@ import (
 // Calling this function multiple times, or from multiple processes, will have no effect. Antithesis will treat the first time any process called this function as the moment that the setup was completed.
 //
 // [injecting faults]: https://antithesis.com/docs/applications/reliability/fault_injection.html
-func SetupComplete() {
-	internal.Json_data(map[string]string{"setup_status": "complete"})
+func SetupComplete(details any) {
+	statusBlock := map[string]any{
+		"status":  "complete",
+		"details": details,
+	}
+	internal.Json_data(map[string]any{"antithesis_setup": statusBlock})
+}
+
+// Causes an event with the name and details provided,
+// to be sent to the Fuzzer and Notebook
+func SendEvent(eventName string, details any) {
+	internal.Json_data(map[string]any{eventName: details})
 }

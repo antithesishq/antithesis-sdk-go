@@ -46,7 +46,7 @@ func SetupHintMap() AssertionHints {
 		MustHit:    false,
 		Expecting:  true,
 		AssertType: "none",
-		Condition:  true,
+		Condition:  false,
 		MessageArg: 0,
 	}
 

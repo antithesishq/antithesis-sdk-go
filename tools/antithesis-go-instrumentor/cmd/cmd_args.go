@@ -23,6 +23,7 @@ type CommandArgs struct {
 	outputDir           string
 	instrumentorVersion string
 	localSDKPath        string
+	VersionText         string
 	ShowVersion         bool
 	InvalidArgs         bool
 	wantsInstrumentor   bool
@@ -56,6 +57,7 @@ func ParseArgs(versionText string) *CommandArgs {
 	cmdArgs.excludeFile = strings.TrimSpace(*exclusionsPtr)
 	cmdArgs.instrumentorVersion = strings.TrimSpace(*instrVersionPtr)
 	cmdArgs.localSDKPath = strings.TrimSpace(*localSDKPathPtr)
+	cmdArgs.VersionText = versionText
 
 	// Verify we have the expected number of positional arguments
 	numArgsRequired := 1

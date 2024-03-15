@@ -1,1 +1,1 @@
-Antithesis LLC Go Instrumentor v0.2.13
+Antithesis LLC Go Instrumentor %s

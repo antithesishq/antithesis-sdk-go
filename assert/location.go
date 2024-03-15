@@ -23,11 +23,11 @@ const (
 // locationInfo represents the attributes known at instrumentation time
 // for each Antithesis assertion discovered
 type locationInfo struct {
-	Classname string `json:"classname"`
+	Classname string `json:"class"`
 	Funcname  string `json:"function"`
-	Filename  string `json:"filename"`
-	Line      int    `json:"line"`
-	Column    int    `json:"column"`
+	Filename  string `json:"file"`
+	Line      int    `json:"begin_line"`
+	Column    int    `json:"begin_column"`
 }
 
 // columnUnknown is used when the column associated with
@@ -39,10 +39,10 @@ const columnUnknown = 0
 func newLocationInfo(nframes stackFrameOffset) *locationInfo {
 	// Get location info and add to details
 	funcname := "*function*"
-	classname := "*classname*"
+	classname := "*class*"
 	pc, filename, line, ok := runtime.Caller(int(nframes))
 	if !ok {
-		filename = "*filename*"
+		filename = "*file*"
 		line = 0
 	} else {
 		if this_func := runtime.FuncForPC(pc); this_func != nil {
