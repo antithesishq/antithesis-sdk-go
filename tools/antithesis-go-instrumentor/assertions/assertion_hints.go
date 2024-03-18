@@ -18,7 +18,7 @@ func SetupHintMap() AssertionHints {
 		TargetFunc: "Always",
 		MustHit:    true,
 		Expecting:  true,
-		AssertType: "every",
+		AssertType: "always",
 		Condition:  false,
 		MessageArg: 1,
 	}
@@ -27,7 +27,7 @@ func SetupHintMap() AssertionHints {
 		TargetFunc: "AlwaysOrUnreachable",
 		MustHit:    false,
 		Expecting:  true,
-		AssertType: "every",
+		AssertType: "always",
 		Condition:  false,
 		MessageArg: 1,
 	}
@@ -36,7 +36,7 @@ func SetupHintMap() AssertionHints {
 		TargetFunc: "Sometimes",
 		MustHit:    true,
 		Expecting:  true,
-		AssertType: "some",
+		AssertType: "sometimes",
 		Condition:  false,
 		MessageArg: 1,
 	}
@@ -45,7 +45,7 @@ func SetupHintMap() AssertionHints {
 		TargetFunc: "Unreachable",
 		MustHit:    false,
 		Expecting:  true,
-		AssertType: "none",
+		AssertType: "reachability",
 		Condition:  false,
 		MessageArg: 0,
 	}
@@ -54,7 +54,7 @@ func SetupHintMap() AssertionHints {
 		TargetFunc: "Reachable",
 		MustHit:    true,
 		Expecting:  true,
-		AssertType: "none",
+		AssertType: "reachability",
 		Condition:  true,
 		MessageArg: 0,
 	}
