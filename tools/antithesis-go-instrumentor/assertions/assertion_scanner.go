@@ -272,8 +272,6 @@ const (
 	Not_hit
 	Must_be_hit
 	Optionally_hit
-	Expecting_true
-	Expecting_false
 	Universal_test
 	Existential_test
 	Reachability_test
@@ -291,11 +289,6 @@ func (aScanner *AssertionScanner) getConstMap() map[string]bool {
 			cond_tracker[Must_be_hit] = true
 		} else {
 			cond_tracker[Optionally_hit] = true
-		}
-		if pAFI.Expecting {
-			cond_tracker[Expecting_true] = true
-		} else {
-			cond_tracker[Expecting_false] = true
 		}
 		if pAFI.Condition {
 			cond_tracker[Cond_true] = true
