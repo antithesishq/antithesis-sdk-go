@@ -175,11 +175,9 @@ func init() {
 {{if usesConst .ConstMap "notHit"}}  const notHit = !wasHit {{- end}}
 {{if usesConst .ConstMap "mustBeHit"}}  const mustBeHit = true {{- end}}
 {{if usesConst .ConstMap "optionallyHit"}}  const optionallyHit = false {{- end}}
-{{if usesConst .ConstMap "expectingTrue"}}  const expectingTrue = true {{- end}}
-{{if usesConst .ConstMap "expectingFalse"}} const expectingFalse = false {{- end}}
-{{if usesConst .ConstMap "universalTest"}}  const universalTest = "every" {{- end}}
-{{if usesConst .ConstMap "existentialTest"}}  const existentialTest = "some" {{- end}}
-{{if usesConst .ConstMap "reachabilityTest"}}  const reachabilityTest = "none" {{- end}}
+{{if usesConst .ConstMap "universalTest"}}  const universalTest = "always" {{- end}}
+{{if usesConst .ConstMap "existentialTest"}}  const existentialTest = "sometimes" {{- end}}
+{{if usesConst .ConstMap "reachabilityTest"}}  const reachabilityTest = "reachability" {{- end}}
 
   var noDetails map[string]any = nil
 	
