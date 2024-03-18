@@ -302,13 +302,13 @@ func (aScanner *AssertionScanner) getConstMap() map[string]bool {
 		} else {
 			cond_tracker[Cond_false] = true
 		}
-		if pAFI.AssertType == "every" {
+		if pAFI.AssertType == "always" {
 			cond_tracker[Universal_test] = true
 		}
-		if pAFI.AssertType == "some" {
+		if pAFI.AssertType == "sometimes" {
 			cond_tracker[Existential_test] = true
 		}
-		if pAFI.AssertType == "none" {
+		if pAFI.AssertType == "reachability" {
 			cond_tracker[Reachability_test] = true
 		}
 	}
@@ -320,8 +320,6 @@ func (aScanner *AssertionScanner) getConstMap() map[string]bool {
 	const_map["notHit"] = cond_tracker[Not_hit]
 	const_map["mustBeHit"] = cond_tracker[Must_be_hit]
 	const_map["optionallyHit"] = cond_tracker[Optionally_hit]
-	const_map["expectingTrue"] = cond_tracker[Expecting_true]
-	const_map["expectingFalse"] = cond_tracker[Expecting_false]
 	const_map["universalTest"] = cond_tracker[Universal_test]
 	const_map["existentialTest"] = cond_tracker[Existential_test]
 	const_map["reachabilityTest"] = cond_tracker[Reachability_test]
