@@ -12,10 +12,10 @@ go fmt -x github.com/antithesishq/antithesis-sdk-go/tools/antithesis-go-instrume
 go fmt -x github.com/antithesishq/antithesis-sdk-go/tools/antithesis-go-instrumentor/instrumentor
 go fmt -x github.com/antithesishq/antithesis-sdk-go/tools/antithesis-go-instrumentor/assertions
 
-go build assert/*.go
-go build lifecycle/*.go
-go build internal/*.go
-go build random/*.go
-go build instrumentation/*.go
+go build github.com/antithesishq/antithesis-sdk-go/assert
+go build github.com/antithesishq/antithesis-sdk-go/lifecycle
+go build github.com/antithesishq/antithesis-sdk-go/internal
+go build github.com/antithesishq/antithesis-sdk-go/random
+go build github.com/antithesishq/antithesis-sdk-go/instrumentation
 
-go install tools/antithesis-go-instrumentor/*.go
+go install -tags=antithesis_sdk tools/antithesis-go-instrumentor/*.go
