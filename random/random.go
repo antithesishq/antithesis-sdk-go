@@ -1,3 +1,5 @@
+//go:build antithesis_sdk
+
 // This package is part of the [Antithesis Go SDK], which enables Go applications to integrate with the [Antithesis platform].
 //
 // The random package provides an interface that allows your program to ask the Antithesis platform for random entropy. These functions are also safe to call outside the Antithesis environment, where they will fall back on values from [crypto/rand].
@@ -16,18 +18,4 @@ import (
 // Returns a uint64 value chosen by Antithesis. You should not store this value or use it to seed a PRNG, but should use it immediately.
 func GetRandom() uint64 {
 	return internal.Get_random()
-}
-
-// Returns a randomly chosen item from a list of options. You should not store this value, but should use it immediately.
-//
-// This function is not purely for convenience. Signaling to the Antithesis platform that you intend to use a random value in a structured way enables it to provide more interesting choices over time.
-func RandomChoice(things []any) any {
-	num_things := len(things)
-	if num_things < 1 {
-		return nil
-	}
-
-	uval := GetRandom()
-	index := uval % uint64(num_things)
-	return things[index]
 }
