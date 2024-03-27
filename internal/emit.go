@@ -1,3 +1,5 @@
+//go:build antithesis_sdk
+
 package internal
 
 import (
@@ -63,11 +65,6 @@ import (
 //
 import "C"
 
-// --------------------------------------------------------------------------------
-// Version
-// --------------------------------------------------------------------------------
-const SDK_Version = "0.3.2"
-
 func Json_data(v any) error {
 	if data, err := json.Marshal(v); err != nil {
 		return err
@@ -97,7 +94,6 @@ type libHandler interface {
 }
 
 const (
-	localOutputEnvVar        = "ANTITHESIS_SDK_LOCAL_OUTPUT"
 	errorLogLinePrefix       = "[* antithesis-sdk-go *]"
 	defaultNativeLibraryPath = "/usr/lib/libvoidstar.so"
 )

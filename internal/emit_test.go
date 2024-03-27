@@ -1,3 +1,5 @@
+//go:build antithesis_sdk
+
 package internal
 
 import (

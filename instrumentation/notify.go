@@ -1,15 +1,20 @@
+//go:build antithesis_sdk
+
 package instrumentation
 
 import (
 	"fmt"
+	"os"
+
 	"github.com/antithesishq/antithesis-sdk-go/assert"
 	"github.com/antithesishq/antithesis-sdk-go/internal"
-	"os"
 )
 
-var moduleInitialized = false
-var moduleOffset uint64
-var edgesVisited = bitSet{}
+var (
+	moduleInitialized = false
+	moduleOffset      uint64
+	edgesVisited      = bitSet{}
+)
 
 const instrumentor_tag = "github.com/antithesishq/antithesis-sdk-go/instrumentation"
 
@@ -50,10 +55,4 @@ func Notify(edge int) {
 	if !mustCall {
 		edgesVisited.Set(edge)
 	}
-}
-
-// FuzzExit is inserted by the instrumentation.
-func FuzzExit(exit int) {
-	return
-	// internal.Fuzz_exit(C.int(exit))
 }

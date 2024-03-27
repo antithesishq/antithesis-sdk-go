@@ -1,3 +1,5 @@
+//go:build antithesis_sdk
+
 // This package is part of the [Antithesis Go SDK], which enables Go applications to integrate with the [Antithesis platform].
 //
 // The lifecycle package contains functions which inform the Antithesis environment that particular test phases or milestones have been reached.

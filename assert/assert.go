@@ -1,3 +1,5 @@
+//go:build antithesis_sdk
+
 // This package is part of the [Antithesis Go SDK], which enables Go applications to integrate with the [Antithesis platform].
 //
 // The assert package allows you to define new [test properties] for your program or [workload].
@@ -19,6 +21,7 @@
 // [details]: https://antithesis.com/docs/reports/triage.html#details
 // [here]: https://antithesis.com/docs/using_antithesis/sdk/fallback_sdk.html
 // [Sometimes assertions]: https://antithesis.com/docs/best_practices/sometimes_assertions.html
+
 package assert
 
 type assertInfo struct {
