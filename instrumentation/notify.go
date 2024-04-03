@@ -1,4 +1,4 @@
-//go:build antithesis_sdk
+//go:build !no_antithesis_sdk
 
 package instrumentation
 

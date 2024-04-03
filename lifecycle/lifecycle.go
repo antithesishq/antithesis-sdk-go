@@ -1,4 +1,4 @@
-//go:build antithesis_sdk
+//go:build !no_antithesis_sdk
 
 // This package is part of the [Antithesis Go SDK], which enables Go applications to integrate with the [Antithesis platform].
 //
