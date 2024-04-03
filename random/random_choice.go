@@ -5,7 +5,7 @@ package random
 // This function is not purely for convenience. Signaling to the Antithesis platform that you intend to use a random value in a structured way enables it to provide more interesting choices over time.
 func RandomChoice(things []any) any {
 	num_things := len(things)
-	if num_things < 1 {
+	if num_things == 0 {
 		return nil
 	}
 
