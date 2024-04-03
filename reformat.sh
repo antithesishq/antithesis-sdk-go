@@ -18,4 +18,4 @@ go build github.com/antithesishq/antithesis-sdk-go/internal
 go build github.com/antithesishq/antithesis-sdk-go/random
 go build github.com/antithesishq/antithesis-sdk-go/instrumentation
 
-go install -tags=antithesis_sdk tools/antithesis-go-instrumentor/*.go
+go install tools/antithesis-go-instrumentor/*.go
