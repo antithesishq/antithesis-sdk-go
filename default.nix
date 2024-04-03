@@ -50,7 +50,7 @@ let
       export HOME=$TMPDIR
       mkdir -p $out/docs
       # TODO: can add `-emded` to generate basic stubs for the docs with no styling to customize our own
-      doc2go -home github.com/antithesishq/antithesis-sdk-go -out $out/docs ./assert ./random ./lifecycle
+      doc2go -home github.com/antithesishq/antithesis-sdk-go -tags antithesis_sdk -out $out/docs ./assert ./random ./lifecycle
       pandoc --template ${index_template} -o $out/index.html README.md
     '';
   };
