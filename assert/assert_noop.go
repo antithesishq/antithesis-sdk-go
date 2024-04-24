@@ -2,15 +2,16 @@
 
 package assert
 
-func Always(condition bool, message string, details map[string]any)              {}
-func AlwaysOrUnreachable(condition bool, message string, details map[string]any) {}
-func Sometimes(condition bool, message string, details map[string]any)           {}
-func Unreachable(message string, details map[string]any)                         {}
-func Reachable(message string, details map[string]any)                           {}
+func Always(condition bool, message string, details map[string]any) bool { return condition }
+func AlwaysOrUnreachable(condition bool, message string, details map[string]any) bool { return condition }
+func Sometimes(condition bool, message string, details map[string]any) bool { return condition}
+func Unreachable(message string, details map[string]any) {}
+func Reachable(message string, details map[string]any) {}
 func AssertRaw(cond bool, message string, details map[string]any,
 	classname, funcname, filename string, line int,
 	hit bool, mustHit bool,
 	assertType string, displayType string,
 	id string,
-) {
+) bool {
+	return cond
 }
