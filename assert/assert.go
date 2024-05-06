@@ -1,16 +1,18 @@
 //go:build !no_antithesis_sdk
 
-// This package is part of the [Antithesis Go SDK], which enables Go applications to integrate with the [Antithesis platform].
-//
-// The assert package allows you to define new [test properties] for your program or [workload].
+// Package assert enables defining [test properties] about your program or [workload]. It is part of the [Antithesis Go SDK], which enables Go applications to integrate with the [Antithesis platform].
 //
 // Code that uses this package should be instrumented with the [antithesis-go-generator] utility. This step is required for the Always, Sometime, and Reachable methods. It is not required for the Unreachable and AlwaysOrUnreachable methods, but it will improve the experience of using them.
 //
 // These functions are no-ops with minimal performance overhead when called outside of the Antithesis environment. However, if the environment variable ANTITHESIS_SDK_LOCAL_OUTPUT is set, these functions will log to the file pointed to by that variable using a structured JSON format defined [here]. This allows you to make use of the Antithesis assertions package in your regular testing, or even in production. In particular, very few assertions frameworks offer a convenient way to define [Sometimes assertions], but they can be quite useful even outside Antithesis.
 //
-// Each function in this package takes a parameter called message. This value of this parameter will become part of the name of the test property defined by the function, and will be viewable in your [triage report], so it should be human interpretable. Assertions in different parts of your code with the same message value will be grouped into the same test property, but if one of them fails you will be able to see which file and line number are associated with each failure.
+// Each function in this package takes a parameter called message, . This value of this parameter will become part of the name of the test property defined by the function, and will be viewable in your [triage report], so it should be human interpretable. Assertions in different parts of your code with the same message value will be grouped into the same test property, but if one of them fails you will be able to see which file and line number are associated with each failure.
 //
-// Each function also takes a parameter called details. This parameter allows you to optionally provide a key-value map of context information that will be viewable in the [details] tab for any example or counterexample of the associated property.
+// Each function in this package takes a parameter called message, which is a human readable identifier used to aggregate assertions. Antithesis generates one test property per unique message and this test property will be named "<message>" in the [triage report].
+//
+// This test property either passes or fails, which depends upon the evaluation of every assertion that shares its message. Different assertions in different parts of the code should have different message, but the same assertion should always have the same message even if it is moved to a different file.
+//
+// Each function also takes a parameter called details, which is a key-value map of optional additional information provided by the user to add context for assertion failures. The information that is logged will appear in the logs section of a [triage report]. Normally the values passed to details are evaluated at runtime.
 //
 // [Antithesis Go SDK]: https://antithesis.com/docs/using_antithesis/sdk/go_sdk.html
 // [Antithesis platform]: https://antithesis.com
@@ -21,7 +23,6 @@
 // [details]: https://antithesis.com/docs/reports/triage.html#details
 // [here]: https://antithesis.com/docs/using_antithesis/sdk/fallback_sdk.html
 // [Sometimes assertions]: https://antithesis.com/docs/best_practices/sometimes_assertions.html
-
 package assert
 
 type assertInfo struct {
@@ -64,42 +65,42 @@ const (
 	unreachableDisplay         = "Unreachable"
 )
 
-// Assert that condition is true every time this function is called, AND that it is called at least once. This test property will be viewable in the "Antithesis SDK: Always" group of your triage report.
+// Always asserts that condition is true every time this macro is called, **and** that it is called at least once. The corresponding test property will be viewable in the Antithesis SDK: Always group of your triage report.
 func Always(condition bool, message string, details map[string]any) {
 	locationInfo := newLocationInfo(offsetAPICaller)
 	id := makeKey(message, locationInfo)
 	assertImpl(condition, message, details, locationInfo, wasHit, mustBeHit, universalTest, alwaysDisplay, id)
 }
 
-// Assert that condition is true every time this function is called. Unlike the Always function, the test property spawned by AlwaysOrUnreachable will not be marked as failing if the function is never invoked. This test property will be viewable in the "Antithesis SDK: Always" group of your triage report.
+// AlwaysOrUnreachable asserts that condition is true every time this function is called. The corresponding test property will pass if the assertion is never encountered (unlike Always assertion types). This test property will be viewable in the “Antithesis SDK: Always” group of your triage report.
 func AlwaysOrUnreachable(condition bool, message string, details map[string]any) {
 	locationInfo := newLocationInfo(offsetAPICaller)
 	id := makeKey(message, locationInfo)
 	assertImpl(condition, message, details, locationInfo, wasHit, optionallyHit, universalTest, alwaysOrUnreachableDisplay, id)
 }
 
-// Assert that condition is true at least one time that this function was called. The test property spawned by Sometimes will be marked as failing if this function is never called, or if condition is false every time that it is called. This test property will be viewable in the "Antithesis SDK: Sometimes" group.
+// Sometimes asserts that condition is true at least one time that this function was called. (If the assertion is never encountered, the test property will therefore fail.) This test property will be viewable in the “Antithesis SDK: Sometimes” group.
 func Sometimes(condition bool, message string, details map[string]any) {
 	locationInfo := newLocationInfo(offsetAPICaller)
 	id := makeKey(message, locationInfo)
 	assertImpl(condition, message, details, locationInfo, wasHit, mustBeHit, existentialTest, sometimesDisplay, id)
 }
 
-// Assert that a line of code is never reached. The test property spawned by Unreachable will be marked as failing if this function is ever called. This test property will be viewable in the "Antithesis SDK: Reachablity assertions" group.
+// Unreachable asserts that a line of code is never reached. The corresponding test property will fail if this macro is ever called. (If it is never called the test property will therefore pass.) This test property will be viewable in the “Antithesis SDK: Reachablity assertions” group.
 func Unreachable(message string, details map[string]any) {
 	locationInfo := newLocationInfo(offsetAPICaller)
 	id := makeKey(message, locationInfo)
 	assertImpl(false, message, details, locationInfo, wasHit, optionallyHit, reachabilityTest, unreachableDisplay, id)
 }
 
-// Assert that a line of code is reached at least once. The test property spawned by Reachable will be marked as failing if this function is never called. This test property will be viewable in the "Antithesis SDK: Reachablity assertions" group.
+// Reachable asserts that a line of code is reached at least once. The corresponding test property will pass if this macro is ever called. (If it is never called the test property will therefore fail.) This test property will be viewable in the “Antithesis SDK: Reachablity assertions” group.
 func Reachable(message string, details map[string]any) {
 	locationInfo := newLocationInfo(offsetAPICaller)
 	id := makeKey(message, locationInfo)
 	assertImpl(true, message, details, locationInfo, wasHit, mustBeHit, reachabilityTest, reachableDisplay, id)
 }
 
-// This is a low-level method designed to be used by third-party frameworks. Regular users of the assert package should not call it.
+// AssertRaw is a low-level method designed to be used by third-party frameworks. Regular users of the assert package should not call it.
 func AssertRaw(cond bool, message string, details map[string]any,
 	classname, funcname, filename string, line int,
 	hit bool, mustHit bool,
