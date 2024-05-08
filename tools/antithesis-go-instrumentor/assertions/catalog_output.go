@@ -6,6 +6,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"text/template"
 
@@ -106,6 +107,10 @@ func mustHitRepr(b bool) string {
 	return "optionallyHit"
 }
 
+func textRepr(s string) string {
+	return strconv.Quote(s)
+}
+
 func assertTypeRepr(s string) string {
 	reprText := "reachabilityTest"
 
@@ -137,6 +142,7 @@ func GenerateAssertionsCatalog(moduleName string, genInfo *GenInfo) {
 		"assertTypeRepr":    assertTypeRepr,
 		"assertionNameRepr": assertionNameRepr,
 		"usesConst":         usesConst,
+		"textRepr":          textRepr,
 	})
 
 	if tmpl, err = tmpl.Parse(getExpectorText()); err != nil {
@@ -187,9 +193,14 @@ func init() {
 	{{- $mustHit := mustHitRepr .AssertionFuncInfo.MustHit -}}
 	{{- $assertionName := assertionNameRepr .Assertion -}}
 	{{- $assertType := assertTypeRepr .AssertionFuncInfo.AssertType -}}
+	{{- $message := textRepr .Message -}}
+	{{- $classname := textRepr .Classname -}}
+	{{- $funcname := textRepr .Funcname -}}
+	{{- $filename := textRepr .Filename -}}
+	{{- $displayname := textRepr .Assertion}}
 
   // {{$assertionName}}
-  assert.AssertRaw({{$cond}}, "{{.Message}}", noDetails, "{{.Classname}}", "{{.Funcname}}", "{{.Filename}}", {{.Line}}, {{$didHit}}, {{$mustHit}}, {{$assertType}}, "{{.Assertion}}", "{{.Message}}")
+  assert.AssertRaw({{$cond}}, {{$message}}, noDetails, {{$classname}}, {{$funcname}}, {{$filename}}, {{.Line}}, {{$didHit}}, {{$mustHit}}, {{$assertType}}, {{$displayname}}, {{$message}})
 	{{- end}}
 }
 {{- end}}
