@@ -180,8 +180,15 @@ func (aScanner *AssertionScanner) node_inspector(x ast.Node) bool {
 		// For example, the SelectorExpr for strings.HasPrefix()
 		// sel_expr.X is "strings"
 		// sel_expr.Name is "HasPrefix"
-		if _, ok = fun_expr.(*ast.Ident); ok {
-			return true // recurse further
+		var call_ident *ast.Ident
+		if call_ident, ok = fun_expr.(*ast.Ident); ok {
+			call_name := "<anon>"
+			if call_ident != nil {
+				call_name = call_ident.Name
+			}
+			if aScanner.logWriter.VerboseLevel(2) {
+				aScanner.logWriter.Printf("Found call to %s()\n", call_name)
+			}
 		}
 
 		var sel_expr *ast.SelectorExpr
@@ -203,9 +210,7 @@ func (aScanner *AssertionScanner) node_inspector(x ast.Node) bool {
 				}
 				aScanner.expects = append(aScanner.expects, &expect)
 			}
-			return false
 		}
-		return true
 	}
 	return true
 }
