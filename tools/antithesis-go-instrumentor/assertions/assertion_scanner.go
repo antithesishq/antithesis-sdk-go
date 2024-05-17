@@ -200,7 +200,8 @@ func (aScanner *AssertionScanner) node_inspector(x ast.Node) bool {
 			if func_hints := aScanner.assertionHintMap.HintsForName(target_func); func_hints != nil && expr_text != "" {
 				test_name := arg_at_index(call_args, func_hints.MessageArg)
 				if test_name == common.NAME_NOT_AVAILABLE {
-					test_name = fmt.Sprintf("Message from %s[%d]", full_position.Filename, full_position.Line)
+					generated_msg := fmt.Sprintf("%s[%d]", full_position.Filename, full_position.Line)
+					test_name = fmt.Sprintf("Message from %s", strconv.Quote(generated_msg))
 				}
 				expect := AntExpect{
 					Assertion:         target_func,
@@ -256,7 +257,6 @@ func arg_at_index(args []ast.Expr, idx int) string {
 				}
 			}
 		}
-		// [PH] return ident.String()
 	}
 	return common.NAME_NOT_AVAILABLE
 }
