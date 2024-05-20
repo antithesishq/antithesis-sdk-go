@@ -1,6 +1,7 @@
 package assertions
 
 import (
+	"fmt"
 	"go/ast"
 	"go/parser"
 	"go/token"
@@ -198,6 +199,10 @@ func (aScanner *AssertionScanner) node_inspector(x ast.Node) bool {
 			target_func := sel_expr.Sel.Name
 			if func_hints := aScanner.assertionHintMap.HintsForName(target_func); func_hints != nil && expr_text != "" {
 				test_name := arg_at_index(call_args, func_hints.MessageArg)
+				if test_name == common.NAME_NOT_AVAILABLE {
+					generated_msg := fmt.Sprintf("%s[%d]", full_position.Filename, full_position.Line)
+					test_name = fmt.Sprintf("Message from %s", strconv.Quote(generated_msg))
+				}
 				expect := AntExpect{
 					Assertion:         target_func,
 					Message:           test_name,
@@ -252,7 +257,6 @@ func arg_at_index(args []ast.Expr, idx int) string {
 				}
 			}
 		}
-		return ident.String()
 	}
 	return common.NAME_NOT_AVAILABLE
 }
