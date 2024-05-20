@@ -19,8 +19,9 @@ type emitTracker map[string]*trackerInfo
 
 // assert_tracker (global) keeps track of the unique asserts evaluated
 var (
-	assertTracker emitTracker = make(emitTracker)
-	trackerMutex  sync.Mutex
+	assertTracker    emitTracker = make(emitTracker)
+	trackerMutex     sync.Mutex
+	trackerInfoMutex sync.Mutex
 )
 
 func (tracker emitTracker) getTrackerEntry(messageKey string) *trackerInfo {
@@ -31,6 +32,8 @@ func (tracker emitTracker) getTrackerEntry(messageKey string) *trackerInfo {
 		return nil
 	}
 
+	trackerMutex.Lock()
+	defer trackerMutex.Unlock()
 	if trackerEntry, ok = tracker[messageKey]; !ok {
 		trackerEntry = newTrackerInfo()
 		tracker[messageKey] = trackerEntry
@@ -61,6 +64,8 @@ func (ti *trackerInfo) emit(ai *assertInfo) {
 	var err error
 	cond := ai.Condition
 
+	trackerInfoMutex.Lock()
+	defer trackerInfoMutex.Unlock()
 	if cond {
 		if ti.PassCount == 0 {
 			err = emitAssert(ai)
