@@ -18,9 +18,10 @@
 // [workload]: https://antithesis.com/docs/getting_started/workload.html
 // [antithesis-go-generator]: https://antithesis.com/docs/using_antithesis/sdk/go_sdk.html#assertion-indexer
 // [triage report]: https://antithesis.com/docs/reports/triage.html
-// [details]: https://antithesis.com/docs/reports/triage.html#details
 // [here]: https://antithesis.com/docs/using_antithesis/sdk/fallback_sdk.html
 // [Sometimes assertions]: https://antithesis.com/docs/best_practices/sometimes_assertions.html
+//
+// [details]: https://antithesis.com/docs/reports/triage.html#details
 package assert
 
 type assertInfo struct {
