@@ -63,7 +63,7 @@ const (
 	unreachableDisplay         = "Unreachable"
 )
 
-// Always asserts that condition is true every time this macro is called, and that it is called at least once. The corresponding test property will be viewable in the Antithesis SDK: Always group of your triage report.
+// Always asserts that condition is true every time this function is called, and that it is called at least once. The corresponding test property will be viewable in the Antithesis SDK: Always group of your triage report.
 func Always(condition bool, message string, details map[string]any) {
 	locationInfo := newLocationInfo(offsetAPICaller)
 	id := makeKey(message, locationInfo)
@@ -84,14 +84,14 @@ func Sometimes(condition bool, message string, details map[string]any) {
 	assertImpl(condition, message, details, locationInfo, wasHit, mustBeHit, existentialTest, sometimesDisplay, id)
 }
 
-// Unreachable asserts that a line of code is never reached. The corresponding test property will fail if this macro is ever called. (If it is never called the test property will therefore pass.) This test property will be viewable in the “Antithesis SDK: Reachablity assertions” group.
+// Unreachable asserts that a line of code is never reached. The corresponding test property will fail if this function is ever called. (If it is never called the test property will therefore pass.) This test property will be viewable in the “Antithesis SDK: Reachablity assertions” group.
 func Unreachable(message string, details map[string]any) {
 	locationInfo := newLocationInfo(offsetAPICaller)
 	id := makeKey(message, locationInfo)
 	assertImpl(false, message, details, locationInfo, wasHit, optionallyHit, reachabilityTest, unreachableDisplay, id)
 }
 
-// Reachable asserts that a line of code is reached at least once. The corresponding test property will pass if this macro is ever called. (If it is never called the test property will therefore fail.) This test property will be viewable in the “Antithesis SDK: Reachablity assertions” group.
+// Reachable asserts that a line of code is reached at least once. The corresponding test property will pass if this function is ever called. (If it is never called the test property will therefore fail.) This test property will be viewable in the “Antithesis SDK: Reachablity assertions” group.
 func Reachable(message string, details map[string]any) {
 	locationInfo := newLocationInfo(offsetAPICaller)
 	id := makeKey(message, locationInfo)
