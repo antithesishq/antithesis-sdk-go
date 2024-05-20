@@ -119,6 +119,8 @@ func assertImpl(cond bool, message string, details map[string]any,
 	assertType string, displayType string,
 	id string,
 ) {
+	trackerMutex.Lock()
+	defer trackerMutex.Unlock()
 	trackerEntry := assertTracker.getTrackerEntry(id)
 
 	aI := &assertInfo{
