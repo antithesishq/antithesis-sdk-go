@@ -4,6 +4,8 @@ package assert
 
 import (
 	"runtime"
+	"sync"
+	"sync/atomic"
 
 	"github.com/antithesishq/antithesis-sdk-go/internal"
 )
@@ -16,7 +18,11 @@ type trackerInfo struct {
 type emitTracker map[string]*trackerInfo
 
 // assert_tracker (global) keeps track of the unique asserts evaluated
-var assertTracker emitTracker = make(emitTracker)
+var (
+	assertTracker    emitTracker = make(emitTracker)
+	trackerMutex     sync.Mutex
+	trackerInfoMutex sync.Mutex
+)
 
 func (tracker emitTracker) getTrackerEntry(messageKey string) *trackerInfo {
 	var trackerEntry *trackerInfo
@@ -26,6 +32,8 @@ func (tracker emitTracker) getTrackerEntry(messageKey string) *trackerInfo {
 		return nil
 	}
 
+	trackerMutex.Lock()
+	defer trackerMutex.Unlock()
 	if trackerEntry, ok = tracker[messageKey]; !ok {
 		trackerEntry = newTrackerInfo()
 		tracker[messageKey] = trackerEntry
@@ -56,6 +64,8 @@ func (ti *trackerInfo) emit(ai *assertInfo) {
 	var err error
 	cond := ai.Condition
 
+	trackerInfoMutex.Lock()
+	defer trackerInfoMutex.Unlock()
 	if cond {
 		if ti.PassCount == 0 {
 			err = emitAssert(ai)
@@ -80,19 +90,18 @@ func versionMessage() {
 	}
 	versionBlock := map[string]any{
 		"language":         languageBlock,
-		"sdk_version":      internal.SDK_Version, // 0.3.1
+		"sdk_version":      internal.SDK_Version,
 		"protocol_version": "1.0.0",
 	}
 	internal.Json_data(map[string]any{"antithesis_sdk": versionBlock})
 }
 
 // package-level flag
-var hasEmitted = false
+var hasEmitted atomic.Bool // initialzed to false
 
 func emitAssert(ai *assertInfo) error {
-	if !hasEmitted {
+	if hasEmitted.CompareAndSwap(false, true) {
 		versionMessage()
-		hasEmitted = true
 	}
 	return internal.Json_data(wrappedAssertInfo{ai})
 }
