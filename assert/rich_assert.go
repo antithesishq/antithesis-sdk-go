@@ -53,7 +53,7 @@ func uses_maximize(gt GuidepostType) bool {
 	return gt == GuidepostMaximize || gt == GuidepostAll
 }
 
-func build_guidance[T Number](gt GuidepostType, message string, left, right T, loc *locationInfo, id string) *guidanceInfo {
+func build_guidance[T Number](gt GuidepostType, message string, left, right T, loc *locationInfo, id string, hit bool) *guidanceInfo {
 
 	operands := numericOperands{
 		Left:  left,
@@ -67,7 +67,7 @@ func build_guidance[T Number](gt GuidepostType, message string, left, right T, l
 		Location:     loc,
 		Maximize:     uses_maximize(gt),
 		Data:         operands,
-		Hit:          true,
+		Hit:          hit,
 	}
 	return &gI
 }
@@ -91,7 +91,7 @@ func toPairMap(p Pair) pairMap {
 
 func build_boolean_guidance(gt GuidepostType, message string, pairs []Pair,
 	loc *locationInfo,
-	id string) *booleanGuidanceInfo {
+	id string, hit bool) *booleanGuidanceInfo {
 
 	// To ensure the sequence and naming for the pairs
 	pair_list := []pairMap{}
@@ -106,22 +106,46 @@ func build_boolean_guidance(gt GuidepostType, message string, pairs []Pair,
 		Location:     loc,
 		Maximize:     uses_maximize(gt),
 		Data:         pair_list,
-		Hit:          true,
+		Hit:          hit,
 	}
 
 	return &bgI
 }
 
-func SendGuidance[T Number](left, right T, message, id string, loc *locationInfo, guidepost GuidepostType) {
+func numericGuidanceImpl[T Number](left, right T, message, id string, loc *locationInfo, guidepost GuidepostType, hit bool) {
 	tI := numeric_gp_tracker.getTrackerEntry(id, TrackerTypeForNumber(left), uses_maximize(guidepost))
-	gI := build_guidance(guidepost, message, left, right, loc, id)
+	gI := build_guidance(guidepost, message, left, right, loc, id, hit)
 	tI.send_value(gI)
 }
 
-func SendBooleanGuidance(pairs []Pair, message, id string, loc *locationInfo, guidepost GuidepostType) {
+func booleanGuidanceImpl(pairs []Pair, message, id string, loc *locationInfo, guidepost GuidepostType, hit bool) {
 	tI := boolean_gp_tracker.getTrackerEntry(id)
-	bgI := build_boolean_guidance(guidepost, message, pairs, loc, id)
+	bgI := build_boolean_guidance(guidepost, message, pairs, loc, id, hit)
 	tI.send_value(bgI)
+}
+
+func NumericGuidanceRaw[T Number](
+	left, right T,
+	message, id string,
+	classname, funcname, filename string,
+	line int,
+	guidepost GuidepostType,
+	hit bool,
+) {
+	loc := &locationInfo{classname, funcname, filename, line, columnUnknown}
+	numericGuidanceImpl(left, right, message, id, loc, guidepost, hit)
+}
+
+func BooleanGuidanceRaw[T Number](
+	pairs []Pair,
+	message, id string,
+	classname, funcname, filename string,
+	line int,
+	guidepost GuidepostType,
+	hit bool,
+) {
+	loc := &locationInfo{classname, funcname, filename, line, columnUnknown}
+	booleanGuidanceImpl(pairs, message, id, loc, guidepost, hit)
 }
 
 func AlwaysGreaterThan[T Number](left, right T, message string, details map[string]any) {
@@ -130,7 +154,7 @@ func AlwaysGreaterThan[T Number](left, right T, message string, details map[stri
 	condition := left > right
 	assertImpl(condition, message, details, loc, wasHit, mustBeHit, universalTest, alwaysDisplay, id)
 
-	SendGuidance(left, right, message, id, loc, GuidepostMinimize)
+	numericGuidanceImpl(left, right, message, id, loc, GuidepostMinimize, wasHit)
 }
 
 func AlwaysGreaterThanOrEqualTo[T Number](left, right T, message string, details map[string]any) {
@@ -139,7 +163,7 @@ func AlwaysGreaterThanOrEqualTo[T Number](left, right T, message string, details
 	condition := left >= right
 	assertImpl(condition, message, details, loc, wasHit, mustBeHit, universalTest, alwaysDisplay, id)
 
-	SendGuidance(left, right, message, id, loc, GuidepostMinimize)
+	numericGuidanceImpl(left, right, message, id, loc, GuidepostMinimize, wasHit)
 }
 
 func SometimesGreaterThan[T Number](left, right T, message string, details map[string]any) {
@@ -148,7 +172,7 @@ func SometimesGreaterThan[T Number](left, right T, message string, details map[s
 	condition := left > right
 	assertImpl(condition, message, details, loc, wasHit, mustBeHit, existentialTest, sometimesDisplay, id)
 
-	SendGuidance(left, right, message, id, loc, GuidepostMaximize)
+	numericGuidanceImpl(left, right, message, id, loc, GuidepostMaximize, wasHit)
 }
 
 func SometimesGreaterThanOrEqualTo[T Number](left, right T, message string, details map[string]any) {
@@ -157,7 +181,7 @@ func SometimesGreaterThanOrEqualTo[T Number](left, right T, message string, deta
 	condition := left >= right
 	assertImpl(condition, message, details, loc, wasHit, mustBeHit, existentialTest, sometimesDisplay, id)
 
-	SendGuidance(left, right, message, id, loc, GuidepostMaximize)
+	numericGuidanceImpl(left, right, message, id, loc, GuidepostMaximize, wasHit)
 }
 
 func AlwaysLessThan[T Number](left, right T, message string, details map[string]any) {
@@ -166,7 +190,7 @@ func AlwaysLessThan[T Number](left, right T, message string, details map[string]
 	condition := left < right
 	assertImpl(condition, message, details, loc, wasHit, mustBeHit, universalTest, alwaysDisplay, id)
 
-	SendGuidance(left, right, message, id, loc, GuidepostMaximize)
+	numericGuidanceImpl(left, right, message, id, loc, GuidepostMaximize, wasHit)
 }
 
 func AlwaysLessThanOrEqualTo[T Number](left, right T, message string, details map[string]any) {
@@ -175,7 +199,7 @@ func AlwaysLessThanOrEqualTo[T Number](left, right T, message string, details ma
 	condition := left <= right
 	assertImpl(condition, message, details, loc, wasHit, mustBeHit, universalTest, alwaysDisplay, id)
 
-	SendGuidance(left, right, message, id, loc, GuidepostMaximize)
+	numericGuidanceImpl(left, right, message, id, loc, GuidepostMaximize, wasHit)
 }
 
 func SometimesLessThan[T Number](left, right T, message string, details map[string]any) {
@@ -184,7 +208,7 @@ func SometimesLessThan[T Number](left, right T, message string, details map[stri
 	condition := left < right
 	assertImpl(condition, message, details, loc, wasHit, mustBeHit, existentialTest, sometimesDisplay, id)
 
-	SendGuidance(left, right, message, id, loc, GuidepostMinimize)
+	numericGuidanceImpl(left, right, message, id, loc, GuidepostMinimize, wasHit)
 }
 
 func SometimesLessThanOrEqualTo[T Number](left, right T, message string, details map[string]any) {
@@ -193,7 +217,7 @@ func SometimesLessThanOrEqualTo[T Number](left, right T, message string, details
 	condition := left <= right
 	assertImpl(condition, message, details, loc, wasHit, mustBeHit, existentialTest, sometimesDisplay, id)
 
-	SendGuidance(left, right, message, id, loc, GuidepostMinimize)
+	numericGuidanceImpl(left, right, message, id, loc, GuidepostMinimize, wasHit)
 }
 
 func AlwaysSome(pairs []Pair, message string, details map[string]any) {
@@ -208,7 +232,7 @@ func AlwaysSome(pairs []Pair, message string, details map[string]any) {
 	}
 	assertImpl(disjunction, message, details, loc, wasHit, mustBeHit, universalTest, alwaysDisplay, id)
 
-	SendBooleanGuidance(pairs, message, id, loc, GuidepostNone)
+	booleanGuidanceImpl(pairs, message, id, loc, GuidepostNone, wasHit)
 }
 
 func SometimesAll(pairs []Pair, message string, details map[string]any) {
@@ -223,5 +247,5 @@ func SometimesAll(pairs []Pair, message string, details map[string]any) {
 	}
 	assertImpl(conjunction, message, details, loc, wasHit, mustBeHit, existentialTest, sometimesDisplay, id)
 
-	SendBooleanGuidance(pairs, message, id, loc, GuidepostAll)
+	booleanGuidanceImpl(pairs, message, id, loc, GuidepostAll, wasHit)
 }

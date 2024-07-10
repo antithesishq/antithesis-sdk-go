@@ -8,8 +8,10 @@ import (
 	"go/types"
 	"path"
 	"strconv"
+	"strings"
 	"time"
 
+	"github.com/antithesishq/antithesis-sdk-go/assert"
 	"github.com/antithesishq/antithesis-sdk-go/tools/antithesis-go-instrumentor/common"
 )
 
@@ -24,9 +26,21 @@ type AntExpect struct {
 	Line      int
 }
 
+type AntGuidance struct {
+	*GuidanceFuncInfo
+	Assertion string
+	Message   string
+	Classname string
+	Funcname  string
+	Receiver  string
+	Filename  string
+	Line      int
+}
+
 // Capitalized struct items are accessed outside this file
 type AssertionScanner struct {
 	assertionHintMap   AssertionHints
+	guidanceHintMap    GuidanceHints
 	fset               *token.FileSet
 	logWriter          *common.LogWriter
 	symbolTableName    string
@@ -37,9 +51,34 @@ type AssertionScanner struct {
 	notifierPackage    string
 	notifierModuleName string
 	expects            []*AntExpect
+	guidance           []*AntGuidance
 	imports            []string
 	filesCataloged     int
 	verbose            bool
+}
+
+// filter Guidance to just numeric
+func (aScanner *AssertionScanner) numericGuidance() []*AntGuidance {
+	numeric_guidance := []*AntGuidance{}
+	for _, aG := range aScanner.guidance {
+		gp := aG.GuidanceFuncInfo.Guidepost
+		if gp == assert.GuidepostMaximize || gp == assert.GuidepostMinimize {
+			numeric_guidance = append(numeric_guidance, aG)
+		}
+	}
+	return numeric_guidance
+}
+
+// filter Guidance to just boolean
+func (aScanner *AssertionScanner) booleanGuidance() []*AntGuidance {
+	boolean_guidance := []*AntGuidance{}
+	for _, aG := range aScanner.guidance {
+		gp := aG.GuidanceFuncInfo.Guidepost
+		if gp == assert.GuidepostAll || gp == assert.GuidepostNone {
+			boolean_guidance = append(boolean_guidance, aG)
+		}
+	}
+	return boolean_guidance
 }
 
 func NewAssertionScanner(verbose bool, moduleName string, symbolTableName string /*, notifierPackage string*/) *AssertionScanner {
@@ -53,11 +92,13 @@ func NewAssertionScanner(verbose bool, moduleName string, symbolTableName string
 		fset:             token.NewFileSet(),
 		imports:          []string{},
 		expects:          []*AntExpect{},
+		guidance:         []*AntGuidance{},
 		verbose:          verbose,
 		funcName:         "",
 		receiver:         "",
 		packageName:      "",
 		assertionHintMap: SetupHintMap(),
+		guidanceHintMap:  SetupGuidanceHintMap(),
 		symbolTableName:  symbolTableName,
 		filesCataloged:   0,
 		logWriter:        logWriter,
@@ -91,14 +132,27 @@ func (aScanner *AssertionScanner) WriteAssertionCatalog(versionText string) {
 	now := time.Now()
 	createDate := now.Format("Mon Jan 2 15:04:05 MST 2006")
 
+	expects := aScanner.expects
+	has_expects := len(expects) > 0
+
+	numeric_guidance := aScanner.numericGuidance()
+	has_numeric_guidance := len(numeric_guidance) > 0
+
+	boolean_guidance := aScanner.booleanGuidance()
+	has_boolean_guidance := len(boolean_guidance) > 0
+
 	genInfo := GenInfo{
-		ExpectedVals:      aScanner.expects,
-		AssertPackageName: common.AssertPackageName(),
-		VersionText:       versionText,
-		CreateDate:        createDate,
-		HasAssertions:     (len(aScanner.expects) > 0),
-		ConstMap:          aScanner.getConstMap(),
-		logWriter:         common.GetLogWriter(),
+		ExpectedVals:        expects,
+		NumericGuidanceVals: numeric_guidance,
+		BooleanGuidanceVals: boolean_guidance,
+		AssertPackageName:   common.AssertPackageName(),
+		VersionText:         versionText,
+		CreateDate:          createDate,
+		HasAssertions:       has_expects,
+		HasNumericGuidance:  has_numeric_guidance,
+		HasBooleanGuidance:  has_boolean_guidance,
+		ConstMap:            aScanner.getConstMap(),
+		logWriter:           common.GetLogWriter(),
 	}
 
 	// destination name is expected to be a file_path
@@ -145,7 +199,7 @@ func (aScanner *AssertionScanner) node_inspector(x ast.Node) bool {
 			aScanner.imports = append(aScanner.imports, call_qualifier)
 		}
 
-		return true // you deal with this
+		return true // ast.inspect() can deal with this
 	}
 
 	// Track current funcName and receiver (type)
@@ -214,10 +268,59 @@ func (aScanner *AssertionScanner) node_inspector(x ast.Node) bool {
 					AssertionFuncInfo: func_hints,
 				}
 				aScanner.expects = append(aScanner.expects, &expect)
-			}
+			} // assertionHint
+
+			if guidance_func_hints := aScanner.guidanceHintMap.GuidanceHintsForName(target_func); guidance_func_hints != nil && expr_text != "" {
+				test_name := arg_at_index(call_args, guidance_func_hints.MessageArg)
+				if test_name == common.NAME_NOT_AVAILABLE {
+					generated_msg := fmt.Sprintf("%s[%d]", full_position.Filename, full_position.Line)
+					test_name = fmt.Sprintf("Message from %s", strconv.Quote(generated_msg))
+				}
+				// The registration for the Guidance function itself
+				guidance_expect := AntGuidance{
+					Assertion:        target_func,
+					Message:          test_name,
+					Classname:        aScanner.packageName,
+					Funcname:         aScanner.funcName,
+					Receiver:         aScanner.receiver,
+					Filename:         full_position.Filename,
+					Line:             full_position.Line,
+					GuidanceFuncInfo: guidance_func_hints,
+				}
+				aScanner.guidance = append(aScanner.guidance, &guidance_expect)
+
+				// The Related Assertion derived from target_func("AlwaysGreaterThan") => derived_target_func("Always")
+				expect := AntExpect{
+					Assertion: target_func_from_guidance(target_func),
+					Message:   test_name,
+					Classname: aScanner.packageName,
+					Funcname:  aScanner.funcName,
+					Receiver:  aScanner.receiver,
+					Filename:  full_position.Filename,
+					Line:      full_position.Line,
+					// NOTE: AssertionFuncInfo.TargetFunc is a guidance func name
+					// and AssertionFuncInfo.MessageArg refers to a Guidance Function argument number.
+					//
+					// GenerateAssertionsCatalog() does not use either of TargetFunc or MessageArg
+					// attributes of AssertionFuncInfo, so it is safe to pass the AssertionFuncInfo
+					// from the guidance func here.
+					AssertionFuncInfo: &guidance_func_hints.AssertionFuncInfo,
+				}
+				aScanner.expects = append(aScanner.expects, &expect)
+			} // assertionHint
 		}
 	}
 	return true
+}
+
+func target_func_from_guidance(guidance_func string) string {
+	target_func := ""
+	if strings.HasPrefix(guidance_func, "Always") {
+		target_func = "Always"
+	} else if strings.HasPrefix(guidance_func, "Sometimes") {
+		target_func = "Sometimes"
+	}
+	return target_func
 }
 
 func arg_at_index(args []ast.Expr, idx int) string {
@@ -287,6 +390,18 @@ const (
 	Num_conditions
 )
 
+// --------------------------------------------------------------------------------
+// The 'ConstMap' is used by GenerateAssertionsCatalog to define the
+// go constants referenced in the registration statements
+// that are generated.
+//
+// This will prevent go build warnings/errors related to defining
+// a const that is not actually used anywhere.
+//
+// Example, if none of the generated registrations use an AssertType
+// "reachability", then the corresponding go const should not be
+// output to the generated Assertions Catalog '.go' file.
+// --------------------------------------------------------------------------------
 func (aScanner *AssertionScanner) getConstMap() map[string]bool {
 	cond_tracker := make([]bool, Num_conditions)
 	if len(aScanner.expects) > 0 {
