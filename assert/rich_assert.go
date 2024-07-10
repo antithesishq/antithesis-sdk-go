@@ -40,11 +40,11 @@ type guidanceInfo struct {
 }
 
 type booleanGuidanceInfo struct {
+	Data         any           `json:"guidance_data,omitempty"`
 	Location     *locationInfo `json:"location"`
 	GuidanceType string        `json:"guidance_type"`
 	Message      string        `json:"message"`
 	Id           string        `json:"id"`
-	Data         any           `json:"guidance_data,omitempty"`
 	Maximize     bool          `json:"maximize"`
 	Hit          bool          `json:"hit"`
 }
@@ -54,13 +54,10 @@ func uses_maximize(gt GuidepostType) bool {
 }
 
 func build_guidance[T Number](gt GuidepostType, message string, left, right T, loc *locationInfo, id string) *guidanceInfo {
-	var data any
 
-	switch any(left).(type) {
-	case int64, int, int8, int16, int32, uint8, uint16, uint32:
-		data = int64(left) - int64(right)
-	case float32, float64:
-		data = float64(left) - float64(right)
+	operands := numericOperands{
+		Left:  left,
+		Right: right,
 	}
 
 	gI := guidanceInfo{
@@ -69,7 +66,7 @@ func build_guidance[T Number](gt GuidepostType, message string, left, right T, l
 		Id:           id,
 		Location:     loc,
 		Maximize:     uses_maximize(gt),
-		Data:         data,
+		Data:         operands,
 		Hit:          true,
 	}
 	return &gI
@@ -118,7 +115,7 @@ func build_boolean_guidance(gt GuidepostType, message string, pairs []Pair,
 func SendGuidance[T Number](left, right T, message, id string, loc *locationInfo, guidepost GuidepostType) {
 	tI := numeric_gp_tracker.getTrackerEntry(id, TrackerTypeForNumber(left), uses_maximize(guidepost))
 	gI := build_guidance(guidepost, message, left, right, loc, id)
-	tI.send_value_if_needed(gI)
+	tI.send_value(gI)
 }
 
 func SendBooleanGuidance(pairs []Pair, message, id string, loc *locationInfo, guidepost GuidepostType) {
