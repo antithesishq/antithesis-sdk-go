@@ -1,4 +1,4 @@
-//go:build !no_antithesis_sdk
+//go:build enable_antithesis_sdk
 
 // Package random requests both structured and unstructured randomness from the Antithesis environment. is part of the [Antithesis Go SDK], which enables Go applications to integrate with the [Antithesis platform].
 //

@@ -1,4 +1,4 @@
-//go:build !no_antithesis_sdk
+//go:build enable_antithesis_sdk
 
 // Package lifecycle informs the Antithesis environment that particular test phases or milestones have been reached. It is part of the [Antithesis Go SDK], which enables Go applications to integrate with the [Antithesis platform].
 //
