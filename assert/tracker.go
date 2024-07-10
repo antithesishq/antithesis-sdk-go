@@ -91,7 +91,7 @@ func versionMessage() {
 	versionBlock := map[string]any{
 		"language":         languageBlock,
 		"sdk_version":      internal.SDK_Version,
-		"protocol_version": "1.0.0",
+		"protocol_version": internal.Protocol_Version,
 	}
 	internal.Json_data(map[string]any{"antithesis_sdk": versionBlock})
 }
