@@ -259,7 +259,7 @@ func init() {
 	{{- $classname := textRepr .Classname -}}
 	{{- $funcname := textRepr .Funcname -}}
 	{{- $filename := textRepr .Filename -}}
-  {{- $guidepost := guidepostRepr .GuidanceFuncInfo.Guidepost -}}
+  {{- $guidepost := guidepostRepr .GuidanceFuncInfo.Guidepost}}
 
   // {{$guidanceName}}
   assert.NumericGuidanceRaw(left, right, {{$message}}, {{$message}}, {{$classname}}, {{$funcname}}, {{$filename}}, {{.Line}}, {{$guidepost}}, notHit)
@@ -278,7 +278,7 @@ func getBooleanGuidanceText() string {
 func init() {
 
   const notHit = false
-  var pairs = [...]assert.Pair{}
+  var pairs = []assert.Pair{}
 
   {{- range .BooleanGuidanceVals }}
   {{- $guidanceName := booleanGuidanceNameRepr .Assertion -}}
@@ -286,7 +286,7 @@ func init() {
 	{{- $classname := textRepr .Classname -}}
 	{{- $funcname := textRepr .Funcname -}}
 	{{- $filename := textRepr .Filename -}}
-  {{- $guidepost := guidepostRepr .GuidanceFuncInfo.Guidepost -}}
+  {{- $guidepost := guidepostRepr .GuidanceFuncInfo.Guidepost}}
 
   // {{$guidanceName}}
   assert.BooleanGuidanceRaw(pairs, {{$message}}, {{$message}}, {{$classname}}, {{$funcname}}, {{$filename}}, {{.Line}}, {{$guidepost}}, notHit)
