@@ -9,52 +9,52 @@ import (
 	"github.com/antithesishq/antithesis-sdk-go/internal"
 )
 
-type NumericTrackerType int
+// --------------------------------------------------------------------------------
+// IntegerGap is used for:
+// - int, int8, int16, int32, int64:
+// - uint, uint8, uint16, uint32, uint64, uintptr:
+//
+// FloatGap is used for:
+// - float32, float64
+// --------------------------------------------------------------------------------
+type NumericGapType int
 
 const (
-	TrackInteger NumericTrackerType = iota
-	TrackUnsigned
-	TrackFloat
+	IntegerGap NumericGapType = iota
+	FloatGap
 )
 
-type IntegralType int
+func GapTypeForOperand[T Number](num T) NumericGapType {
+	gapType := IntegerGap
 
-const (
-	Unsupported IntegralType = iota
-	SmallInt64
-	FullInt64
-	UnsignedInt64
-	Float64
-)
-
-func TrackerTypeForNumber[T Number](num T) NumericTrackerType {
-	trackerType := TrackInteger
 	switch any(num).(type) {
-	case int, int8, int16, int32, int64:
-		trackerType = TrackInteger
-	case uint, uint8, uint16, uint32, uint64, uintptr:
-		trackerType = TrackUnsigned
 	case float32, float64:
-		trackerType = TrackFloat
+		gapType = FloatGap
 	}
-	return trackerType
+	return gapType
 }
 
-// Go does not permit using an interface constraint as a type
-// If it did, we could declare ExtremeValue as 'Number' (assert_types.go)
-// See no-constraint-type-as-type rationale here:
-// https://go.googlesource.com/proposal/+/refs/heads/master/design/43651-type-parameters.md#permitting-constraints-as-ordinary-interface-types
+
+// --------------------------------------------------------------------------------
+// numericGPTracker - Tracking Info for Numeric Guideposts
 //
-// For GuidepostMaximize extremeValue is the largest value sent so far
-// For GuidepostMinimize extremeValue is the smallest value sent so far
+// For GuidepostMaximize:
+//   - gap is the largest integer value sent so far
+//   - float_gap is the largest floating point value sent so far
+//
+// For GuidepostMinimize:
+//   - gap is the most negative integer value sent so far
+//   - float_gap is the most negative floating point value sent so far
+//
+// --------------------------------------------------------------------------------
 type numericGPInfo struct {
 	maximize      bool
-	descriminator NumericTrackerType // TrackInteger, TrackUnsigned, TrackFloat
+	descriminator NumericGapType // IntegerGap, FloatGap
 
-	// used for TrackInteger, TrackUnsigned extreme values
+	// used for IntegerGap extreme values
 	gap GapValue
 
-	// used for TrackFloat extreme values
+	// used for FloatGap extreme values
 	float_gap FloatGapValue
 }
 
@@ -66,7 +66,7 @@ var (
 	numeric_gp_info_mutex    sync.Mutex
 )
 
-func (tracker numericGPTracker) getTrackerEntry(messageKey string, trackerType NumericTrackerType, maximize bool) *numericGPInfo {
+func (tracker numericGPTracker) getTrackerEntry(messageKey string, trackerType NumericGapType, maximize bool) *numericGPInfo {
 	var trackerEntry *numericGPInfo
 	var ok bool
 
@@ -85,7 +85,7 @@ func (tracker numericGPTracker) getTrackerEntry(messageKey string, trackerType N
 }
 
 // Create an numeric guidance entry
-func newNumericGPInfo(trackerType NumericTrackerType, maximize bool) *numericGPInfo {
+func newNumericGPInfo(trackerType NumericGapType, maximize bool) *numericGPInfo {
 
 	trackerInfo := numericGPInfo{
 		maximize:      maximize,
@@ -101,45 +101,10 @@ func (tI *numericGPInfo) should_maximize() bool {
 	return tI.maximize
 }
 
-func (tI *numericGPInfo) is_integer() bool {
-	return tI.descriminator == TrackInteger
+func (tI *numericGPInfo) is_integer_gap() bool {
+	return tI.descriminator == IntegerGap
 }
 
-func (tI *numericGPInfo) is_unsigned() bool {
-	return tI.descriminator == TrackUnsigned
-}
-
-// --------------------------------------------------------------------------------
-// func (tI *numericGPInfo) is_float() bool {
-//   return tI.descriminator == TrackFloat
-// }
-// --------------------------------------------------------------------------------
-
-// --------------------------------------------------------------------------------
-// Represents left and right operand values
-// --------------------------------------------------------------------------------
-type Int64Value struct {
-	int_value  int64
-	is_invalid bool
-	is_small   bool
-}
-
-type UInt64Value struct {
-	uint_value uint64
-	is_invalid bool
-}
-
-type Float64Value struct {
-	float_value float64
-	is_invalid  bool
-}
-
-// --------------------------------------------------------------------------------
-// TODO: Constraint for how gaps are measured
-// --------------------------------------------------------------------------------
-// type GapMeasure interface {
-//    uint64 | float64
-// }
 
 // --------------------------------------------------------------------------------
 // Represents integral and floating point extremes
@@ -166,10 +131,21 @@ func newFloatGapValue(sz float64, is_neg bool) FloatGapValue {
 		gap_is_negative: is_neg}
 }
 
+
 // --------------------------------------------------------------------------------
-// Distinguish numeric types to ensure gap size calculations are done accurately
+// Distinguish numeric operand types to ensure gap size calculations are accurate
 // --------------------------------------------------------------------------------
-func get_integral_type(v any) IntegralType {
+type OperandType int
+
+const (
+	Unsupported OperandType = iota
+	SmallInt64
+	FullInt64
+	UnsignedInt64
+	Float64
+)
+
+func get_operand_type(v any) OperandType {
 	itype := Unsupported
 
 	switch v.(type) {
@@ -185,12 +161,32 @@ func get_integral_type(v any) IntegralType {
 	return itype
 }
 
+
+// --------------------------------------------------------------------------------
+// Represents left and right operand values
+// --------------------------------------------------------------------------------
+type Int64Operand struct {
+	int_value  int64
+	is_invalid bool
+	is_small   bool
+}
+
+type UInt64Operand struct {
+	uint_value uint64
+	is_invalid bool
+}
+
+type Float64Operand struct {
+	float_value float64
+	is_invalid  bool
+}
+
 // --------------------------------------------------------------------------------
 // Represent int8, int16 and int32 values as int64 so they can be safely subtracted
 // Represent uint8, uint16 and uint32 values as int64 so they can be safely subtracted
 // Represent int and int64, setting {is_small: false} to prevent performing direct subtraction
 // --------------------------------------------------------------------------------
-func as_int64(maybe_int any) Int64Value {
+func newInt64Operand(maybe_int any) Int64Operand {
 	var int_value int64
 	is_valid := true
 	is_small := true // most of the types accepted are small
@@ -216,13 +212,17 @@ func as_int64(maybe_int any) Int64Value {
 	default:
 		is_valid = false
 	}
-	return Int64Value{int_value, is_valid, is_small}
+	return Int64Operand{
+		int_value:  int_value,
+		is_invalid: !is_valid,
+		is_small:   is_small,
+	}
 }
 
 // --------------------------------------------------------------------------------
 // Represent uint, uint64, uintptr values so the gap size can be calculated
 // --------------------------------------------------------------------------------
-func as_uint64(maybe_uint any) UInt64Value {
+func newUInt64Operand(maybe_uint any) UInt64Operand {
 	var uint_value uint64
 	is_valid := true
 	switch converted_val := maybe_uint.(type) {
@@ -235,13 +235,16 @@ func as_uint64(maybe_uint any) UInt64Value {
 	default:
 		is_valid = false
 	}
-	return UInt64Value{uint_value, is_valid}
+	return UInt64Operand{
+		uint_value: uint_value,
+		is_invalid: !is_valid,
+	}
 }
 
 // --------------------------------------------------------------------------------
 // Represent float32, float64 values so the gap size can be calculated
 // --------------------------------------------------------------------------------
-func as_float64(maybe_float any) Float64Value {
+func newFloat64Operand(maybe_float any) Float64Operand {
 	var float_value float64
 	is_valid := true
 	switch converted_val := maybe_float.(type) {
@@ -252,8 +255,12 @@ func as_float64(maybe_float any) Float64Value {
 	default:
 		is_valid = false
 	}
-	return Float64Value{float_value, is_valid}
+	return Float64Operand{
+		float_value: float_value,
+		is_invalid:  !is_valid,
+	}
 }
+
 
 func is_same_sign(left_val int64, right_val int64) bool {
 	same_sign := false
@@ -281,8 +288,7 @@ func abs_int64(val int64) uint64 {
 // When left and right are the same sign (both negative, or both non-negative)
 // Calculate: <result> = (left - right).  The gap_size is abs(<result>) and
 // gap_is_negative is (right > left)
-
-func gap_from_int64(left Int64Value, right Int64Value) GapValue {
+func gap_from_int64(left Int64Operand, right Int64Operand) GapValue {
 	same_sign := is_same_sign(left.int_value, right.int_value)
 	if same_sign || left.is_small {
 		result := left.int_value - right.int_value
@@ -301,12 +307,12 @@ func gap_from_int64(left Int64Value, right Int64Value) GapValue {
 	gap_size := left_gap_size + right_gap_size
 	gap_is_negative := right_gap_size > left_gap_size
 	return GapValue{
-		gap_size,
-		gap_is_negative,
+		gap_size:        gap_size,
+		gap_is_negative: gap_is_negative,
 	}
 }
 
-func gap_from_uint64(left UInt64Value, right UInt64Value) GapValue {
+func gap_from_uint64(left UInt64Operand, right UInt64Operand) GapValue {
 	var gap_size uint64
 	var gap_is_negative = false
 	if left.uint_value < right.uint_value {
@@ -316,12 +322,12 @@ func gap_from_uint64(left UInt64Value, right UInt64Value) GapValue {
 		gap_size = left.uint_value - right.uint_value
 	}
 	return GapValue{
-		gap_size,
-		gap_is_negative,
+		gap_size:        gap_size,
+		gap_is_negative: gap_is_negative,
 	}
 }
 
-func gap_from_float64(left Float64Value, right Float64Value) FloatGapValue {
+func gap_from_float64(left Float64Operand, right Float64Operand) FloatGapValue {
 	var gap_size float64
 	var gap_is_negative = false
 	if left.float_value < right.float_value {
@@ -331,8 +337,8 @@ func gap_from_float64(left Float64Value, right Float64Value) FloatGapValue {
 		gap_size = left.float_value - right.float_value
 	}
 	return FloatGapValue{
-		gap_size,
-		gap_is_negative,
+		gap_size:        gap_size,
+		gap_is_negative: gap_is_negative,
 	}
 }
 
@@ -416,62 +422,33 @@ func (tI *numericGPInfo) send_value_if_needed(gI *guidanceInfo) {
 	}
 
 	// left and right are type any, in practice, they
-	// will be type Number (technically Number is a type constraint, not a type)
+	// will be a type that satisifes the Number type constraint
+	// int, uint, ... int64, uint64, float32, float64
 	operands := gI.Data.(numericOperands)
-	itype := get_integral_type(operands.Left)
-	if itype != get_integral_type(operands.Right) {
-		itype = Unsupported
-	}
-
-	// when maximizing, the starting Integral gap size is the most negative integer representable
-	// it is appropriate for numeric guidance that strives to maximize its values
-	// when minimizing, indicate that the gap is negative
-	gap := newGapValue(math.MaxUint64, tI.maximize)
-
-	// when maximizing, thge starting Float gap size is the most negative float representable
-	// it is appropriate for numeric guidance that strives to maximize its values
-	// when minimizing, indicate that the gap is negative
-	float_gap := newFloatGapValue(math.MaxFloat64, tI.maximize)
-
-	switch itype {
-	case Unsupported:
-		// TODO: Implement
-	case SmallInt64:
-		left_int64 := as_int64(operands.Left)
-		right_int64 := as_int64(operands.Right)
-		gap = gap_from_int64(left_int64, right_int64)
-	case FullInt64:
-		left_int64 := as_int64(operands.Left)
-		right_int64 := as_int64(operands.Right)
-		gap = gap_from_int64(left_int64, right_int64)
-	case UnsignedInt64:
-		left_uint64 := as_uint64(operands.Left)
-		right_uint64 := as_uint64(operands.Right)
-		gap = gap_from_uint64(left_uint64, right_uint64)
-	case Float64:
-		left_float64 := as_float64(operands.Left)
-		right_float64 := as_float64(operands.Right)
-		float_gap = gap_from_float64(left_float64, right_float64)
-	}
-
 	should_send := false
+	maximize := tI.should_maximize()
 
-	if tI.should_maximize() {
-		if tI.is_integer() || tI.is_unsigned() {
+	var gap GapValue
+	var float_gap FloatGapValue
+
+	if tI.is_integer_gap() {
+		gap = calculateGap(operands, maximize)
+		if maximize {
 			should_send = is_greater_than(gap, tI.gap)
 		} else {
-			should_send = floating_is_greater_than(float_gap, tI.float_gap)
+			should_send = is_less_than(gap, tI.gap)
 		}
 	} else {
-		if tI.is_integer() || tI.is_unsigned() {
-			should_send = is_less_than(gap, tI.gap)
+		float_gap = calculateFloatGap(operands, maximize)
+		if maximize {
+			should_send = floating_is_greater_than(float_gap, tI.float_gap)
 		} else {
 			should_send = floating_is_less_than(float_gap, tI.float_gap)
 		}
 	}
 
 	if should_send {
-		if tI.is_integer() || tI.is_unsigned() {
+		if tI.is_integer_gap() {
 			tI.gap = gap
 		} else {
 			tI.float_gap = float_gap
@@ -482,4 +459,50 @@ func (tI *numericGPInfo) send_value_if_needed(gI *guidanceInfo) {
 
 func emitGuidance(gI *guidanceInfo) error {
 	return internal.Json_data(map[string]any{"antithesis_guidance": gI})
+}
+
+// when maximizing, the default Integer gap size is the most negative integer
+// it is appropriate for numeric guidance that strives to maximize its values
+// when minimizing, indicate that the default Integer gap is positive
+func calculateGap(operands numericOperands, maximize bool) GapValue {
+	operand_type := get_operand_type(operands.Left)
+	if operand_type != get_operand_type(operands.Right) || operand_type == Float64 {
+		operand_type = Unsupported
+	}
+
+	switch operand_type {
+	case Unsupported, Float64:
+		return newGapValue(math.MaxUint64, maximize)
+	case SmallInt64, FullInt64:
+		left_int64 := newInt64Operand(operands.Left)
+		right_int64 := newInt64Operand(operands.Right)
+		return gap_from_int64(left_int64, right_int64)
+	case UnsignedInt64:
+		left_uint64 := newUInt64Operand(operands.Left)
+		right_uint64 := newUInt64Operand(operands.Right)
+		return gap_from_uint64(left_uint64, right_uint64)
+	default:
+		return newGapValue(math.MaxUint64, maximize)
+	}
+}
+
+// when maximizing, the default Floating Point gap size is the most negative Float64
+// it is appropriate for numeric guidance that strives to maximize its values
+// when minimizing, indicate that the default Floating Point gap size is the most positive Float64
+func calculateFloatGap(operands numericOperands, maximize bool) FloatGapValue {
+	operand_type := get_operand_type(operands.Left)
+	if operand_type != get_operand_type(operands.Right) || operand_type != Float64 {
+		operand_type = Unsupported
+	}
+
+	switch operand_type {
+	case Unsupported, SmallInt64, FullInt64, UnsignedInt64:
+		return newFloatGapValue(math.MaxFloat64, maximize)
+	case Float64:
+		left_float64 := newFloat64Operand(operands.Left)
+		right_float64 := newFloat64Operand(operands.Right)
+		return gap_from_float64(left_float64, right_float64)
+	default:
+		return newFloatGapValue(math.MaxFloat64, maximize)
+	}
 }

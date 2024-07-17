@@ -110,7 +110,7 @@ func build_boolean_guidance(gt GuidepostType, message string, pairs []Pair,
 }
 
 func numericGuidanceImpl[T Number](left, right T, message, id string, loc *locationInfo, guidepost GuidepostType, hit bool) {
-	tI := numeric_gp_tracker.getTrackerEntry(id, TrackerTypeForNumber(left), uses_maximize(guidepost))
+	tI := numeric_gp_tracker.getTrackerEntry(id, GapTypeForOperand(left), uses_maximize(guidepost))
 	gI := build_numeric_guidance(guidepost, message, left, right, loc, id, hit)
 	tI.send_value_if_needed(gI)
 }
