@@ -174,6 +174,7 @@ func add_boolean_details(details map[string]any, pairs []Pair) map[string]any {
 	return enhancedDetails
 }
 
+// Equivalent to asserting ALWAYS(left > right, message, details). Information about left and right will automatically be added to the details parameter, with keys left and right. If you use this function for assertions that compare numeric quantities, you may help Antithesis find more bugs.
 func AlwaysGreaterThan[T Number](left, right T, message string, details map[string]any) {
 	loc := newLocationInfo(offsetAPICaller)
 	id := makeKey(message, loc)
@@ -184,6 +185,7 @@ func AlwaysGreaterThan[T Number](left, right T, message string, details map[stri
 	numericGuidanceImpl(left, right, message, id, loc, GuidepostMinimize, wasHit)
 }
 
+// Equivalent to asserting ALWAYS(left >= right, message, details). Information about left and right will automatically be added to the details parameter, with keys left and right. If you use this function for assertions that compare numeric quantities, you may help Antithesis find more bugs.
 func AlwaysGreaterThanOrEqualTo[T Number](left, right T, message string, details map[string]any) {
 	loc := newLocationInfo(offsetAPICaller)
 	id := makeKey(message, loc)
@@ -194,6 +196,7 @@ func AlwaysGreaterThanOrEqualTo[T Number](left, right T, message string, details
 	numericGuidanceImpl(left, right, message, id, loc, GuidepostMinimize, wasHit)
 }
 
+// Equivalent to asserting SOMETIMES(T left > T right, message, details). Information about left and right will automatically be added to the details parameter, with keys left and right. If you use this function for assertions that compare numeric quantities, you may help Antithesis find more bugs.
 func SometimesGreaterThan[T Number](left, right T, message string, details map[string]any) {
 	loc := newLocationInfo(offsetAPICaller)
 	id := makeKey(message, loc)
@@ -204,6 +207,7 @@ func SometimesGreaterThan[T Number](left, right T, message string, details map[s
 	numericGuidanceImpl(left, right, message, id, loc, GuidepostMaximize, wasHit)
 }
 
+// Equivalent to asserting SOMETIMES(T left >= T right, message, details). Information about left and right will automatically be added to the details parameter, with keys left and right. If you use this function for assertions that compare numeric quantities, you may help Antithesis find more bugs.
 func SometimesGreaterThanOrEqualTo[T Number](left, right T, message string, details map[string]any) {
 	loc := newLocationInfo(offsetAPICaller)
 	id := makeKey(message, loc)
@@ -214,6 +218,7 @@ func SometimesGreaterThanOrEqualTo[T Number](left, right T, message string, deta
 	numericGuidanceImpl(left, right, message, id, loc, GuidepostMaximize, wasHit)
 }
 
+// Equivalent to asserting ALWAYS(left < right, message, details). Information about left and right will automatically be added to the details parameter, with keys left and right. If you use this function for assertions that compare numeric quantities, you may help Antithesis find more bugs.
 func AlwaysLessThan[T Number](left, right T, message string, details map[string]any) {
 	loc := newLocationInfo(offsetAPICaller)
 	id := makeKey(message, loc)
@@ -224,6 +229,7 @@ func AlwaysLessThan[T Number](left, right T, message string, details map[string]
 	numericGuidanceImpl(left, right, message, id, loc, GuidepostMaximize, wasHit)
 }
 
+// Equivalent to asserting ALWAYS(left <= right, message, details). Information about left and right will automatically be added to the details parameter, with keys left and right. If you use this function for assertions that compare numeric quantities, you may help Antithesis find more bugs.
 func AlwaysLessThanOrEqualTo[T Number](left, right T, message string, details map[string]any) {
 	loc := newLocationInfo(offsetAPICaller)
 	id := makeKey(message, loc)
@@ -234,6 +240,7 @@ func AlwaysLessThanOrEqualTo[T Number](left, right T, message string, details ma
 	numericGuidanceImpl(left, right, message, id, loc, GuidepostMaximize, wasHit)
 }
 
+// Equivalent to asserting SOMETIMES(T left < T right, message, details). Information about left and right will automatically be added to the details parameter, with keys left and right. If you use this function for assertions that compare numeric quantities, you may help Antithesis find more bugs.
 func SometimesLessThan[T Number](left, right T, message string, details map[string]any) {
 	loc := newLocationInfo(offsetAPICaller)
 	id := makeKey(message, loc)
@@ -244,6 +251,7 @@ func SometimesLessThan[T Number](left, right T, message string, details map[stri
 	numericGuidanceImpl(left, right, message, id, loc, GuidepostMinimize, wasHit)
 }
 
+// Equivalent to asserting SOMETIMES(T left <= T right, message, details). Information about left and right will automatically be added to the details parameter, with keys left and right. If you use this function for assertions that compare numeric quantities, you may help Antithesis find more bugs.
 func SometimesLessThanOrEqualTo[T Number](left, right T, message string, details map[string]any) {
 	loc := newLocationInfo(offsetAPICaller)
 	id := makeKey(message, loc)
@@ -254,6 +262,7 @@ func SometimesLessThanOrEqualTo[T Number](left, right T, message string, details
 	numericGuidanceImpl(left, right, message, id, loc, GuidepostMinimize, wasHit)
 }
 
+// Asserts that every time this is called, at least one bool in named_bools is true. Equivalent to ALWAYS(named_bools[0].second || named_bools[1].second || ..., message, details). If you use this for assertions about the behavior of booleans, you may help Antithesis find more bugs. Information about named_bools will automatically be added to the details parameter, and the keys will be the names of the bools.
 func AlwaysSome(pairs []Pair, message string, details map[string]any) {
 	loc := newLocationInfo(offsetAPICaller)
 	id := makeKey(message, loc)
@@ -270,6 +279,7 @@ func AlwaysSome(pairs []Pair, message string, details map[string]any) {
 	booleanGuidanceImpl(pairs, message, id, loc, GuidepostNone, wasHit)
 }
 
+// Asserts that at least one time this is called, every bool in named_bools is true. Equivalent to SOMETIMES(named_bools[0].second && named_bools[1].second && ..., message, details). If you use this for assertions about the behavior of booleans, you may help Antithesis find more bugs. Information about named_bools will automatically be added to the details parameter, and the keys will be the names of the bools.
 func SometimesAll(pairs []Pair, message string, details map[string]any) {
 	loc := newLocationInfo(offsetAPICaller)
 	id := makeKey(message, loc)

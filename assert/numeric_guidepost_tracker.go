@@ -34,7 +34,6 @@ func GapTypeForOperand[T Number](num T) NumericGapType {
 	return gapType
 }
 
-
 // --------------------------------------------------------------------------------
 // numericGPTracker - Tracking Info for Numeric Guideposts
 //
@@ -105,7 +104,6 @@ func (tI *numericGPInfo) is_integer_gap() bool {
 	return tI.descriminator == IntegerGap
 }
 
-
 // --------------------------------------------------------------------------------
 // Represents integral and floating point extremes
 // --------------------------------------------------------------------------------
@@ -130,7 +128,6 @@ func newFloatGapValue(sz float64, is_neg bool) FloatGapValue {
 		gap_size:        sz,
 		gap_is_negative: is_neg}
 }
-
 
 // --------------------------------------------------------------------------------
 // Distinguish numeric operand types to ensure gap size calculations are accurate
@@ -160,7 +157,6 @@ func get_operand_type(v any) OperandType {
 	}
 	return itype
 }
-
 
 // --------------------------------------------------------------------------------
 // Represents left and right operand values
@@ -260,7 +256,6 @@ func newFloat64Operand(maybe_float any) Float64Operand {
 		is_invalid:  !is_valid,
 	}
 }
-
 
 func is_same_sign(left_val int64, right_val int64) bool {
 	same_sign := false
