@@ -154,7 +154,7 @@ func GetAbsoluteDirectory(path string) string {
 	return ""
 }
 
-func canonicalizeDirectory(d string) string {
+func CanonicalizeDirectory(d string) string {
 	target, e := filepath.EvalSymlinks(d)
 	if e != nil {
 		logWriter.Fatalf("filepath.EvalSymlinks(%s) failed: %v", d, e)
@@ -184,8 +184,8 @@ func confirmEmptyOutputDirectory(output string) {
 func ValidateDirectories(input, output string) (err error) {
 	// Go does not have a type for filepaths, and will not do this for me: https://golang.org/src/path/filepath/path_unix.go?s=717:754#L16
 	// The UNIX kernel absolutely forbids slashes in filenames. So, quick and dirty:
-	input = canonicalizeDirectory(input) + "/"
-	output = canonicalizeDirectory(output) + "/"
+	input = CanonicalizeDirectory(input) + "/"
+	output = CanonicalizeDirectory(output) + "/"
 	if strings.HasPrefix(output, input) {
 		err = fmt.Errorf("input directory %s is a prefix of the output directory %s", input, output)
 		return

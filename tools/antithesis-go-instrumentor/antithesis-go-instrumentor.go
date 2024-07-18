@@ -61,7 +61,8 @@ func main() {
 	// Setup coverage and assertion processors
 	//--------------------------------------------------------------------------------
 	cI := cmd_files.NewCoverageInstrumentor()
-	aScanner := assertions.NewAssertionScanner(logWriter.IsVerbose(), cI.FullCatalogPath, cI.UsingSymbols)
+	source_dir := cmd_files.GetSourceDir()
+	aScanner := assertions.NewAssertionScanner(logWriter.IsVerbose(), cI.FullCatalogPath, cI.UsingSymbols, source_dir)
 
 	//--------------------------------------------------------------------------------
 	// Process all files (ignore previously generated assertion catalogs)

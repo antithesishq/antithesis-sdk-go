@@ -6,6 +6,7 @@ import (
 	"go/parser"
 	"go/token"
 	"go/types"
+	"os"
 	"path"
 	"strconv"
 	"strings"
@@ -50,6 +51,7 @@ type AssertionScanner struct {
 	moduleName         string
 	notifierPackage    string
 	notifierModuleName string
+	baseInputDir       string
 	expects            []*AntExpect
 	guidance           []*AntGuidance
 	imports            []string
@@ -81,7 +83,7 @@ func (aScanner *AssertionScanner) booleanGuidance() []*AntGuidance {
 	return boolean_guidance
 }
 
-func NewAssertionScanner(verbose bool, moduleName string, symbolTableName string /*, notifierPackage string*/) *AssertionScanner {
+func NewAssertionScanner(verbose bool, moduleName string, symbolTableName string, sourceDir string) *AssertionScanner {
 	logWriter := common.GetLogWriter()
 	if logWriter.VerboseLevel(2) {
 		logWriter.Printf(">> Module: %s\n", moduleName)
@@ -97,6 +99,7 @@ func NewAssertionScanner(verbose bool, moduleName string, symbolTableName string
 		funcName:         "",
 		receiver:         "",
 		packageName:      "",
+		baseInputDir:     sourceDir,
 		assertionHintMap: SetupHintMap(),
 		guidanceHintMap:  SetupGuidanceHintMap(),
 		symbolTableName:  symbolTableName,
@@ -174,6 +177,30 @@ func (aScanner *AssertionScanner) reset_for_file(file_path string) {
 	aScanner.receiver = ""
 }
 
+func (aScanner *AssertionScanner) module_relative_name(file_path string) string {
+	base_dir := common.CanonicalizeDirectory(aScanner.baseInputDir)
+	full_file_path := common.CanonicalizeDirectory(file_path)
+
+	// skip over the base inputDirectory from the inputfilename,
+	// and create the output directories needed
+	if !strings.HasPrefix(full_file_path, base_dir) {
+		return file_path
+	}
+
+	skipLength := len(base_dir)
+
+	// +1 to include a trailing path separator
+	if !strings.HasSuffix(base_dir, string(os.PathSeparator)) {
+		skipLength += 1
+	}
+
+	revised_path := full_file_path[skipLength:]
+	if aScanner.logWriter.VerboseLevel(3) {
+		aScanner.logWriter.Printf("module_relative_name(%q) => %q", file_path, revised_path)
+	}
+	return revised_path
+}
+
 func (aScanner *AssertionScanner) node_inspector(x ast.Node) bool {
 	var call_expr *ast.CallExpr
 	var func_decl *ast.FuncDecl
@@ -249,12 +276,13 @@ func (aScanner *AssertionScanner) node_inspector(x ast.Node) bool {
 		var sel_expr *ast.SelectorExpr
 		if sel_expr, ok = fun_expr.(*ast.SelectorExpr); ok {
 			full_position := aScanner.fset.Position(sel_expr.Pos())
+			relative_file_path := aScanner.module_relative_name(full_position.Filename)
 			expr_text := analyzed_expr(aScanner.imports, sel_expr.X)
 			target_func := sel_expr.Sel.Name
 			if func_hints := aScanner.assertionHintMap.HintsForName(target_func); func_hints != nil && expr_text != "" {
 				test_name := arg_at_index(call_args, func_hints.MessageArg)
 				if test_name == common.NAME_NOT_AVAILABLE {
-					generated_msg := fmt.Sprintf("%s[%d]", full_position.Filename, full_position.Line)
+					generated_msg := fmt.Sprintf("%s[%d]", relative_file_path, full_position.Line)
 					test_name = fmt.Sprintf("Message from %s", strconv.Quote(generated_msg))
 				}
 				expect := AntExpect{
@@ -263,7 +291,7 @@ func (aScanner *AssertionScanner) node_inspector(x ast.Node) bool {
 					Classname:         aScanner.packageName,
 					Funcname:          aScanner.funcName,
 					Receiver:          aScanner.receiver,
-					Filename:          full_position.Filename,
+					Filename:          relative_file_path,
 					Line:              full_position.Line,
 					AssertionFuncInfo: func_hints,
 				}
@@ -273,7 +301,7 @@ func (aScanner *AssertionScanner) node_inspector(x ast.Node) bool {
 			if guidance_func_hints := aScanner.guidanceHintMap.GuidanceHintsForName(target_func); guidance_func_hints != nil && expr_text != "" {
 				test_name := arg_at_index(call_args, guidance_func_hints.MessageArg)
 				if test_name == common.NAME_NOT_AVAILABLE {
-					generated_msg := fmt.Sprintf("%s[%d]", full_position.Filename, full_position.Line)
+					generated_msg := fmt.Sprintf("%s[%d]", relative_file_path, full_position.Line)
 					test_name = fmt.Sprintf("Message from %s", strconv.Quote(generated_msg))
 				}
 				// The registration for the Guidance function itself
@@ -283,7 +311,7 @@ func (aScanner *AssertionScanner) node_inspector(x ast.Node) bool {
 					Classname:        aScanner.packageName,
 					Funcname:         aScanner.funcName,
 					Receiver:         aScanner.receiver,
-					Filename:         full_position.Filename,
+					Filename:         relative_file_path,
 					Line:             full_position.Line,
 					GuidanceFuncInfo: guidance_func_hints,
 				}
@@ -296,7 +324,7 @@ func (aScanner *AssertionScanner) node_inspector(x ast.Node) bool {
 					Classname: aScanner.packageName,
 					Funcname:  aScanner.funcName,
 					Receiver:  aScanner.receiver,
-					Filename:  full_position.Filename,
+					Filename:  relative_file_path,
 					Line:      full_position.Line,
 					// NOTE: AssertionFuncInfo.TargetFunc is a guidance func name
 					// and AssertionFuncInfo.MessageArg refers to a Guidance Function argument number.

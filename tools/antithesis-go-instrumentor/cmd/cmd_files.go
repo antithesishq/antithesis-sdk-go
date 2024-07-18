@@ -158,6 +158,10 @@ func (cfx *CommandFiles) WrapUp() {
 	}
 }
 
+func (cfx *CommandFiles) GetSourceDir() string {
+	return cfx.inputDirectory
+}
+
 func (cfx *CommandFiles) WriteInstrumentedOutput(fileName string, instrumentedSource string, cI *instrumentor.CoverageInstrumentor) {
 	// skip over the base inputDirectory from the inputfilename,
 	// and create the output directories needed
