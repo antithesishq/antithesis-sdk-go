@@ -296,11 +296,11 @@ func gap_from_int64(left Int64Operand, right Int64Operand) GapValue {
 
 	// Otherwise left and right are opposite signs
 	// gap = abs(left) + abs(right)
-	// gap_is_negative = abs(right) > abs(left)
+	// gap_is_negative = left < right
 	left_gap_size := abs_int64(left.int_value)
 	right_gap_size := abs_int64(right.int_value)
 	gap_size := left_gap_size + right_gap_size
-	gap_is_negative := right_gap_size > left_gap_size
+	gap_is_negative := left.int_value < right.int_value
 	return GapValue{
 		gap_size:        gap_size,
 		gap_is_negative: gap_is_negative,
@@ -461,9 +461,6 @@ func emitGuidance(gI *guidanceInfo) error {
 // when minimizing, indicate that the default Integer gap is positive
 func calculateGap(operands numericOperands, maximize bool) GapValue {
 	operand_type := get_operand_type(operands.Left)
-	if operand_type != get_operand_type(operands.Right) || operand_type == Float64 {
-		operand_type = Unsupported
-	}
 
 	switch operand_type {
 	case Unsupported, Float64:
@@ -486,9 +483,6 @@ func calculateGap(operands numericOperands, maximize bool) GapValue {
 // when minimizing, indicate that the default Floating Point gap size is the most positive Float64
 func calculateFloatGap(operands numericOperands, maximize bool) FloatGapValue {
 	operand_type := get_operand_type(operands.Left)
-	if operand_type != get_operand_type(operands.Right) || operand_type != Float64 {
-		operand_type = Unsupported
-	}
 
 	switch operand_type {
 	case Unsupported, SmallInt64, FullInt64, UnsignedInt64:
