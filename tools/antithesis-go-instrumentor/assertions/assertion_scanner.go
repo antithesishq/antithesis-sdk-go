@@ -52,6 +52,7 @@ type AssertionScanner struct {
 	notifierPackage    string
 	notifierModuleName string
 	baseInputDir       string
+	baseTargetDir      string
 	expects            []*AntExpect
 	guidance           []*AntGuidance
 	imports            []string
@@ -83,7 +84,7 @@ func (aScanner *AssertionScanner) booleanGuidance() []*AntGuidance {
 	return boolean_guidance
 }
 
-func NewAssertionScanner(verbose bool, moduleName string, symbolTableName string, sourceDir string) *AssertionScanner {
+func NewAssertionScanner(verbose bool, moduleName string, symbolTableName string, sourceDir string, targetDir string) *AssertionScanner {
 	logWriter := common.GetLogWriter()
 	if logWriter.VerboseLevel(2) {
 		logWriter.Printf(">> Module: %s\n", moduleName)
@@ -100,6 +101,7 @@ func NewAssertionScanner(verbose bool, moduleName string, symbolTableName string
 		receiver:         "",
 		packageName:      "",
 		baseInputDir:     sourceDir,
+		baseTargetDir:    targetDir,
 		assertionHintMap: SetupHintMap(),
 		guidanceHintMap:  SetupGuidanceHintMap(),
 		symbolTableName:  symbolTableName,
@@ -174,6 +176,7 @@ func (aScanner *AssertionScanner) reset_for_file(file_path string) {
 	}
 	aScanner.imports = []string{}
 	aScanner.funcName = ""
+	aScanner.packageName = ""
 	aScanner.receiver = ""
 }
 
@@ -188,22 +191,17 @@ func (aScanner *AssertionScanner) module_relative_name(file_path string) string 
 	}
 
 	skipLength := len(base_dir)
-
-	// +1 to include a trailing path separator
-	if !strings.HasSuffix(base_dir, string(os.PathSeparator)) {
+	if len(base_dir) > 1 {
 		skipLength += 1
 	}
-
 	revised_path := full_file_path[skipLength:]
-	if aScanner.logWriter.VerboseLevel(3) {
-		aScanner.logWriter.Printf("module_relative_name(%q) => %q", file_path, revised_path)
-	}
 	return revised_path
 }
 
 func (aScanner *AssertionScanner) node_inspector(x ast.Node) bool {
 	var call_expr *ast.CallExpr
 	var func_decl *ast.FuncDecl
+	var package_file *ast.File
 	var import_spec *ast.ImportSpec
 	var fun_expr ast.Expr
 	var call_args []ast.Expr
@@ -211,6 +209,48 @@ func (aScanner *AssertionScanner) node_inspector(x ast.Node) bool {
 	var path_name string
 
 	assertPackageName := common.AssertPackageName()
+
+	if aScanner.packageName == "" {
+		if package_file, ok = x.(*ast.File); ok {
+			// subtract aScanner.baseInputDir from the full file name in full_position
+			// and use that top qualify packageName
+			// eg. the "abc" package within "ms-test" module is imported like this:
+			//    import "ms-test/abc"
+			//
+			// The abc package has files named f1.go and f2.go
+			// when instrumenting file f1.go, it is located in "ms-test/abc/f1.go"
+			// similarly, instrumenting file f2.go, it is located in "ms-test/abc/f2.go"
+			// Note that the package_file.Name.Name is simply "abc" corresponding
+			// to the "package abc" statement at the top of f1.go (or f2.go)
+			//
+			// The package name that should be placed in aScanner.packageName is "ms-test/abc"
+			// and should not simply be "abc".
+			//
+			// Go programs always, by definition, all contain a package named "main".  Files
+			// that are instrumented from package "main" should set aScanner.packageName to
+			// "main", and not to "ms-test/main".
+			//
+
+			cooked_moduleName := aScanner.moduleName // source filename
+			base_target_dir := aScanner.baseTargetDir
+			if strings.HasPrefix(cooked_moduleName, base_target_dir) {
+				lx := len(base_target_dir)
+				if len(base_target_dir) > 1 {
+					lx += 1
+				}
+				cooked_moduleName = cooked_moduleName[lx:]
+			}
+			xpos := aScanner.fset.Position(package_file.Pos())
+			relative_name := aScanner.module_relative_name(xpos.Filename)
+			idx := strings.LastIndex(relative_name, string(os.PathSeparator))
+			if idx == -1 {
+				aScanner.packageName = package_file.Name.Name
+			} else {
+				prefix := relative_name[0:idx]
+				aScanner.packageName = fmt.Sprintf("%s%c%s", cooked_moduleName, os.PathSeparator, prefix)
+			}
+		}
+	}
 
 	if import_spec, ok = x.(*ast.ImportSpec); ok {
 		path_name, _ = strconv.Unquote(import_spec.Path.Value)

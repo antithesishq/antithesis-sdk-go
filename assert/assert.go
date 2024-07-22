@@ -119,7 +119,17 @@ func assertImpl(cond bool, message string, details map[string]any,
 	assertType string, displayType string,
 	id string,
 ) {
-	trackerEntry := assertTracker.getTrackerEntry(id)
+	trackerEntry := assertTracker.getTrackerEntry(id, loc.Filename, loc.Classname)
+
+	// Always grab the Filename and Classname captured when the trackerEntry was established
+	// This provides the consistency needed between instrumentation-time and runtime
+	if loc.Filename != trackerEntry.Filename {
+		loc.Filename = trackerEntry.Filename
+	}
+
+	if loc.Classname != trackerEntry.Classname {
+		loc.Classname = trackerEntry.Classname
+	}
 
 	aI := &assertInfo{
 		Hit:         hit,

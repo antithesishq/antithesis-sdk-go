@@ -40,6 +40,7 @@ func main() {
 
 	logWriter = common.GetLogWriter()
 	logWriter.Printf(strings.TrimSpace(versionString))
+	cmd_args.ShowArguments()
 
 	//--------------------------------------------------------------------------------
 	// Verify Directories and Files are all as expected
@@ -61,8 +62,9 @@ func main() {
 	// Setup coverage and assertion processors
 	//--------------------------------------------------------------------------------
 	cI := cmd_files.NewCoverageInstrumentor()
-	source_dir := cmd_files.GetSourceDir()
-	aScanner := assertions.NewAssertionScanner(logWriter.IsVerbose(), cI.FullCatalogPath, cI.UsingSymbols, source_dir)
+	source_dir := cmd_files.GetSourceDir() // Where are the source files to be instrumented
+	target_dir := cmd_files.GetTargetDir() // Where will the final instrumented files be written
+	aScanner := assertions.NewAssertionScanner(logWriter.IsVerbose(), cI.FullCatalogPath, cI.UsingSymbols, source_dir, target_dir)
 
 	//--------------------------------------------------------------------------------
 	// Process all files (ignore previously generated assertion catalogs)
