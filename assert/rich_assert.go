@@ -24,9 +24,9 @@ func get_guidance_type_string(gt GuidepostType) string {
 	return ""
 }
 
-type numericOperands struct {
-	Left  any `json:"left,omitempty"`
-	Right any `json:"right,omitempty"`
+type numericOperands[T Operand] struct {
+	Left  T `json:"left,omitempty"`
+	Right T `json:"right,omitempty"`
 }
 
 type guidanceInfo struct {
@@ -53,15 +53,25 @@ func uses_maximize(gt GuidepostType) bool {
 	return gt == GuidepostMaximize || gt == GuidepostAll
 }
 
+func NewOperands[T Number](left, right T) any {
+	switch any(left).(type) {
+	case int8, int16, int32:
+		return numericOperands[int32]{int32(left), int32(right)}
+	case int, int64:
+		return numericOperands[int64]{int64(left), int64(right)}
+	case uint8, uint16, uint32, uint, uint64, uintptr:
+		return numericOperands[uint64]{uint64(left), uint64(right)}
+	case float32, float64:
+		return numericOperands[float64]{float64(left), float64(right)}
+	}
+	return nil
+}
+
 func build_numeric_guidance[T Number](gt GuidepostType, message string, left, right T, loc *locationInfo, id string, hit bool) *guidanceInfo {
 
-	operands := numericOperands{
-		Left:  left,
-		Right: right,
-	}
-
+	operands := NewOperands(left, right)
 	if !hit {
-		operands = numericOperands{}
+		operands = nil
 	}
 
 	gI := guidanceInfo{
@@ -73,6 +83,7 @@ func build_numeric_guidance[T Number](gt GuidepostType, message string, left, ri
 		Data:         operands,
 		Hit:          hit,
 	}
+
 	return &gI
 }
 
@@ -112,7 +123,7 @@ func build_boolean_guidance(gt GuidepostType, message string, pairs []Pair,
 func numericGuidanceImpl[T Number](left, right T, message, id string, loc *locationInfo, guidepost GuidepostType, hit bool) {
 	tI := numeric_gp_tracker.getTrackerEntry(id, GapTypeForOperand(left), uses_maximize(guidepost))
 	gI := build_numeric_guidance(guidepost, message, left, right, loc, id, hit)
-	tI.send_value_if_needed(gI)
+	send_value_if_needed(tI, gI)
 }
 
 func booleanGuidanceImpl(pairs []Pair, message, id string, loc *locationInfo, guidepost GuidepostType, hit bool) {
