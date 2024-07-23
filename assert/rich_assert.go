@@ -101,10 +101,15 @@ func build_boolean_guidance(gt GuidepostType, message string, pairs []Pair,
 	loc *locationInfo,
 	id string, hit bool) *booleanGuidanceInfo {
 
+	var guidance_data any
+
 	// To ensure the sequence and naming for the pairs
-	pair_dictionary := pairDictionary{}
-	for _, pair := range pairs {
-		pair_dictionary[pair.First] = pair.Second
+	if hit {
+		pair_dictionary := pairDictionary{}
+		for _, pair := range pairs {
+			pair_dictionary[pair.First] = pair.Second
+		}
+		guidance_data = pair_dictionary
 	}
 
 	bgI := booleanGuidanceInfo{
@@ -113,7 +118,7 @@ func build_boolean_guidance(gt GuidepostType, message string, pairs []Pair,
 		Id:           id,
 		Location:     loc,
 		Maximize:     uses_maximize(gt),
-		Data:         pair_dictionary,
+		Data:         guidance_data,
 		Hit:          hit,
 	}
 

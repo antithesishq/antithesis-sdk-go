@@ -11,10 +11,10 @@ import (
 )
 
 type trackerInfo struct {
-	PassCount int
-	FailCount int
 	Filename  string
 	Classname string
+	PassCount int
+	FailCount int
 }
 
 type emitTracker map[string]*trackerInfo
