@@ -25,8 +25,8 @@ func get_guidance_type_string(gt GuidepostType) string {
 }
 
 type numericOperands[T Operand] struct {
-	Left  T `json:"left,omitempty"`
-	Right T `json:"right,omitempty"`
+	Left  T `json:"left"`
+	Right T `json:"right"`
 }
 
 type guidanceInfo struct {
