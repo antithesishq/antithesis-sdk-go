@@ -17,19 +17,19 @@ import (
 // FloatGap is used for:
 // - float32, float64
 // --------------------------------------------------------------------------------
-type NumericGapType int
+type numericGapType int
 
 const (
-	IntegerGap NumericGapType = iota
-	FloatGap
+	integerGapType numericGapType = iota
+	floatGapType
 )
 
-func GapTypeForOperand[T Number](num T) NumericGapType {
-	gapType := IntegerGap
+func gapTypeForOperand[T Number](num T) numericGapType {
+	gapType := integerGapType
 
 	switch any(num).(type) {
 	case float32, float64:
-		gapType = FloatGap
+		gapType = floatGapType
 	}
 	return gapType
 }
@@ -46,7 +46,7 @@ func GapTypeForOperand[T Number](num T) NumericGapType {
 // --------------------------------------------------------------------------------
 type numericGPInfo struct {
 	gap           any
-	descriminator NumericGapType
+	descriminator numericGapType
 	maximize      bool
 }
 
@@ -58,7 +58,7 @@ var (
 	numeric_gp_info_mutex    sync.Mutex
 )
 
-func (tracker numericGPTracker) getTrackerEntry(messageKey string, trackerType NumericGapType, maximize bool) *numericGPInfo {
+func (tracker numericGPTracker) getTrackerEntry(messageKey string, trackerType numericGapType, maximize bool) *numericGPInfo {
 	var trackerEntry *numericGPInfo
 	var ok bool
 
@@ -77,10 +77,10 @@ func (tracker numericGPTracker) getTrackerEntry(messageKey string, trackerType N
 }
 
 // Create an numeric guidance entry
-func newNumericGPInfo(trackerType NumericGapType, maximize bool) *numericGPInfo {
+func newNumericGPInfo(trackerType numericGapType, maximize bool) *numericGPInfo {
 
 	var gap any
-	if trackerType == IntegerGap {
+	if trackerType == integerGapType {
 		gap = newGapValue(uint64(math.MaxUint64), maximize)
 	} else {
 		gap = newGapValue(float64(math.MaxFloat64), maximize)
@@ -98,24 +98,24 @@ func (tI *numericGPInfo) should_maximize() bool {
 }
 
 func (tI *numericGPInfo) is_integer_gap() bool {
-	return tI.descriminator == IntegerGap
+	return tI.descriminator == integerGapType
 }
 
 // --------------------------------------------------------------------------------
 // Represents integral and floating point extremes
 // --------------------------------------------------------------------------------
-type GapValue[T NumType] struct {
+type gapValue[T numConstraint] struct {
 	gap_size        T
 	gap_is_negative bool
 }
 
-func newGapValue[T NumType](sz T, is_neg bool) any {
+func newGapValue[T numConstraint](sz T, is_neg bool) any {
 	switch any(sz).(type) {
 	case uint64:
-		return GapValue[uint64]{gap_size: uint64(sz), gap_is_negative: is_neg}
+		return gapValue[uint64]{gap_size: uint64(sz), gap_is_negative: is_neg}
 
 	case float64:
-		return GapValue[float64]{gap_size: float64(sz), gap_is_negative: is_neg}
+		return gapValue[float64]{gap_size: float64(sz), gap_is_negative: is_neg}
 	}
 	return nil
 }
@@ -143,7 +143,7 @@ func abs_int64(val int64) uint64 {
 	return uint64(0 - val)
 }
 
-func is_greater_than[T NumType](left GapValue[T], right GapValue[T]) bool {
+func is_greater_than[T numConstraint](left gapValue[T], right gapValue[T]) bool {
 	if !left.gap_is_negative && !right.gap_is_negative {
 		return left.gap_size > right.gap_size
 	}
@@ -159,7 +159,7 @@ func is_greater_than[T NumType](left GapValue[T], right GapValue[T]) bool {
 	return false
 }
 
-func is_less_than[T NumType](left GapValue[T], right GapValue[T]) bool {
+func is_less_than[T numConstraint](left gapValue[T], right gapValue[T]) bool {
 	if !left.gap_is_negative && !right.gap_is_negative {
 		return left.gap_size < right.gap_size
 	}
@@ -193,8 +193,8 @@ func send_value_if_needed(tI *numericGPInfo, gI *guidanceInfo) {
 	should_send := false
 	maximize := tI.should_maximize()
 
-	var gap GapValue[uint64]
-	var float_gap GapValue[float64]
+	var gap gapValue[uint64]
+	var float_gap gapValue[float64]
 
 	// Needs to have individual case statements to assist
 	// the compiler to infer the actual type of the var named 'operands'
@@ -209,14 +209,14 @@ func send_value_if_needed(tI *numericGPInfo, gI *guidanceInfo) {
 		float_gap = makeFloatGap(operands)
 	}
 
-	var prev_gap GapValue[uint64]
-	var prev_float_gap GapValue[float64]
+	var prev_gap gapValue[uint64]
+	var prev_float_gap gapValue[float64]
 	has_prev_gap := false
 	has_prev_float_gap := false
 
-	prev_gap, has_prev_gap = tI.gap.(GapValue[uint64])
+	prev_gap, has_prev_gap = tI.gap.(gapValue[uint64])
 	if !has_prev_gap {
-		prev_float_gap, has_prev_float_gap = tI.gap.(GapValue[float64])
+		prev_float_gap, has_prev_float_gap = tI.gap.(gapValue[float64])
 	}
 
 	if has_prev_gap {
@@ -252,7 +252,7 @@ func emitGuidance(gI *guidanceInfo) error {
 // When left and right are the same sign (both negative, or both non-negative)
 // Calculate: <result> = (left - right).  The gap_size is abs(<result>) and
 // gap_is_negative is (right > left)
-func makeGap[Op Operand](operand numericOperands[Op]) GapValue[uint64] {
+func makeGap[Op operandConstraint](operand numericOperands[Op]) gapValue[uint64] {
 
 	var gap_size uint64
 	var gap_is_negative bool
@@ -291,15 +291,15 @@ func makeGap[Op Operand](operand numericOperands[Op]) GapValue[uint64] {
 		}
 
 	default:
-		zero_gap, _ := newGapValue(uint64(0), false).(GapValue[uint64])
+		zero_gap, _ := newGapValue(uint64(0), false).(gapValue[uint64])
 		return zero_gap
 	}
 
-	this_gap, _ := newGapValue(gap_size, gap_is_negative).(GapValue[uint64])
+	this_gap, _ := newGapValue(gap_size, gap_is_negative).(gapValue[uint64])
 	return this_gap
 } // MakeGap
 
-func makeFloatGap[Op Operand](operand numericOperands[Op]) GapValue[float64] {
+func makeFloatGap[Op operandConstraint](operand numericOperands[Op]) gapValue[float64] {
 	switch this_op := any(operand).(type) {
 	case numericOperands[float64]:
 		left_val := this_op.Left
@@ -313,11 +313,11 @@ func makeFloatGap[Op Operand](operand numericOperands[Op]) GapValue[float64] {
 			gap_size = left_val - right_val
 		}
 
-		this_gap, _ := newGapValue(gap_size, gap_is_negative).(GapValue[float64])
+		this_gap, _ := newGapValue(gap_size, gap_is_negative).(gapValue[float64])
 		return this_gap
 
 	default:
-		zero_gap, _ := newGapValue(float64(0.0), false).(GapValue[float64])
+		zero_gap, _ := newGapValue(float64(0.0), false).(gapValue[float64])
 		return zero_gap
 	}
 } // MakeFloatGap

@@ -2,15 +2,17 @@
 
 package assert
 
+// A GuidepostType qualifies how the assertion data should influence fuzzing explorations
 type GuidepostType int
 
 const (
-	GuidepostMaximize GuidepostType = iota
-	GuidepostMinimize
-	GuidepostExplore
-	GuidepostAll
-	GuidepostNone
+	GuidepostMaximize GuidepostType = iota // Maximize (left - right) values
+	GuidepostMinimize                      // Minimize (left - right) values
+	GuidepostAll                           // Encourages fuzzing explorations where boolean values are true
+	GuidepostNone                          // Encourages fuzzing explorations where boolean values are false
 )
+
+// guidepostExplore
 
 func get_guidance_type_string(gt GuidepostType) string {
 	switch gt {
@@ -18,13 +20,13 @@ func get_guidance_type_string(gt GuidepostType) string {
 		return "numeric"
 	case GuidepostAll, GuidepostNone:
 		return "boolean"
-	case GuidepostExplore:
-		return "json"
+		// case GuidepostExplore:
+		// 	return "json"
 	}
 	return ""
 }
 
-type numericOperands[T Operand] struct {
+type numericOperands[T operandConstraint] struct {
 	Left  T `json:"left"`
 	Right T `json:"right"`
 }
@@ -53,7 +55,7 @@ func uses_maximize(gt GuidepostType) bool {
 	return gt == GuidepostMaximize || gt == GuidepostAll
 }
 
-func NewOperands[T Number](left, right T) any {
+func newOperands[T Number](left, right T) any {
 	switch any(left).(type) {
 	case int8, int16, int32:
 		return numericOperands[int32]{int32(left), int32(right)}
@@ -69,7 +71,7 @@ func NewOperands[T Number](left, right T) any {
 
 func build_numeric_guidance[T Number](gt GuidepostType, message string, left, right T, loc *locationInfo, id string, hit bool) *guidanceInfo {
 
-	operands := NewOperands(left, right)
+	operands := newOperands(left, right)
 	if !hit {
 		operands = nil
 	}
@@ -87,6 +89,7 @@ func build_numeric_guidance[T Number](gt GuidepostType, message string, left, ri
 	return &gI
 }
 
+// Convenience function to construct a named boolean pair used for boolean assertions
 func NewPair(first string, second bool) *Pair {
 	p := Pair{
 		First:  first,
@@ -126,7 +129,7 @@ func build_boolean_guidance(gt GuidepostType, message string, pairs []Pair,
 }
 
 func numericGuidanceImpl[T Number](left, right T, message, id string, loc *locationInfo, guidepost GuidepostType, hit bool) {
-	tI := numeric_gp_tracker.getTrackerEntry(id, GapTypeForOperand(left), uses_maximize(guidepost))
+	tI := numeric_gp_tracker.getTrackerEntry(id, gapTypeForOperand(left), uses_maximize(guidepost))
 	gI := build_numeric_guidance(guidepost, message, left, right, loc, id, hit)
 	send_value_if_needed(tI, gI)
 }
@@ -137,6 +140,7 @@ func booleanGuidanceImpl(pairs []Pair, message, id string, loc *locationInfo, gu
 	tI.send_value(bgI)
 }
 
+// NumericGuidanceRaw is a low-level method designed to be used by third-party frameworks. Regular users of the assert package should not call it.
 func NumericGuidanceRaw[T Number](
 	left, right T,
 	message, id string,
@@ -149,6 +153,7 @@ func NumericGuidanceRaw[T Number](
 	numericGuidanceImpl(left, right, message, id, loc, guidepost, hit)
 }
 
+// BooleanGuidanceRaw is a low-level method designed to be used by third-party frameworks. Regular users of the assert package should not call it.
 func BooleanGuidanceRaw(
 	pairs []Pair,
 	message, id string,

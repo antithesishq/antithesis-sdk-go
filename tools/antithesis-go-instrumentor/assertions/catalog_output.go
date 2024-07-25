@@ -131,8 +131,8 @@ func guidepostRepr(n assert.GuidepostType) string {
 		gp = "assert.GuidepostMaximize"
 	case assert.GuidepostMinimize:
 		gp = "assert.GuidepostMinimize"
-	case assert.GuidepostExplore:
-		gp = "assert.GuidepostExplore"
+	// case assert.GuidepostExplore:
+	// 	gp = "assert.GuidepostExplore"
 	case assert.GuidepostAll:
 		gp = "assert.GuidepostAll"
 	case assert.GuidepostNone:
