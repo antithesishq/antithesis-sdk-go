@@ -1,6 +1,6 @@
 package assert
 
-// Allowable numeric types used for comparison assertions
+// Allowable numeric types of comparison parameters
 type Number interface {
 	~int | ~int8 | ~int16 | ~int32 | ~int64 | ~uint8 | ~uint16 | ~uint32 | ~float32 | ~float64 | ~uint64 | ~uint | ~uintptr
 }
@@ -15,7 +15,7 @@ type numConstraint interface {
 }
 
 // Used for boolean assertions
-type Pair struct {
+type NamedBool struct {
 	First  string `json:"first"`
 	Second bool   `json:"second"`
 }
