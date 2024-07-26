@@ -3,28 +3,29 @@
 package assert
 
 // A type for writing raw assertions.
-// GuidanceFnType allows the assertion to provide guidance to
+// guidanceFnType allows the assertion to provide guidance to
 // the Antithesis platform when testing in Antithesis.
 // Regular users of the assert package should not use it.
-type GuidanceFnType int
+type guidanceFnType int
 
 const (
-	GuidanceFnMaximize GuidanceFnType = iota // Maximize (left - right) values
-	GuidanceFnMinimize                       // Minimize (left - right) values
-	GuidanceFnWantAll                        // Encourages fuzzing explorations where boolean values are true
-	GuidanceFnWantNone                       // Encourages fuzzing explorations where boolean values are false
+	guidanceFnMaximize guidanceFnType = iota // Maximize (left - right) values
+	guidanceFnMinimize                       // Minimize (left - right) values
+	guidanceFnWantAll                        // Encourages fuzzing explorations where boolean values are true
+	guidanceFnWantNone                       // Encourages fuzzing explorations where boolean values are false
+	guidanceFnExplore
 )
 
 // guidanceFnExplore
 
-func get_guidance_type_string(gt GuidanceFnType) string {
+func get_guidance_type_string(gt guidanceFnType) string {
 	switch gt {
-	case GuidanceFnMaximize, GuidanceFnMinimize:
+	case guidanceFnMaximize, guidanceFnMinimize:
 		return "numeric"
-	case GuidanceFnWantAll, GuidanceFnWantNone:
+	case guidanceFnWantAll, guidanceFnWantNone:
 		return "boolean"
-		// case guidanceFnExplore:
-		// 	return "json"
+	case guidanceFnExplore:
+		return "json"
 	}
 	return ""
 }
@@ -54,8 +55,8 @@ type booleanGuidanceInfo struct {
 	Hit          bool          `json:"hit"`
 }
 
-func uses_maximize(gt GuidanceFnType) bool {
-	return gt == GuidanceFnMaximize || gt == GuidanceFnWantAll
+func uses_maximize(gt guidanceFnType) bool {
+	return gt == guidanceFnMaximize || gt == guidanceFnWantAll
 }
 
 func newOperands[T Number](left, right T) any {
@@ -72,7 +73,7 @@ func newOperands[T Number](left, right T) any {
 	return nil
 }
 
-func build_numeric_guidance[T Number](gt GuidanceFnType, message string, left, right T, loc *locationInfo, id string, hit bool) *guidanceInfo {
+func build_numeric_guidance[T Number](gt guidanceFnType, message string, left, right T, loc *locationInfo, id string, hit bool) *guidanceInfo {
 
 	operands := newOperands(left, right)
 	if !hit {
@@ -103,7 +104,7 @@ func NewNamedBool(first string, second bool) *NamedBool {
 
 type namedBoolDictionary map[string]bool
 
-func build_boolean_guidance(gt GuidanceFnType, message string, named_bools []NamedBool,
+func build_boolean_guidance(gt guidanceFnType, message string, named_bools []NamedBool,
 	loc *locationInfo,
 	id string, hit bool) *booleanGuidanceInfo {
 
@@ -131,13 +132,28 @@ func build_boolean_guidance(gt GuidanceFnType, message string, named_bools []Nam
 	return &bgI
 }
 
-func numericGuidanceImpl[T Number](left, right T, message, id string, loc *locationInfo, guidanceFn GuidanceFnType, hit bool) {
+func behavior_to_guidance(behavior string) guidanceFnType {
+	guidance := guidanceFnExplore
+	switch behavior {
+	case "maximize":
+		guidance = guidanceFnMaximize
+	case "minimize":
+		guidance = guidanceFnMinimize
+	case "all":
+		guidance = guidanceFnWantAll
+	case "none":
+		guidance = guidanceFnWantNone
+	}
+	return guidance
+}
+
+func numericGuidanceImpl[T Number](left, right T, message, id string, loc *locationInfo, guidanceFn guidanceFnType, hit bool) {
 	tI := numeric_guidance_tracker.getTrackerEntry(id, gapTypeForOperand(left), uses_maximize(guidanceFn))
 	gI := build_numeric_guidance(guidanceFn, message, left, right, loc, id, hit)
 	send_value_if_needed(tI, gI)
 }
 
-func booleanGuidanceImpl(named_bools []NamedBool, message, id string, loc *locationInfo, guidanceFn GuidanceFnType, hit bool) {
+func booleanGuidanceImpl(named_bools []NamedBool, message, id string, loc *locationInfo, guidanceFn guidanceFnType, hit bool) {
 	tI := boolean_guidance_tracker.getTrackerEntry(id)
 	bgI := build_boolean_guidance(guidanceFn, message, named_bools, loc, id, hit)
 	tI.send_value(bgI)
@@ -149,10 +165,11 @@ func NumericGuidanceRaw[T Number](
 	message, id string,
 	classname, funcname, filename string,
 	line int,
-	guidanceFn GuidanceFnType,
+	behavior string,
 	hit bool,
 ) {
 	loc := &locationInfo{classname, funcname, filename, line, columnUnknown}
+	guidanceFn := behavior_to_guidance(behavior)
 	numericGuidanceImpl(left, right, message, id, loc, guidanceFn, hit)
 }
 
@@ -162,10 +179,11 @@ func BooleanGuidanceRaw(
 	message, id string,
 	classname, funcname, filename string,
 	line int,
-	guidanceFn GuidanceFnType,
+	behavior string,
 	hit bool,
 ) {
 	loc := &locationInfo{classname, funcname, filename, line, columnUnknown}
+	guidanceFn := behavior_to_guidance(behavior)
 	booleanGuidanceImpl(named_bools, message, id, loc, guidanceFn, hit)
 }
 
@@ -206,7 +224,7 @@ func AlwaysGreaterThan[T Number](left, right T, message string, details map[stri
 	all_details := add_numeric_details(details, left, right)
 	assertImpl(condition, message, all_details, loc, wasHit, mustBeHit, universalTest, alwaysDisplay, id)
 
-	numericGuidanceImpl(left, right, message, id, loc, GuidanceFnMinimize, wasHit)
+	numericGuidanceImpl(left, right, message, id, loc, guidanceFnMinimize, wasHit)
 }
 
 // Equivalent to asserting Always(left >= right, message, details). Information about left and right will automatically be added to the details parameter, with keys left and right. If you use this function for assertions that compare numeric quantities, you may help Antithesis find more bugs.
@@ -217,7 +235,7 @@ func AlwaysGreaterThanOrEqualTo[T Number](left, right T, message string, details
 	all_details := add_numeric_details(details, left, right)
 	assertImpl(condition, message, all_details, loc, wasHit, mustBeHit, universalTest, alwaysDisplay, id)
 
-	numericGuidanceImpl(left, right, message, id, loc, GuidanceFnMinimize, wasHit)
+	numericGuidanceImpl(left, right, message, id, loc, guidanceFnMinimize, wasHit)
 }
 
 // Equivalent to asserting Sometimes(T left > T right, message, details). Information about left and right will automatically be added to the details parameter, with keys left and right. If you use this function for assertions that compare numeric quantities, you may help Antithesis find more bugs.
@@ -228,7 +246,7 @@ func SometimesGreaterThan[T Number](left, right T, message string, details map[s
 	all_details := add_numeric_details(details, left, right)
 	assertImpl(condition, message, all_details, loc, wasHit, mustBeHit, existentialTest, sometimesDisplay, id)
 
-	numericGuidanceImpl(left, right, message, id, loc, GuidanceFnMaximize, wasHit)
+	numericGuidanceImpl(left, right, message, id, loc, guidanceFnMaximize, wasHit)
 }
 
 // Equivalent to asserting Sometimes(T left >= T right, message, details). Information about left and right will automatically be added to the details parameter, with keys left and right. If you use this function for assertions that compare numeric quantities, you may help Antithesis find more bugs.
@@ -239,7 +257,7 @@ func SometimesGreaterThanOrEqualTo[T Number](left, right T, message string, deta
 	all_details := add_numeric_details(details, left, right)
 	assertImpl(condition, message, all_details, loc, wasHit, mustBeHit, existentialTest, sometimesDisplay, id)
 
-	numericGuidanceImpl(left, right, message, id, loc, GuidanceFnMaximize, wasHit)
+	numericGuidanceImpl(left, right, message, id, loc, guidanceFnMaximize, wasHit)
 }
 
 // Equivalent to asserting Always(left < right, message, details). Information about left and right will automatically be added to the details parameter, with keys left and right. If you use this function for assertions that compare numeric quantities, you may help Antithesis find more bugs.
@@ -250,7 +268,7 @@ func AlwaysLessThan[T Number](left, right T, message string, details map[string]
 	all_details := add_numeric_details(details, left, right)
 	assertImpl(condition, message, all_details, loc, wasHit, mustBeHit, universalTest, alwaysDisplay, id)
 
-	numericGuidanceImpl(left, right, message, id, loc, GuidanceFnMaximize, wasHit)
+	numericGuidanceImpl(left, right, message, id, loc, guidanceFnMaximize, wasHit)
 }
 
 // Equivalent to asserting Always(left <= right, message, details). Information about left and right will automatically be added to the details parameter, with keys left and right. If you use this function for assertions that compare numeric quantities, you may help Antithesis find more bugs.
@@ -261,7 +279,7 @@ func AlwaysLessThanOrEqualTo[T Number](left, right T, message string, details ma
 	all_details := add_numeric_details(details, left, right)
 	assertImpl(condition, message, all_details, loc, wasHit, mustBeHit, universalTest, alwaysDisplay, id)
 
-	numericGuidanceImpl(left, right, message, id, loc, GuidanceFnMaximize, wasHit)
+	numericGuidanceImpl(left, right, message, id, loc, guidanceFnMaximize, wasHit)
 }
 
 // Equivalent to asserting Sometimes(T left < T right, message, details). Information about left and right will automatically be added to the details parameter, with keys left and right. If you use this function for assertions that compare numeric quantities, you may help Antithesis find more bugs.
@@ -272,7 +290,7 @@ func SometimesLessThan[T Number](left, right T, message string, details map[stri
 	all_details := add_numeric_details(details, left, right)
 	assertImpl(condition, message, all_details, loc, wasHit, mustBeHit, existentialTest, sometimesDisplay, id)
 
-	numericGuidanceImpl(left, right, message, id, loc, GuidanceFnMinimize, wasHit)
+	numericGuidanceImpl(left, right, message, id, loc, guidanceFnMinimize, wasHit)
 }
 
 // Equivalent to asserting Sometimes(T left <= T right, message, details). Information about left and right will automatically be added to the details parameter, with keys left and right. If you use this function for assertions that compare numeric quantities, you may help Antithesis find more bugs.
@@ -283,7 +301,7 @@ func SometimesLessThanOrEqualTo[T Number](left, right T, message string, details
 	all_details := add_numeric_details(details, left, right)
 	assertImpl(condition, message, all_details, loc, wasHit, mustBeHit, existentialTest, sometimesDisplay, id)
 
-	numericGuidanceImpl(left, right, message, id, loc, GuidanceFnMinimize, wasHit)
+	numericGuidanceImpl(left, right, message, id, loc, guidanceFnMinimize, wasHit)
 }
 
 // Asserts that every time this is called, at least one bool in named_bools is true. Equivalent to Always(named_bools[0].second || named_bools[1].second || ..., message, details). If you use this for assertions about the behavior of booleans, you may help Antithesis find more bugs. Information about named_bools will automatically be added to the details parameter, and the keys will be the names of the bools.
@@ -300,7 +318,7 @@ func AlwaysSome(named_bools []NamedBool, message string, details map[string]any)
 	all_details := add_boolean_details(details, named_bools)
 	assertImpl(disjunction, message, all_details, loc, wasHit, mustBeHit, universalTest, alwaysDisplay, id)
 
-	booleanGuidanceImpl(named_bools, message, id, loc, GuidanceFnWantNone, wasHit)
+	booleanGuidanceImpl(named_bools, message, id, loc, guidanceFnWantNone, wasHit)
 }
 
 // Asserts that at least one time this is called, every bool in named_bools is true. Equivalent to Sometimes(named_bools[0].second && named_bools[1].second && ..., message, details). If you use this for assertions about the behavior of booleans, you may help Antithesis find more bugs. Information about named_bools will automatically be added to the details parameter, and the keys will be the names of the bools.
@@ -317,5 +335,5 @@ func SometimesAll(named_bools []NamedBool, message string, details map[string]an
 	all_details := add_boolean_details(details, named_bools)
 	assertImpl(conjunction, message, all_details, loc, wasHit, mustBeHit, existentialTest, sometimesDisplay, id)
 
-	booleanGuidanceImpl(named_bools, message, id, loc, GuidanceFnWantAll, wasHit)
+	booleanGuidanceImpl(named_bools, message, id, loc, guidanceFnWantAll, wasHit)
 }

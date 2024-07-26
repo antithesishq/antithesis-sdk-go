@@ -12,7 +12,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/antithesishq/antithesis-sdk-go/assert"
 	"github.com/antithesishq/antithesis-sdk-go/tools/antithesis-go-instrumentor/common"
 )
 
@@ -65,7 +64,7 @@ func (aScanner *AssertionScanner) numericGuidance() []*AntGuidance {
 	numeric_guidance := []*AntGuidance{}
 	for _, aG := range aScanner.guidance {
 		gp := aG.GuidanceFn
-		if gp == assert.GuidanceFnMaximize || gp == assert.GuidanceFnMinimize {
+		if gp == GuidanceFnMaximize || gp == GuidanceFnMinimize {
 			numeric_guidance = append(numeric_guidance, aG)
 		}
 	}
@@ -77,7 +76,7 @@ func (aScanner *AssertionScanner) booleanGuidance() []*AntGuidance {
 	boolean_guidance := []*AntGuidance{}
 	for _, aG := range aScanner.guidance {
 		gp := aG.GuidanceFn
-		if gp == assert.GuidanceFnWantAll || gp == assert.GuidanceFnWantNone {
+		if gp == GuidanceFnWantAll || gp == GuidanceFnWantNone {
 			boolean_guidance = append(boolean_guidance, aG)
 		}
 	}

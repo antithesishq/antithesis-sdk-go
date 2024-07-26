@@ -10,7 +10,6 @@ import (
 	"strings"
 	"text/template"
 
-	"github.com/antithesishq/antithesis-sdk-go/assert"
 	"github.com/antithesishq/antithesis-sdk-go/tools/antithesis-go-instrumentor/common"
 )
 
@@ -124,21 +123,21 @@ func textRepr(s string) string {
 	return strconv.Quote(s)
 }
 
-func guidanceFnRepr(n assert.GuidanceFnType) string {
+func guidanceFnRepr(n GuidanceFnType) string {
 	gp := ""
 	switch n {
-	case assert.GuidanceFnMaximize:
-		gp = "assert.GuidanceFnMaximize"
-	case assert.GuidanceFnMinimize:
-		gp = "assert.GuidanceFnMinimize"
-	// case assert.GuidanceFnExplore:
-	// 	gp = "assert.GuidanceFnExplore"
-	case assert.GuidanceFnWantAll:
-		gp = "assert.GuidanceFnWantAll"
-	case assert.GuidanceFnWantNone:
-		gp = "assert.GuidanceFnWantNone"
+	case GuidanceFnMaximize:
+		gp = "maximize"
+	case GuidanceFnMinimize:
+		gp = "minimize"
+	case GuidanceFnExplore:
+		gp = "explore"
+	case GuidanceFnWantAll:
+		gp = "all"
+	case GuidanceFnWantNone:
+		gp = "none"
 	}
-	return gp
+	return textRepr(gp)
 }
 
 func assertTypeRepr(s string) string {

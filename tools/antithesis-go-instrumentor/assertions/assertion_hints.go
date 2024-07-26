@@ -1,7 +1,17 @@
 package assertions
 
-import (
-	"github.com/antithesishq/antithesis-sdk-go/assert"
+// A type for writing raw assertions.
+// GuidanceFnType allows the assertion to provide guidance to
+// the Antithesis platform when testing in Antithesis.
+// Regular users of the assert package should not use it.
+type GuidanceFnType int
+
+const (
+	GuidanceFnMaximize GuidanceFnType = iota // Maximize (left - right) values
+	GuidanceFnMinimize                       // Minimize (left - right) values
+	GuidanceFnWantAll                        // Encourages fuzzing explorations where boolean values are true
+	GuidanceFnWantNone                       // Encourages fuzzing explorations where boolean values are false
+	GuidanceFnExplore
 )
 
 // --------------------------------------------------------------------------------
@@ -68,7 +78,7 @@ func SetupHintMap() AssertionHints {
 // --------------------------------------------------------------------------------
 type GuidanceFuncInfo struct {
 	AssertionFuncInfo
-	GuidanceFn assert.GuidanceFnType
+	GuidanceFn GuidanceFnType
 }
 
 type GuidanceHints map[string]*GuidanceFuncInfo
@@ -84,7 +94,7 @@ func SetupGuidanceHintMap() GuidanceHints {
 			Condition:  false,
 			MessageArg: 2,
 		},
-		GuidanceFn: assert.GuidanceFnMinimize,
+		GuidanceFn: GuidanceFnMinimize,
 	}
 
 	hintMap["AlwaysGreaterThanOrEqualTo"] = &GuidanceFuncInfo{
@@ -95,7 +105,7 @@ func SetupGuidanceHintMap() GuidanceHints {
 			Condition:  false,
 			MessageArg: 2,
 		},
-		GuidanceFn: assert.GuidanceFnMinimize,
+		GuidanceFn: GuidanceFnMinimize,
 	}
 
 	hintMap["SometimesGreaterThan"] = &GuidanceFuncInfo{
@@ -106,7 +116,7 @@ func SetupGuidanceHintMap() GuidanceHints {
 			Condition:  false,
 			MessageArg: 2,
 		},
-		GuidanceFn: assert.GuidanceFnMaximize,
+		GuidanceFn: GuidanceFnMaximize,
 	}
 
 	hintMap["SometimesGreaterThanOrEqualTo"] = &GuidanceFuncInfo{
@@ -117,7 +127,7 @@ func SetupGuidanceHintMap() GuidanceHints {
 			Condition:  false,
 			MessageArg: 2,
 		},
-		GuidanceFn: assert.GuidanceFnMaximize,
+		GuidanceFn: GuidanceFnMaximize,
 	}
 
 	hintMap["AlwaysLessThan"] = &GuidanceFuncInfo{
@@ -128,7 +138,7 @@ func SetupGuidanceHintMap() GuidanceHints {
 			Condition:  false,
 			MessageArg: 2,
 		},
-		GuidanceFn: assert.GuidanceFnMaximize,
+		GuidanceFn: GuidanceFnMaximize,
 	}
 
 	hintMap["AlwaysLessThanOrEqualTo"] = &GuidanceFuncInfo{
@@ -139,7 +149,7 @@ func SetupGuidanceHintMap() GuidanceHints {
 			Condition:  false,
 			MessageArg: 2,
 		},
-		GuidanceFn: assert.GuidanceFnMaximize,
+		GuidanceFn: GuidanceFnMaximize,
 	}
 
 	hintMap["SometimesLessThan"] = &GuidanceFuncInfo{
@@ -150,7 +160,7 @@ func SetupGuidanceHintMap() GuidanceHints {
 			Condition:  false,
 			MessageArg: 2,
 		},
-		GuidanceFn: assert.GuidanceFnMinimize,
+		GuidanceFn: GuidanceFnMinimize,
 	}
 
 	hintMap["SometimesLessThanOrEqualTo"] = &GuidanceFuncInfo{
@@ -161,7 +171,7 @@ func SetupGuidanceHintMap() GuidanceHints {
 			Condition:  false,
 			MessageArg: 2,
 		},
-		GuidanceFn: assert.GuidanceFnMinimize,
+		GuidanceFn: GuidanceFnMinimize,
 	}
 
 	hintMap["AlwaysSome"] = &GuidanceFuncInfo{
@@ -172,7 +182,7 @@ func SetupGuidanceHintMap() GuidanceHints {
 			Condition:  false,
 			MessageArg: 1,
 		},
-		GuidanceFn: assert.GuidanceFnWantNone,
+		GuidanceFn: GuidanceFnWantNone,
 	}
 
 	hintMap["SometimesAll"] = &GuidanceFuncInfo{
@@ -183,7 +193,7 @@ func SetupGuidanceHintMap() GuidanceHints {
 			Condition:  false,
 			MessageArg: 1,
 		},
-		GuidanceFn: assert.GuidanceFnWantAll,
+		GuidanceFn: GuidanceFnWantAll,
 	}
 
 	return hintMap
