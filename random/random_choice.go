@@ -14,9 +14,9 @@ func RandomChoice(things []any) any {
 	return things[index]
 }
 
-// RandomChoiceG is the generic version of RandomChoice (usable, for example, with a list of strings, integers, etc.).
+// RandomChoice returns a randomly chosen item from a list of options. You should not store this value, but should use it immediately.
 //
-// Refer to the RandomChoice documentation for important additional information about this method.
+// This function is not purely for convenience. Signaling to the Antithesis platform that you intend to use a random value in a structured way enables it to provide more interesting choices over time.
 func RandomChoiceG[T any](things []T) T {
 	numThings := len(things)
 	if numThings == 0 {
