@@ -35,41 +35,41 @@ func gapTypeForOperand[T Number](num T) numericGapType {
 }
 
 // --------------------------------------------------------------------------------
-// numericGPTracker - Tracking Info for Numeric Guideposts
+// numericGuidanceTracker - Tracking Info for Numeric Guidance
 //
-// For GuidepostMaximize:
+// For GuidanceFnMaximize:
 //   - gap is the largest value sent so far
 //
-// For GuidepostMinimize:
+// For GuidanceFnMinimize:
 //   - gap is the most negative value sent so far
 //
 // --------------------------------------------------------------------------------
-type numericGPInfo struct {
+type numericGuidanceInfo struct {
 	gap           any
 	descriminator numericGapType
 	maximize      bool
 }
 
-type numericGPTracker map[string]*numericGPInfo
+type numericGuidanceTracker map[string]*numericGuidanceInfo
 
 var (
-	numeric_gp_tracker       numericGPTracker = make(numericGPTracker)
-	numeric_gp_tracker_mutex sync.Mutex
-	numeric_gp_info_mutex    sync.Mutex
+	numeric_guidance_tracker       numericGuidanceTracker = make(numericGuidanceTracker)
+	numeric_guidance_tracker_mutex sync.Mutex
+	numeric_guidance_info_mutex    sync.Mutex
 )
 
-func (tracker numericGPTracker) getTrackerEntry(messageKey string, trackerType numericGapType, maximize bool) *numericGPInfo {
-	var trackerEntry *numericGPInfo
+func (tracker numericGuidanceTracker) getTrackerEntry(messageKey string, trackerType numericGapType, maximize bool) *numericGuidanceInfo {
+	var trackerEntry *numericGuidanceInfo
 	var ok bool
 
 	if tracker == nil {
 		return nil
 	}
 
-	numeric_gp_tracker_mutex.Lock()
-	defer numeric_gp_tracker_mutex.Unlock()
-	if trackerEntry, ok = numeric_gp_tracker[messageKey]; !ok {
-		trackerEntry = newNumericGPInfo(trackerType, maximize)
+	numeric_guidance_tracker_mutex.Lock()
+	defer numeric_guidance_tracker_mutex.Unlock()
+	if trackerEntry, ok = numeric_guidance_tracker[messageKey]; !ok {
+		trackerEntry = newNumericGuidanceInfo(trackerType, maximize)
 		tracker[messageKey] = trackerEntry
 	}
 
@@ -77,7 +77,7 @@ func (tracker numericGPTracker) getTrackerEntry(messageKey string, trackerType n
 }
 
 // Create an numeric guidance entry
-func newNumericGPInfo(trackerType numericGapType, maximize bool) *numericGPInfo {
+func newNumericGuidanceInfo(trackerType numericGapType, maximize bool) *numericGuidanceInfo {
 
 	var gap any
 	if trackerType == integerGapType {
@@ -85,7 +85,7 @@ func newNumericGPInfo(trackerType numericGapType, maximize bool) *numericGPInfo 
 	} else {
 		gap = newGapValue(float64(math.MaxFloat64), maximize)
 	}
-	trackerInfo := numericGPInfo{
+	trackerInfo := numericGuidanceInfo{
 		maximize:      maximize,
 		descriminator: trackerType,
 		gap:           gap,
@@ -93,11 +93,11 @@ func newNumericGPInfo(trackerType numericGapType, maximize bool) *numericGPInfo 
 	return &trackerInfo
 }
 
-func (tI *numericGPInfo) should_maximize() bool {
+func (tI *numericGuidanceInfo) should_maximize() bool {
 	return tI.maximize
 }
 
-func (tI *numericGPInfo) is_integer_gap() bool {
+func (tI *numericGuidanceInfo) is_integer_gap() bool {
 	return tI.descriminator == integerGapType
 }
 
@@ -175,16 +175,16 @@ func is_less_than[T numConstraint](left gapValue[T], right gapValue[T]) bool {
 	return true
 }
 
-func send_value_if_needed(tI *numericGPInfo, gI *guidanceInfo) {
+func send_value_if_needed(tI *numericGuidanceInfo, gI *guidanceInfo) {
 	if tI == nil {
 		return
 	}
 
-	numeric_gp_info_mutex.Lock()
-	defer numeric_gp_info_mutex.Unlock()
+	numeric_guidance_info_mutex.Lock()
+	defer numeric_guidance_info_mutex.Unlock()
 
 	// if this is a catalog entry (gI.hit is false)
-	// do not update the reference gap in the tracker (tI *numericGPInfo)
+	// do not update the reference gap in the tracker (tI *numericGuidanceInfo)
 	if !gI.Hit {
 		emitGuidance(gI)
 		return

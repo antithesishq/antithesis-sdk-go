@@ -64,8 +64,8 @@ type AssertionScanner struct {
 func (aScanner *AssertionScanner) numericGuidance() []*AntGuidance {
 	numeric_guidance := []*AntGuidance{}
 	for _, aG := range aScanner.guidance {
-		gp := aG.Guidepost
-		if gp == assert.GuidepostMaximize || gp == assert.GuidepostMinimize {
+		gp := aG.GuidanceFn
+		if gp == assert.GuidanceFnMaximize || gp == assert.GuidanceFnMinimize {
 			numeric_guidance = append(numeric_guidance, aG)
 		}
 	}
@@ -76,8 +76,8 @@ func (aScanner *AssertionScanner) numericGuidance() []*AntGuidance {
 func (aScanner *AssertionScanner) booleanGuidance() []*AntGuidance {
 	boolean_guidance := []*AntGuidance{}
 	for _, aG := range aScanner.guidance {
-		gp := aG.Guidepost
-		if gp == assert.GuidepostAll || gp == assert.GuidepostNone {
+		gp := aG.GuidanceFn
+		if gp == assert.GuidanceFnWantAll || gp == assert.GuidanceFnWantNone {
 			boolean_guidance = append(boolean_guidance, aG)
 		}
 	}

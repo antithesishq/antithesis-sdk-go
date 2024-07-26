@@ -5,7 +5,7 @@ type Number interface {
 	~int | ~int8 | ~int16 | ~int32 | ~int64 | ~uint8 | ~uint16 | ~uint32 | ~float32 | ~float64 | ~uint64 | ~uint | ~uintptr
 }
 
-// Internally, numeric guidepost Operands only use these
+// Internally, numeric guidanceFn Operands only use these
 type operandConstraint interface {
 	int32 | int64 | uint64 | float64
 }

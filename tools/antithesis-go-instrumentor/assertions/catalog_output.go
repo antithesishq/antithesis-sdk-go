@@ -124,19 +124,19 @@ func textRepr(s string) string {
 	return strconv.Quote(s)
 }
 
-func guidepostRepr(n assert.GuidepostType) string {
+func guidanceFnRepr(n assert.GuidanceFnType) string {
 	gp := ""
 	switch n {
-	case assert.GuidepostMaximize:
-		gp = "assert.GuidepostMaximize"
-	case assert.GuidepostMinimize:
-		gp = "assert.GuidepostMinimize"
-	// case assert.GuidepostExplore:
-	// 	gp = "assert.GuidepostExplore"
-	case assert.GuidepostAll:
-		gp = "assert.GuidepostAll"
-	case assert.GuidepostNone:
-		gp = "assert.GuidepostNone"
+	case assert.GuidanceFnMaximize:
+		gp = "assert.GuidanceFnMaximize"
+	case assert.GuidanceFnMinimize:
+		gp = "assert.GuidanceFnMinimize"
+	// case assert.GuidanceFnExplore:
+	// 	gp = "assert.GuidanceFnExplore"
+	case assert.GuidanceFnWantAll:
+		gp = "assert.GuidanceFnWantAll"
+	case assert.GuidanceFnWantNone:
+		gp = "assert.GuidanceFnWantNone"
 	}
 	return gp
 }
@@ -175,7 +175,7 @@ func GenerateAssertionsCatalog(moduleName string, genInfo *GenInfo) {
 		"textRepr":                textRepr,
 		"numericGuidanceNameRepr": numericGuidanceNameRepr,
 		"booleanGuidanceNameRepr": booleanGuidanceNameRepr,
-		"guidepostRepr":           guidepostRepr,
+		"guidanceFnRepr":          guidanceFnRepr,
 	})
 
 	all_template_text := getExpectorText() + getNumericGuidanceText() + getBooleanGuidanceText()
@@ -259,10 +259,10 @@ func init() {
 	{{- $classname := textRepr .Classname -}}
 	{{- $funcname := textRepr .Funcname -}}
 	{{- $filename := textRepr .Filename -}}
-  {{- $guidepost := guidepostRepr .GuidanceFuncInfo.Guidepost}}
+  {{- $guidanceFn := guidanceFnRepr .GuidanceFuncInfo.GuidanceFn}}
 
   // {{$guidanceName}}
-  assert.NumericGuidanceRaw(left, right, {{$message}}, {{$message}}, {{$classname}}, {{$funcname}}, {{$filename}}, {{.Line}}, {{$guidepost}}, notHit)
+  assert.NumericGuidanceRaw(left, right, {{$message}}, {{$message}}, {{$classname}}, {{$funcname}}, {{$filename}}, {{.Line}}, {{$guidanceFn}}, notHit)
   {{- end}}
 }
 {{- end}}
@@ -278,7 +278,7 @@ func getBooleanGuidanceText() string {
 func init() {
 
   const notHit = false
-  var pairs = []assert.Pair{}
+  var named_bools = []assert.NamedBool{}
 
   {{- range .BooleanGuidanceVals }}
   {{- $guidanceName := booleanGuidanceNameRepr .Assertion -}}
@@ -286,10 +286,10 @@ func init() {
 	{{- $classname := textRepr .Classname -}}
 	{{- $funcname := textRepr .Funcname -}}
 	{{- $filename := textRepr .Filename -}}
-  {{- $guidepost := guidepostRepr .GuidanceFuncInfo.Guidepost}}
+  {{- $guidanceFn := guidanceFnRepr .GuidanceFuncInfo.GuidanceFn}}
 
   // {{$guidanceName}}
-  assert.BooleanGuidanceRaw(pairs, {{$message}}, {{$message}}, {{$classname}}, {{$funcname}}, {{$filename}}, {{.Line}}, {{$guidepost}}, notHit)
+  assert.BooleanGuidanceRaw(named_bools, {{$message}}, {{$message}}, {{$classname}}, {{$funcname}}, {{$filename}}, {{.Line}}, {{$guidanceFn}}, notHit)
   {{- end}}
 }
 {{- end}}

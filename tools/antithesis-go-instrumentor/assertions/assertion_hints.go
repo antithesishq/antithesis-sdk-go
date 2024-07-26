@@ -68,7 +68,7 @@ func SetupHintMap() AssertionHints {
 // --------------------------------------------------------------------------------
 type GuidanceFuncInfo struct {
 	AssertionFuncInfo
-	Guidepost assert.GuidepostType
+	GuidanceFn assert.GuidanceFnType
 }
 
 type GuidanceHints map[string]*GuidanceFuncInfo
@@ -84,7 +84,7 @@ func SetupGuidanceHintMap() GuidanceHints {
 			Condition:  false,
 			MessageArg: 2,
 		},
-		Guidepost: assert.GuidepostMinimize,
+		GuidanceFn: assert.GuidanceFnMinimize,
 	}
 
 	hintMap["AlwaysGreaterThanOrEqualTo"] = &GuidanceFuncInfo{
@@ -95,7 +95,7 @@ func SetupGuidanceHintMap() GuidanceHints {
 			Condition:  false,
 			MessageArg: 2,
 		},
-		Guidepost: assert.GuidepostMinimize,
+		GuidanceFn: assert.GuidanceFnMinimize,
 	}
 
 	hintMap["SometimesGreaterThan"] = &GuidanceFuncInfo{
@@ -106,7 +106,7 @@ func SetupGuidanceHintMap() GuidanceHints {
 			Condition:  false,
 			MessageArg: 2,
 		},
-		Guidepost: assert.GuidepostMaximize,
+		GuidanceFn: assert.GuidanceFnMaximize,
 	}
 
 	hintMap["SometimesGreaterThanOrEqualTo"] = &GuidanceFuncInfo{
@@ -117,7 +117,7 @@ func SetupGuidanceHintMap() GuidanceHints {
 			Condition:  false,
 			MessageArg: 2,
 		},
-		Guidepost: assert.GuidepostMaximize,
+		GuidanceFn: assert.GuidanceFnMaximize,
 	}
 
 	hintMap["AlwaysLessThan"] = &GuidanceFuncInfo{
@@ -128,7 +128,7 @@ func SetupGuidanceHintMap() GuidanceHints {
 			Condition:  false,
 			MessageArg: 2,
 		},
-		Guidepost: assert.GuidepostMaximize,
+		GuidanceFn: assert.GuidanceFnMaximize,
 	}
 
 	hintMap["AlwaysLessThanOrEqualTo"] = &GuidanceFuncInfo{
@@ -139,7 +139,7 @@ func SetupGuidanceHintMap() GuidanceHints {
 			Condition:  false,
 			MessageArg: 2,
 		},
-		Guidepost: assert.GuidepostMaximize,
+		GuidanceFn: assert.GuidanceFnMaximize,
 	}
 
 	hintMap["SometimesLessThan"] = &GuidanceFuncInfo{
@@ -150,7 +150,7 @@ func SetupGuidanceHintMap() GuidanceHints {
 			Condition:  false,
 			MessageArg: 2,
 		},
-		Guidepost: assert.GuidepostMinimize,
+		GuidanceFn: assert.GuidanceFnMinimize,
 	}
 
 	hintMap["SometimesLessThanOrEqualTo"] = &GuidanceFuncInfo{
@@ -161,7 +161,7 @@ func SetupGuidanceHintMap() GuidanceHints {
 			Condition:  false,
 			MessageArg: 2,
 		},
-		Guidepost: assert.GuidepostMinimize,
+		GuidanceFn: assert.GuidanceFnMinimize,
 	}
 
 	hintMap["AlwaysSome"] = &GuidanceFuncInfo{
@@ -172,7 +172,7 @@ func SetupGuidanceHintMap() GuidanceHints {
 			Condition:  false,
 			MessageArg: 1,
 		},
-		Guidepost: assert.GuidepostNone,
+		GuidanceFn: assert.GuidanceFnWantNone,
 	}
 
 	hintMap["SometimesAll"] = &GuidanceFuncInfo{
@@ -183,7 +183,7 @@ func SetupGuidanceHintMap() GuidanceHints {
 			Condition:  false,
 			MessageArg: 1,
 		},
-		Guidepost: assert.GuidepostAll,
+		GuidanceFn: assert.GuidanceFnWantAll,
 	}
 
 	return hintMap
