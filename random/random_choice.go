@@ -13,3 +13,18 @@ func RandomChoice(things []any) any {
 	index := uval % uint64(num_things)
 	return things[index]
 }
+
+// RandomChoiceG is the generic version of RandomChoice (usable, for example, with a list of strings, integers, etc.).
+//
+// Refer to the RandomChoice documentation for important additional information about this method.
+func RandomChoiceG[T any](things []T) T {
+	numThings := len(things)
+	if numThings == 0 {
+		var nullThing T
+		return nullThing
+	}
+
+	uval := GetRandom()
+	index := uval % uint64(numThings)
+	return things[index]
+}
