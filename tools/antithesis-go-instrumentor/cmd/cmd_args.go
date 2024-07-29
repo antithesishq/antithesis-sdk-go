@@ -113,6 +113,25 @@ func ParseArgs(versionText string) *CommandArgs {
 	return &cmdArgs
 }
 
+func (ca *CommandArgs) ShowArguments() {
+	ca.logWriter.Printf("inputDir: %q", ca.inputDir)
+	if ca.localSDKPath != "" {
+		ca.logWriter.Printf("localSDKPath: %q", ca.localSDKPath)
+	}
+	if ca.catalogDir != "" {
+		ca.logWriter.Printf("catalogDir: %q", ca.catalogDir)
+	}
+	if ca.wantsInstrumentor {
+		ca.logWriter.Printf("outputDir: %q", ca.outputDir)
+		if ca.excludeFile != "" {
+			ca.logWriter.Printf("excludeFile: %q", ca.excludeFile)
+		}
+		if ca.symPrefix != "" {
+			ca.logWriter.Printf("symPrefix: %q", ca.symPrefix)
+		}
+	}
+}
+
 func (ca *CommandArgs) NewCommandFiles() (cfx *CommandFiles, err error) {
 	outputDirectory := ""
 	customerInputDirectory := common.GetAbsoluteDirectory(ca.inputDir)

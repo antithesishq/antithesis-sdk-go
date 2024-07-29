@@ -11,6 +11,8 @@ import (
 )
 
 type trackerInfo struct {
+	Filename  string
+	Classname string
 	PassCount int
 	FailCount int
 }
@@ -24,7 +26,7 @@ var (
 	trackerInfoMutex sync.Mutex
 )
 
-func (tracker emitTracker) getTrackerEntry(messageKey string) *trackerInfo {
+func (tracker emitTracker) getTrackerEntry(messageKey string, filename, classname string) *trackerInfo {
 	var trackerEntry *trackerInfo
 	var ok bool
 
@@ -35,16 +37,18 @@ func (tracker emitTracker) getTrackerEntry(messageKey string) *trackerInfo {
 	trackerMutex.Lock()
 	defer trackerMutex.Unlock()
 	if trackerEntry, ok = tracker[messageKey]; !ok {
-		trackerEntry = newTrackerInfo()
+		trackerEntry = newTrackerInfo(filename, classname)
 		tracker[messageKey] = trackerEntry
 	}
 	return trackerEntry
 }
 
-func newTrackerInfo() *trackerInfo {
+func newTrackerInfo(filename, classname string) *trackerInfo {
 	trackerInfo := trackerInfo{
 		PassCount: 0,
 		FailCount: 0,
+		Filename:  filename,
+		Classname: classname,
 	}
 	return &trackerInfo
 }
@@ -91,7 +95,7 @@ func versionMessage() {
 	versionBlock := map[string]any{
 		"language":         languageBlock,
 		"sdk_version":      internal.SDK_Version,
-		"protocol_version": "1.0.0",
+		"protocol_version": internal.Protocol_Version,
 	}
 	internal.Json_data(map[string]any{"antithesis_sdk": versionBlock})
 }

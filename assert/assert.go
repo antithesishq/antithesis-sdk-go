@@ -10,7 +10,7 @@
 //
 // This test property either passes or fails, which depends upon the evaluation of every assertion that shares its message. Different assertions in different parts of the code should have different message, but the same assertion should always have the same message even if it is moved to a different file.
 //
-// Each function also takes a parameter called details, which is a key-value map of optional additional information provided by the user to add context for assertion failures. The information that is logged will appear in the logs section of a [triage report]. Normally the values passed to details are evaluated at runtime.
+// Each function also takes a parameter called details, which is a key-value map of optional additional information provided by the user to add context for assertion failures. The information that is logged will appear in the [triage report], under the details section of the corresponding property. Normally the values passed to details are evaluated at runtime.
 //
 // [Antithesis Go SDK]: https://antithesis.com/docs/using_antithesis/sdk/go_sdk.html
 // [Antithesis platform]: https://antithesis.com
@@ -119,7 +119,17 @@ func assertImpl(cond bool, message string, details map[string]any,
 	assertType string, displayType string,
 	id string,
 ) {
-	trackerEntry := assertTracker.getTrackerEntry(id)
+	trackerEntry := assertTracker.getTrackerEntry(id, loc.Filename, loc.Classname)
+
+	// Always grab the Filename and Classname captured when the trackerEntry was established
+	// This provides the consistency needed between instrumentation-time and runtime
+	if loc.Filename != trackerEntry.Filename {
+		loc.Filename = trackerEntry.Filename
+	}
+
+	if loc.Classname != trackerEntry.Classname {
+		loc.Classname = trackerEntry.Classname
+	}
 
 	aI := &assertInfo{
 		Hit:         hit,

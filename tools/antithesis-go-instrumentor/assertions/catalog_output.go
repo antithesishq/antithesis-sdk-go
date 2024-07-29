@@ -14,13 +14,17 @@ import (
 )
 
 type GenInfo struct {
-	ConstMap          map[string]bool
-	logWriter         *common.LogWriter
-	AssertPackageName string
-	VersionText       string
-	CreateDate        string
-	ExpectedVals      []*AntExpect
-	HasAssertions     bool
+	ConstMap            map[string]bool
+	logWriter           *common.LogWriter
+	AssertPackageName   string
+	VersionText         string
+	CreateDate          string
+	ExpectedVals        []*AntExpect
+	NumericGuidanceVals []*AntGuidance
+	BooleanGuidanceVals []*AntGuidance
+	HasAssertions       bool
+	HasNumericGuidance  bool
+	HasBooleanGuidance  bool
 }
 
 func IsGeneratedFile(file_name string) bool {
@@ -86,6 +90,14 @@ func assertionNameRepr(s string) string {
 	return fmt.Sprintf("%s(cond, message, details)", s)
 }
 
+func numericGuidanceNameRepr(s string) string {
+	return fmt.Sprintf("%s(left, right, message, details)", s)
+}
+
+func booleanGuidanceNameRepr(s string) string {
+	return fmt.Sprintf("%s(pairs, message, details)", s)
+}
+
 func hitRepr(b bool) string {
 	if !b {
 		return "notHit"
@@ -109,6 +121,23 @@ func mustHitRepr(b bool) string {
 
 func textRepr(s string) string {
 	return strconv.Quote(s)
+}
+
+func guidanceFnRepr(n GuidanceFnType) string {
+	gp := ""
+	switch n {
+	case GuidanceFnMaximize:
+		gp = "maximize"
+	case GuidanceFnMinimize:
+		gp = "minimize"
+	case GuidanceFnExplore:
+		gp = "explore"
+	case GuidanceFnWantAll:
+		gp = "all"
+	case GuidanceFnWantNone:
+		gp = "none"
+	}
+	return textRepr(gp)
 }
 
 func assertTypeRepr(s string) string {
@@ -136,16 +165,20 @@ func GenerateAssertionsCatalog(moduleName string, genInfo *GenInfo) {
 	tmpl = template.New("expector")
 
 	tmpl = tmpl.Funcs(template.FuncMap{
-		"hitRepr":           hitRepr,
-		"condRepr":          condRepr,
-		"mustHitRepr":       mustHitRepr,
-		"assertTypeRepr":    assertTypeRepr,
-		"assertionNameRepr": assertionNameRepr,
-		"usesConst":         usesConst,
-		"textRepr":          textRepr,
+		"hitRepr":                 hitRepr,
+		"condRepr":                condRepr,
+		"mustHitRepr":             mustHitRepr,
+		"assertTypeRepr":          assertTypeRepr,
+		"assertionNameRepr":       assertionNameRepr,
+		"usesConst":               usesConst,
+		"textRepr":                textRepr,
+		"numericGuidanceNameRepr": numericGuidanceNameRepr,
+		"booleanGuidanceNameRepr": booleanGuidanceNameRepr,
+		"guidanceFnRepr":          guidanceFnRepr,
 	})
 
-	if tmpl, err = tmpl.Parse(getExpectorText()); err != nil {
+	all_template_text := getExpectorText() + getNumericGuidanceText() + getBooleanGuidanceText()
+	if tmpl, err = tmpl.Parse(all_template_text); err != nil {
 		panic(err)
 	}
 
@@ -202,6 +235,61 @@ func init() {
   // {{$assertionName}}
   assert.AssertRaw({{$cond}}, {{$message}}, noDetails, {{$classname}}, {{$funcname}}, {{$filename}}, {{.Line}}, {{$didHit}}, {{$mustHit}}, {{$assertType}}, {{$displayname}}, {{$message}})
 	{{- end}}
+}
+{{- end}}
+`
+
+	return text
+}
+
+func getNumericGuidanceText() string {
+	const text = `
+
+{{if .HasNumericGuidance -}}
+func init() {
+
+  const notHit = false
+  const left = 0
+  const right = 0
+
+  {{- range .NumericGuidanceVals }}
+  {{- $guidanceName := numericGuidanceNameRepr .Assertion -}}
+	{{- $message := textRepr .Message -}}
+	{{- $classname := textRepr .Classname -}}
+	{{- $funcname := textRepr .Funcname -}}
+	{{- $filename := textRepr .Filename -}}
+  {{- $guidanceFn := guidanceFnRepr .GuidanceFuncInfo.GuidanceFn}}
+
+  // {{$guidanceName}}
+  assert.NumericGuidanceRaw(left, right, {{$message}}, {{$message}}, {{$classname}}, {{$funcname}}, {{$filename}}, {{.Line}}, {{$guidanceFn}}, notHit)
+  {{- end}}
+}
+{{- end}}
+`
+
+	return text
+}
+
+func getBooleanGuidanceText() string {
+	const text = `
+
+{{if .HasBooleanGuidance -}}
+func init() {
+
+  const notHit = false
+  var named_bools = []assert.NamedBool{}
+
+  {{- range .BooleanGuidanceVals }}
+  {{- $guidanceName := booleanGuidanceNameRepr .Assertion -}}
+	{{- $message := textRepr .Message -}}
+	{{- $classname := textRepr .Classname -}}
+	{{- $funcname := textRepr .Funcname -}}
+	{{- $filename := textRepr .Filename -}}
+  {{- $guidanceFn := guidanceFnRepr .GuidanceFuncInfo.GuidanceFn}}
+
+  // {{$guidanceName}}
+  assert.BooleanGuidanceRaw(named_bools, {{$message}}, {{$message}}, {{$classname}}, {{$funcname}}, {{$filename}}, {{.Line}}, {{$guidanceFn}}, notHit)
+  {{- end}}
 }
 {{- end}}
 `
