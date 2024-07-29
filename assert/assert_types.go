@@ -19,3 +19,12 @@ type NamedBool struct {
 	First  string `json:"first"`
 	Second bool   `json:"second"`
 }
+
+// Convenience function to construct a NamedBool used for boolean assertions
+func NewNamedBool(first string, second bool) *NamedBool {
+	p := NamedBool{
+		First:  first,
+		Second: second,
+	}
+	return &p
+}
