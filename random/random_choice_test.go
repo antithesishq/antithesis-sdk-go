@@ -51,7 +51,7 @@ func TestChoiceGenericCompatibility(t *testing.T) {
 
 	const N = 100
 	for i := 0; i < N; i++ {
-		chosen := RandomChoiceG(choices)
+		chosen := RandomChoice(choices)
 		chosen.(*Thing).chosenCount += 1
 	}
 
@@ -83,7 +83,7 @@ func TestChoiceGenericMixedArrayCompatibility(t *testing.T) {
 
 	const N = 100
 	for i := 0; i < N; i++ {
-		chosen := RandomChoiceG(choices)
+		chosen := RandomChoice(choices)
 		if t1, ok := chosen.(*This); ok {
 			t1.thisCount += 1
 		}
@@ -123,7 +123,7 @@ func TestRandomChoiceGenericMixedPrimitives(t *testing.T) {
 	counts := make(map[any]int)
 	const N = 100
 	for i := 0; i < N; i++ {
-		chosen := RandomChoiceG(choices)
+		chosen := RandomChoice(choices)
 		counts[chosen] += 1
 	}
 
@@ -150,7 +150,7 @@ func TestRandomChoiceGeneric(t *testing.T) {
 	counts := make(map[string]int)
 	const N = 100
 	for i := 0; i < N; i++ {
-		chosen := RandomChoiceG(choices)
+		chosen := RandomChoice(choices)
 		counts[chosen] += 1
 	}
 
@@ -166,7 +166,7 @@ func TestRandomChoiceGeneric(t *testing.T) {
 func TestEmptyFloatChoiceGeneric(t *testing.T) {
 	var choices []float64
 
-	got := RandomChoiceG(choices)
+	got := RandomChoice(choices)
 	want := float64(0.0)
 	if got != want {
 		t.Fatalf("Unexpected choice received - got %v want %f", got, want)
@@ -176,7 +176,7 @@ func TestEmptyFloatChoiceGeneric(t *testing.T) {
 func TestEmptyStringChoiceGeneric(t *testing.T) {
 	var choices []string
 
-	got := RandomChoiceG(choices)
+	got := RandomChoice(choices)
 	want := ""
 	if got != want {
 		t.Fatalf("Unexpected choice received - got %v want %s", got, want)
