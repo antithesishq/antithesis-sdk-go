@@ -46,7 +46,7 @@ type CommandFiles struct {
 	// generated assertion catalog should be written to.
 	catalogPath string
 
-	// The instrumentation (only) base oputput directory
+	// The instrumentation (only) base output directory
 	// Is required to exist, and to be empty prior to instrumentation
 	//
 	// After instrumentation, will contain the subdirectories for
@@ -156,6 +156,19 @@ func (cfx *CommandFiles) WrapUp() {
 		common.FetchDependencies(cfx.customerDirectory)
 		cfx.logWriter.Printf("Downloaded Antithesis dependencies")
 	}
+}
+
+func (cfx *CommandFiles) GetSourceDir() string {
+	return cfx.inputDirectory
+}
+
+// Full instrumentation targets the customerDirectory
+// Assertions only mode will target in-place (same as inputDirectory)
+func (cfx *CommandFiles) GetTargetDir() string {
+	if cfx.wantsInstrumentor {
+		return cfx.customerDirectory
+	}
+	return cfx.inputDirectory
 }
 
 func (cfx *CommandFiles) WriteInstrumentedOutput(fileName string, instrumentedSource string, cI *instrumentor.CoverageInstrumentor) {
