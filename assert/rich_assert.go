@@ -93,15 +93,6 @@ func build_numeric_guidance[T Number](gt guidanceFnType, message string, left, r
 	return &gI
 }
 
-// Convenience function to construct a NamedBool used for boolean assertions
-func NewNamedBool(first string, second bool) *NamedBool {
-	p := NamedBool{
-		First:  first,
-		Second: second,
-	}
-	return &p
-}
-
 type namedBoolDictionary map[string]bool
 
 func build_boolean_guidance(gt guidanceFnType, message string, named_bools []NamedBool,
