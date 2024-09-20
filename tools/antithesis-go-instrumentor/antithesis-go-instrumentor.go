@@ -80,7 +80,9 @@ func main() {
 		}
 
 		aScanner.ScanFile(file_name)
+		cmd_files.UpdateDependentModules(file_name)
 	}
+	cmd_files.ShowDependentModules()
 
 	//--------------------------------------------------------------------------------
 	// Wrap-up processing and generate assertions catalog and notifier module

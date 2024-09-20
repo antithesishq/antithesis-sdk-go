@@ -48,21 +48,25 @@ func WriteTextFile(text, file_name string) (err error) {
 func CopyRecursiveNoClobber(from, to string) {
 	commandLine := fmt.Sprintf("cp -n -R %s/* %s", from, to)
 	cmd := exec.Command("bash", "-c", commandLine)
+	logWriter.Printf("")
+	logWriter.Printf("Copying all other files (non-instrumented files)")
 	logWriter.Printf("Executing %s", commandLine)
 	allOutput, err := cmd.CombinedOutput()
 	allText := strings.TrimSpace(string(allOutput))
 	lines := strings.Split(allText, "\n")
 	for _, line := range lines {
-		logWriter.Printf("cp: %s", line)
+		if len(line) > 0 {
+			logWriter.Printf("cp: %s", line)
+		}
 	}
 	if err != nil {
 		logWriter.Printf("cp completed with %+v", err)
 	}
 }
 
-func AddDependencies(customerInputDirectory, customerOutputDirectory, instrumentorVersion, notifierModule string) {
+func AddDependencies(customerInputDirectory, customerOutputDirectory, instrumentorVersion, notifierModule, notifierRelPath string) {
 	destGoModFile := fmt.Sprintf("%s/go.mod", customerOutputDirectory)
-	localNotifier := fmt.Sprintf("../%s", NOTIFIER_FOLDER)
+	localNotifier := filepath.Join(notifierRelPath, NOTIFIER_FOLDER)
 
 	cmd1 := fmt.Sprintf("cd %s", customerInputDirectory)
 	cmd2 := fmt.Sprintf("go mod edit -require=%s@v0.0.0 -replace=%s=%s -print > %s",
@@ -70,6 +74,7 @@ func AddDependencies(customerInputDirectory, customerOutputDirectory, instrument
 	commandLine := fmt.Sprintf("(%s; %s)", cmd1, cmd2)
 
 	cmd := exec.Command("bash", "-c", commandLine)
+	logWriter.Printf("Adding Antithesis module as a dependency to %s", customerOutputDirectory)
 	logWriter.Printf("Executing %s", commandLine)
 	allOutput, err := cmd.CombinedOutput()
 	allText := strings.TrimSpace(string(allOutput))
@@ -89,6 +94,8 @@ func FetchDependencies(customerOutputDirectory string) {
 	commandLine := fmt.Sprintf("(cd %s; go mod tidy)", customerOutputDirectory)
 
 	cmd := exec.Command("bash", "-c", commandLine)
+	logWriter.Printf("")
+	logWriter.Printf("Fetching Dependencies (go mod tidy)")
 	logWriter.Printf("Executing %s", commandLine)
 	allOutput, err := cmd.CombinedOutput()
 	allText := strings.TrimSpace(string(allOutput))
@@ -120,6 +127,8 @@ func NotifierDependencies(notifierOutputDirectory, notifierModuleName, instrumen
 		dependencyRef)
 
 	cmd := exec.Command("bash", "-c", commandLine)
+	logWriter.Printf("")
+	logWriter.Printf("Creating Notifier Module")
 	logWriter.Printf("Executing %s", commandLine)
 	allOutput, err := cmd.CombinedOutput()
 	allText := strings.TrimSpace(string(allOutput))
@@ -194,4 +203,27 @@ func ValidateDirectories(input, output string) (err error) {
 		err = fmt.Errorf("output directory %s is a prefix of the input directory %s", output, input)
 	}
 	return
+}
+
+// PathFromBaseDirectory gets the path of someDir relative to baseDir
+//
+// Example:
+// PathFromBaseDirectory("/home/ricky/etcd", "/home/ricky/etcd/server/test")
+//
+//	==> "server/test"
+func PathFromBaseDirectory(baseDir, someDir string) string {
+	baseNorm := CanonicalizeDirectory(baseDir)
+	someNorm := CanonicalizeDirectory(someDir)
+	if baseNorm == someNorm {
+		return ""
+	}
+	someOffset := someNorm
+	if strings.HasPrefix(someNorm, baseNorm) {
+		lx := len(baseNorm)
+		idx := lx + 1
+		if idx < len(someNorm) {
+			someOffset = someNorm[idx:]
+		}
+	}
+	return someOffset
 }
