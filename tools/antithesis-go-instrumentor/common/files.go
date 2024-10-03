@@ -64,9 +64,8 @@ func CopyRecursiveNoClobber(from, to string) {
 	}
 }
 
-func AddDependencies(customerInputDirectory, customerOutputDirectory, instrumentorVersion, notifierModule, notifierRelPath string) {
+func AddDependencies(customerInputDirectory, customerOutputDirectory, instrumentorVersion, notifierModule, localNotifier string) {
 	destGoModFile := fmt.Sprintf("%s/go.mod", customerOutputDirectory)
-	localNotifier := filepath.Join(notifierRelPath, NOTIFIER_FOLDER)
 
 	cmd1 := fmt.Sprintf("cd %s", customerInputDirectory)
 	cmd2 := fmt.Sprintf("go mod edit -require=%s@v0.0.0 -replace=%s=%s -print > %s",
@@ -218,7 +217,8 @@ func PathFromBaseDirectory(baseDir, someDir string) string {
 		return ""
 	}
 	someOffset := someNorm
-	if strings.HasPrefix(someNorm, baseNorm) {
+	pattern := filepath.Join(baseNorm, "*")
+	if didMatch, _ := filepath.Match(pattern, someNorm); didMatch {
 		lx := len(baseNorm)
 		idx := lx + 1
 		if idx < len(someNorm) {

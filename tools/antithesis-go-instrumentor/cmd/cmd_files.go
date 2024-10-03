@@ -152,24 +152,22 @@ func (cfx *CommandFiles) WrapUp() {
 
 	notifierModule := common.FullNotifierName(cfx.filesHash)
 	notifierRelPath := ".."
-	common.AddDependencies(cfx.inputDirectory, cfx.customerDirectory, cfx.instrumentorVersion, notifierModule, notifierRelPath)
+	localNotifier := filepath.Join(notifierRelPath, common.NOTIFIER_FOLDER)
+	common.AddDependencies(cfx.inputDirectory, cfx.customerDirectory, cfx.instrumentorVersion, notifierModule, localNotifier)
 
 	someOffset := ""
-	pathSep := string(os.PathSeparator)
-
 	for modFolder, used := range cfx.dependentModules {
 		if used {
-			relFolders := []string{notifierRelPath}
 			someOffset = common.PathFromBaseDirectory(cfx.inputDirectory, modFolder)
 			if someOffset != "" {
-				num_parents := len(strings.Split(someOffset, pathSep))
-				for i := 0; i < num_parents; i++ {
-					relFolders = append(relFolders, notifierRelPath)
-				}
-				subRelPath := strings.Join(relFolders, pathSep)
 				destModuleFolder := filepath.Join(cfx.customerDirectory, someOffset)
 				os.MkdirAll(destModuleFolder, 0777)
-				common.AddDependencies(modFolder, destModuleFolder, cfx.instrumentorVersion, notifierModule, subRelPath)
+
+				basePath := filepath.Join(cfx.customerDirectory, someOffset)
+				targPath := cfx.notifierDirectory
+				if altDestModuleFolder, erx := filepath.Rel(basePath, targPath); erx == nil {
+					common.AddDependencies(modFolder, destModuleFolder, cfx.instrumentorVersion, notifierModule, altDestModuleFolder)
+				}
 			}
 		}
 	}
@@ -285,22 +283,23 @@ func (cfx *CommandFiles) FindSourceCode() (paths []string, numSkipped int, err e
 			if info.IsDir() {
 				return nil
 			}
-			if !strings.HasSuffix(path, ".go") {
-				if strings.HasSuffix(path, "go.mod") {
-					possibleModuleDir := filepath.Dir(path)
-					cfx.dependentModules[possibleModuleDir] = false
+			dir, baseFile := filepath.Split(path)
+			ext := filepath.Ext(path)
+			if ext != ".go" {
+				if baseFile == "go.mod" {
+					cfx.dependentModules[dir] = false
 				}
 				numSkipped++
 				return nil
 			}
 			// This is the mandatory format of unit test file names.
-			if strings.HasSuffix(path, "_test.go") {
+			if strings.HasSuffix(baseFile, "_test.go") {
 				if cfx.logWriter.VerboseLevel(2) {
 					cfx.logWriter.Printf("Skipping test file %s", path)
 				}
 				numSkipped++
 				return nil
-			} else if strings.HasSuffix(path, ".pb.go") {
+			} else if strings.HasSuffix(baseFile, ".pb.go") {
 				if cfx.logWriter.VerboseLevel(1) {
 					cfx.logWriter.Printf("Skipping generated file %s", path)
 				}
