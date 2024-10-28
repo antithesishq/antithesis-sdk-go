@@ -4,9 +4,9 @@
 //
 // Both functions take the parameter details: Optional additional information provided by the user to add context for assertion failures. The information that is logged will appear in the logs section of a [triage report]. Normally the values passed to details are evaluated at runtime.
 //
-// [Antithesis Go SDK]: https://antithesis.com/docs/using_antithesis/sdk/go_sdk.html
+// [Antithesis Go SDK]: https://antithesis.com/docs/using_antithesis/sdk/go/
 // [Antithesis platform]: https://antithesis.com
-// [triage report]: https://antithesis.com/docs/reports/triage.html
+// [triage report]: https://antithesis.com/docs/reports/triage/
 package lifecycle
 
 import (
@@ -17,7 +17,7 @@ import (
 //
 // Calling this function multiple times or from multiple processes will have no effect. Antithesis will treat the first time any process called this function as the moment that the setup was completed.
 //
-// [injecting faults]: https://antithesis.com/docs/applications/reliability/fault_injection.html
+// [injecting faults]: https://antithesis.com/docs/applications/reliability/fault_injection/
 func SetupComplete(details any) {
 	statusBlock := map[string]any{
 		"status":  "complete",
@@ -30,7 +30,7 @@ func SetupComplete(details any) {
 //
 // In addition to details, you also provide an eventName, which is the name of the event that you are logging. This name will appear in the logs section of a [triage report].
 //
-// [triage report]: https://antithesis.com/docs/reports/triage.html
+// [triage report]: https://antithesis.com/docs/reports/triage/
 func SendEvent(eventName string, details any) {
 	internal.Json_data(map[string]any{eventName: details})
 }

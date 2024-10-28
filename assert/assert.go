@@ -12,16 +12,16 @@
 //
 // Each function also takes a parameter called details, which is a key-value map of optional additional information provided by the user to add context for assertion failures. The information that is logged will appear in the [triage report], under the details section of the corresponding property. Normally the values passed to details are evaluated at runtime.
 //
-// [Antithesis Go SDK]: https://antithesis.com/docs/using_antithesis/sdk/go_sdk.html
+// [Antithesis Go SDK]: https://antithesis.com/docs/using_antithesis/sdk/go/
 // [Antithesis platform]: https://antithesis.com
-// [test properties]: https://antithesis.com/docs/using_antithesis/properties.html
-// [workload]: https://antithesis.com/docs/getting_started/workload.html
-// [antithesis-go-generator]: https://antithesis.com/docs/using_antithesis/sdk/go_sdk.html#assertion-indexer
-// [triage report]: https://antithesis.com/docs/reports/triage.html
-// [here]: https://antithesis.com/docs/using_antithesis/sdk/fallback_sdk.html
-// [Sometimes assertions]: https://antithesis.com/docs/best_practices/sometimes_assertions.html
+// [test properties]: https://antithesis.com/docs/using_antithesis/properties/
+// [workload]: https://antithesis.com/docs/getting_started/first_test/
+// [antithesis-go-generator]: https://antithesis.com/docs/using_antithesis/sdk/go/instrumentor/
+// [triage report]: https://antithesis.com/docs/reports/triage/
+// [here]: https://antithesis.com/docs/using_antithesis/sdk/fallback/
+// [Sometimes assertions]: https://antithesis.com/docs/best_practices/sometimes_assertions/
 //
-// [details]: https://antithesis.com/docs/reports/triage.html#details
+// [details]: https://antithesis.com/docs/reports/triage/#details
 package assert
 
 type assertInfo struct {
