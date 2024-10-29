@@ -6,9 +6,9 @@
 //
 // These functions are also safe to call outside the Antithesis environment, where they will fall back on values from [crypto/rand].
 //
-// [Antithesis Go SDK]: https://antithesis.com/docs/using_antithesis/sdk/go_sdk.html
+// [Antithesis Go SDK]: https://antithesis.com/docs/using_antithesis/sdk/go/
 // [Antithesis platform]: https://antithesis.com
-// [workload]: https://antithesis.com/docs/getting_started/workload.html
+// [workload]: https://antithesis.com/docs/getting_started/first_test/
 package random
 
 import (
