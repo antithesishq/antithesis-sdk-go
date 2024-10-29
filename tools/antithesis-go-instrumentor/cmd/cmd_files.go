@@ -20,6 +20,12 @@ type CommandFiles struct {
 	// of go used for this tool.
 	exclusions map[string]bool
 
+	// The modules inferred from scanning source files and
+	// looking for files named go.mod
+	// Each of these go.mod files may need the antithesis
+	// module added as a dependency.
+	dependentModules map[string]bool
+
 	// Global logger
 	logWriter *common.LogWriter
 
@@ -145,9 +151,26 @@ func (cfx *CommandFiles) WrapUp() {
 	}
 
 	notifierModule := common.FullNotifierName(cfx.filesHash)
+	notifierRelPath := ".."
+	localNotifier := filepath.Join(notifierRelPath, common.NOTIFIER_FOLDER)
+	common.AddDependencies(cfx.inputDirectory, cfx.customerDirectory, cfx.instrumentorVersion, notifierModule, localNotifier)
 
-	common.AddDependencies(cfx.inputDirectory, cfx.customerDirectory, cfx.instrumentorVersion, notifierModule)
-	cfx.logWriter.Printf("Antithesis dependencies added to %s/go.mod", cfx.customerDirectory)
+	someOffset := ""
+	for modFolder, used := range cfx.dependentModules {
+		if used {
+			someOffset = common.PathFromBaseDirectory(cfx.inputDirectory, modFolder)
+			if someOffset != "" {
+				destModuleFolder := filepath.Join(cfx.customerDirectory, someOffset)
+				os.MkdirAll(destModuleFolder, 0777)
+
+				basePath := filepath.Join(cfx.customerDirectory, someOffset)
+				targPath := cfx.notifierDirectory
+				if altDestModuleFolder, erx := filepath.Rel(basePath, targPath); erx == nil {
+					common.AddDependencies(modFolder, destModuleFolder, cfx.instrumentorVersion, notifierModule, altDestModuleFolder)
+				}
+			}
+		}
+	}
 
 	common.CopyRecursiveNoClobber(cfx.inputDirectory, cfx.customerDirectory)
 	cfx.logWriter.Printf("All other files copied unmodified from %s to %s", cfx.inputDirectory, cfx.customerDirectory)
@@ -215,6 +238,9 @@ func (cfx *CommandFiles) ParseExclusionsFile() (err error) {
 func (cfx *CommandFiles) FindSourceCode() (paths []string, numSkipped int, err error) {
 	paths = []string{}
 	numSkipped = 0
+
+	cfx.dependentModules = map[string]bool{}
+
 	cfx.logWriter.Printf("Scanning %s recursively for .go source", cfx.inputDirectory)
 	// Files are read in lexical order, i.e. we can later deterministically
 	// hash their content: https://pkg.go.dev/path/filepath#WalkDir
@@ -257,18 +283,23 @@ func (cfx *CommandFiles) FindSourceCode() (paths []string, numSkipped int, err e
 			if info.IsDir() {
 				return nil
 			}
-			if !strings.HasSuffix(path, ".go") {
+			dir, baseFile := filepath.Split(path)
+			ext := filepath.Ext(path)
+			if ext != ".go" {
+				if baseFile == "go.mod" {
+					cfx.dependentModules[dir] = false
+				}
 				numSkipped++
 				return nil
 			}
 			// This is the mandatory format of unit test file names.
-			if strings.HasSuffix(path, "_test.go") {
+			if strings.HasSuffix(baseFile, "_test.go") {
 				if cfx.logWriter.VerboseLevel(2) {
 					cfx.logWriter.Printf("Skipping test file %s", path)
 				}
 				numSkipped++
 				return nil
-			} else if strings.HasSuffix(path, ".pb.go") {
+			} else if strings.HasSuffix(baseFile, ".pb.go") {
 				if cfx.logWriter.VerboseLevel(1) {
 					cfx.logWriter.Printf("Skipping generated file %s", path)
 				}
@@ -283,6 +314,7 @@ func (cfx *CommandFiles) FindSourceCode() (paths []string, numSkipped int, err e
 	if err != nil {
 		err = fmt.Errorf("error walking input directory %s: %v", cfx.inputDirectory, err)
 	}
+
 	return
 }
 
@@ -311,4 +343,38 @@ func (cfx *CommandFiles) CreateSymbolTableWriter(filesHash string) (symWriter *i
 
 func (cfx *CommandFiles) GetNotifierDirectory() string {
 	return cfx.notifierDirectory
+}
+
+func (cfx *CommandFiles) ShowDependentModules() {
+	isText := ""
+	cfx.logWriter.Printf("")
+	cfx.logWriter.Printf("Module Usage Summary")
+	for modName, used := range cfx.dependentModules {
+		isText = "is"
+		if !used {
+			isText = "is not"
+		}
+		cfx.logWriter.Printf("%s %s used", modName, isText)
+	}
+	cfx.logWriter.Printf("")
+}
+
+func (cfx *CommandFiles) UpdateDependentModules(file_name string) {
+	ok := false
+	isUsed := false
+	this_dir := file_name
+	for !ok {
+		this_dir = filepath.Dir(this_dir)
+		if this_dir == "." {
+			break
+		}
+		isUsed, ok = cfx.dependentModules[this_dir]
+		if ok {
+			if !isUsed {
+				cfx.dependentModules[this_dir] = true
+			}
+			return
+		}
+	}
+	cfx.logWriter.Printf("%q does not belong to a scanned module", file_name)
 }
