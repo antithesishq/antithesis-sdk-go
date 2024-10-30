@@ -1,7 +1,6 @@
 package instrumentor
 
 import (
-	"errors"
 	"fmt"
 	"go/ast"
 	"go/format"
@@ -79,11 +78,7 @@ func (cI *CoverageInstrumentor) InstrumentFile(file_name string) string {
 	instrumented := ""
 	cI.logWriter.Printf("Instrumenting %s", file_name)
 	cI.PreviousEdge = cI.GoInstrumentor.CurrentEdge
-	instrumented, err = cI.GoInstrumentor.Instrument(file_name)
-	if err != nil {
-		if errors.Is(err, os.ErrNotExist) {
-			return ""
-		}
+	if instrumented, err = cI.GoInstrumentor.Instrument(file_name); err != nil {
 		cI.logWriter.Printf("Error: File %s produced error %s; simply copying source", file_name, err)
 		return ""
 	}
