@@ -287,7 +287,7 @@ func (cfx *CommandFiles) FindSourceCode() (paths []string, numSkipped int, err e
 			ext := filepath.Ext(path)
 			if ext != ".go" {
 				if baseFile == "go.mod" {
-					cfx.dependentModules[dir] = false
+					cfx.dependentModules[filepath.Clean(dir)] = false
 				}
 				numSkipped++
 				return nil
@@ -362,9 +362,11 @@ func (cfx *CommandFiles) ShowDependentModules() {
 func (cfx *CommandFiles) UpdateDependentModules(file_name string) {
 	ok := false
 	isUsed := false
-	this_dir := file_name
+	this_dir := filepath.Clean(filepath.Dir(file_name))
 	for !ok {
-		this_dir = filepath.Dir(this_dir)
+		if cfx.logWriter.VerboseLevel(2) {
+			cfx.logWriter.Printf("Checking if %q is a dependentModule", this_dir)
+		}
 		if this_dir == "." {
 			break
 		}
@@ -374,6 +376,10 @@ func (cfx *CommandFiles) UpdateDependentModules(file_name string) {
 				cfx.dependentModules[this_dir] = true
 			}
 			return
+		} else {
+			old_dir := this_dir
+			this_dir = filepath.Clean(filepath.Dir(this_dir))
+			ok = (old_dir == this_dir)
 		}
 	}
 	cfx.logWriter.Printf("%q does not belong to a scanned module", file_name)

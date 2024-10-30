@@ -1,6 +1,7 @@
 package instrumentor
 
 import (
+	"errors"
 	"fmt"
 	"go/ast"
 	"go/format"
@@ -80,6 +81,9 @@ func (cI *CoverageInstrumentor) InstrumentFile(file_name string) string {
 	cI.PreviousEdge = cI.GoInstrumentor.CurrentEdge
 	instrumented, err = cI.GoInstrumentor.Instrument(file_name)
 	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			return ""
+		}
 		cI.logWriter.Printf("Error: File %s produced error %s; simply copying source", file_name, err)
 		return ""
 	}
@@ -307,7 +311,7 @@ func (instrumentor *Instrumentor) createLineDirective(lineNumber int, node *ast.
 		return nil
 	}
 	lineStartPos := file.LineStart(p.Line)
-	if instrumentor.logWriter.VerboseLevel(1) {
+	if instrumentor.logWriter.VerboseLevel(2) {
 		instrumentor.logWriter.Printf("Creating comment for node @ %v start of line %d at %v", (*node).Pos(), p.Line, lineStartPos)
 	}
 	if (*node).Pos() == lineStartPos {
