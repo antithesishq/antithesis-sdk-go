@@ -69,6 +69,7 @@ func main() {
 	//--------------------------------------------------------------------------------
 	// Process all files (ignore previously generated assertion catalogs)
 	//--------------------------------------------------------------------------------
+	cmd_files.ShowDependentModules()
 	for _, file_name := range source_files {
 		if assertions.IsGeneratedFile(file_name) {
 			logWriter.Printf("Skipping %s", file_name)
@@ -77,10 +78,9 @@ func main() {
 
 		if instrumented_source := cI.InstrumentFile(file_name); instrumented_source != "" {
 			cmd_files.WriteInstrumentedOutput(file_name, instrumented_source, cI)
+			aScanner.ScanFile(file_name)
+			cmd_files.UpdateDependentModules(file_name)
 		}
-
-		aScanner.ScanFile(file_name)
-		cmd_files.UpdateDependentModules(file_name)
 	}
 	cmd_files.ShowDependentModules()
 
