@@ -3,6 +3,7 @@
 package assert
 
 import (
+	"log"
 	"reflect"
 )
 
@@ -85,6 +86,7 @@ func newOperands[T Number](left, right T) any {
 	} else if leftVal.CanFloat() {
 		return numericOperands[float64]{leftVal.Float(), rightVal.Float()}
 	} else {
+		log.Printf("Unknown left operand type: %+v", left)
 		return nil
 	}
 }

@@ -3,6 +3,7 @@
 package assert
 
 import (
+	"log"
 	"math"
 	"reflect"
 	"sync"
@@ -130,15 +131,8 @@ func newGapValue[T numConstraint](sz T, is_neg bool) any {
 		return gapValue[float64]{gap_size: float64(sz), gap_is_negative: is_neg}
 	}
 
-	// Got this far, and still not sure?
-	numVal := reflect.ValueOf(sz)
-	if numVal.CanUint() {
-		return gapValue[uint64]{gap_size: numVal.Uint(), gap_is_negative: is_neg}
-	} else if numVal.CanFloat() {
-		return gapValue[float64]{gap_size: numVal.Float(), gap_is_negative: is_neg}
-	} else {
-		return nil
-	}
+	log.Printf("Unknown gapValue type: %+v", sz)
+	return nil
 }
 
 func is_same_sign(left_val int64, right_val int64) bool {
