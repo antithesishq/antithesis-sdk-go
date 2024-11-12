@@ -175,6 +175,10 @@ func (cfx *CommandFiles) WrapUp() {
 	common.CopyRecursiveNoClobber(cfx.inputDirectory, cfx.customerDirectory)
 	cfx.logWriter.Printf("All other files copied unmodified from %s to %s", cfx.inputDirectory, cfx.customerDirectory)
 
+	if cfx.logWriter.VerboseLevel(1) {
+		common.ShowDirRecursive(cfx.customerDirectory, "instrumented files")
+	}
+
 	if cfx.localSDKPath == "" {
 		common.FetchDependencies(cfx.customerDirectory)
 		cfx.logWriter.Printf("Downloaded Antithesis dependencies")

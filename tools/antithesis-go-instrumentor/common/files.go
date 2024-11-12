@@ -64,6 +64,25 @@ func CopyRecursiveNoClobber(from, to string) {
 	}
 }
 
+func ShowDirRecursive(dir, desc string) {
+	commandLine := fmt.Sprintf("ls -lR %s", dir)
+	cmd := exec.Command("bash", "-c", commandLine)
+	logWriter.Printf("")
+	logWriter.Printf("Directory Listing (%s)", desc)
+	logWriter.Printf("Executing %s", commandLine)
+	allOutput, err := cmd.CombinedOutput()
+	allText := strings.TrimSpace(string(allOutput))
+	lines := strings.Split(allText, "\n")
+	for _, line := range lines {
+		if len(line) > 0 {
+			logWriter.Printf("ls: %s", line)
+		}
+	}
+	if err != nil {
+		logWriter.Printf("ls completed with %+v", err)
+	}
+}
+
 func AddDependencies(customerInputDirectory, customerOutputDirectory, instrumentorVersion, notifierModule, localNotifier string) {
 	destGoModFile := fmt.Sprintf("%s/go.mod", customerOutputDirectory)
 
