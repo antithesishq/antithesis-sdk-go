@@ -27,6 +27,8 @@ type CommandArgs struct {
 	ShowVersion         bool
 	InvalidArgs         bool
 	wantsInstrumentor   bool
+	skipTestFiles       bool
+	skipProtoBufFiles   bool
 }
 
 func ParseArgs(versionText string) *CommandArgs {
@@ -39,6 +41,8 @@ func ParseArgs(versionText string) *CommandArgs {
 	catalogDirPtr := flag.String("catalog_dir", "", "file path where assertion catalog will be generated")
 	instrVersionPtr := flag.String("instrumentor_version", "latest", "version of the SDK instrumentation package to require")
 	localSDKPathPtr := flag.String("local_sdk_path", "", "path to the local Antithesis SDK")
+	skipTestFilesPtr := flag.Bool("skip_test_files", false, "Skip instrumentation and cataloging for '*_test.go' files (default to false)")
+	skipProtoBufFilesPtr := flag.Bool("skip_protobuf_files", false, "Skip instrumentation and cataloging for '*.pb.go' files (default to false)")
 	flag.Parse()
 
 	cmdArgs := CommandArgs{
@@ -58,6 +62,8 @@ func ParseArgs(versionText string) *CommandArgs {
 	cmdArgs.instrumentorVersion = strings.TrimSpace(*instrVersionPtr)
 	cmdArgs.localSDKPath = strings.TrimSpace(*localSDKPathPtr)
 	cmdArgs.VersionText = versionText
+	cmdArgs.skipTestFiles = *skipTestFilesPtr
+	cmdArgs.skipProtoBufFiles = *skipProtoBufFilesPtr
 
 	// Verify we have the expected number of positional arguments
 	numArgsRequired := 1
@@ -130,6 +136,14 @@ func (ca *CommandArgs) ShowArguments() {
 			ca.logWriter.Printf("symPrefix: %q", ca.symPrefix)
 		}
 	}
+
+	// Intentional: no need to show anything if not skipping
+	if ca.skipTestFiles {
+		ca.logWriter.Printf("skipTestFiles: %t", ca.skipTestFiles)
+	}
+	if ca.skipProtoBufFiles {
+		ca.logWriter.Printf("skipProtoBufFiles: %t", ca.skipProtoBufFiles)
+	}
 }
 
 func (ca *CommandArgs) NewCommandFiles() (cfx *CommandFiles, err error) {
@@ -200,6 +214,8 @@ func (ca *CommandArgs) NewCommandFiles() (cfx *CommandFiles, err error) {
 		instrumentorVersion: ca.instrumentorVersion,
 		localSDKPath:        ca.localSDKPath,
 		logWriter:           common.GetLogWriter(),
+		skipTestFiles:       ca.skipTestFiles,
+		skipProtoBufFiles:   ca.skipProtoBufFiles,
 	}
 	return
 }

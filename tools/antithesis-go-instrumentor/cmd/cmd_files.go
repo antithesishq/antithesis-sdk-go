@@ -102,6 +102,14 @@ type CommandFiles struct {
 	// without instrumentation, which is common
 	// when execution is outside of the Antithesis environment
 	wantsInstrumentor bool
+
+	// Indicates that '*_test.go' files should be skipped (not instrumented)
+	// default is false
+	skipTestFiles bool
+
+	// Indicates that '*.pb.go' files should be skipped (not instrumented)
+	// default is false
+	skipProtoBufFiles bool
 }
 
 func (cfx *CommandFiles) GetSourceFiles() (sourceFiles []string, err error) {
@@ -172,8 +180,12 @@ func (cfx *CommandFiles) WrapUp() {
 		}
 	}
 
-	common.CopyRecursiveNoClobber(cfx.inputDirectory, cfx.customerDirectory)
-	cfx.logWriter.Printf("All other files copied unmodified from %s to %s", cfx.inputDirectory, cfx.customerDirectory)
+	// common.CopyRecursiveNoClobber(cfx.inputDirectory, cfx.customerDirectory)
+	if err := common.CopyRecursiveDir(cfx.inputDirectory, cfx.customerDirectory); err == nil {
+		cfx.logWriter.Printf("All other files copied unmodified from %s to %s", cfx.inputDirectory, cfx.customerDirectory)
+	} else {
+		cfx.logWriter.Printf("CopyRecursiveDir err: %s", err.Error())
+	}
 
 	if cfx.logWriter.VerboseLevel(1) {
 		common.ShowDirRecursive(cfx.customerDirectory, "instrumented files")
@@ -297,13 +309,15 @@ func (cfx *CommandFiles) FindSourceCode() (paths []string, numSkipped int, err e
 				return nil
 			}
 			// This is the mandatory format of unit test file names.
-			if strings.HasSuffix(baseFile, "_test.go") {
-				if cfx.logWriter.VerboseLevel(2) {
+			if cfx.skipTestFiles && strings.HasSuffix(baseFile, "_test.go") {
+				if cfx.logWriter.VerboseLevel(1) {
 					cfx.logWriter.Printf("Skipping test file %s", path)
 				}
 				numSkipped++
 				return nil
-			} else if strings.HasSuffix(baseFile, ".pb.go") {
+			}
+
+			if cfx.skipProtoBufFiles && strings.HasSuffix(baseFile, ".pb.go") {
 				if cfx.logWriter.VerboseLevel(1) {
 					cfx.logWriter.Printf("Skipping generated file %s", path)
 				}
