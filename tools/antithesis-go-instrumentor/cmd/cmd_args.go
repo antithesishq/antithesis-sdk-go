@@ -31,7 +31,7 @@ type CommandArgs struct {
 	skipProtoBufFiles   bool
 }
 
-func ParseArgs(versionText string) *CommandArgs {
+func ParseArgs(versionText string, thisVersion string) *CommandArgs {
 	versionPtr := flag.Bool("version", false, "the current version of this application")
 	exclusionsPtr := flag.String("exclude", "", "the path to a file listing files and directories to exclude from instrumentation (optional)")
 	prefixPtr := flag.String("prefix", "", "a string to prepend to the symbol table (optional)")
@@ -39,7 +39,7 @@ func ParseArgs(versionText string) *CommandArgs {
 	verbosePtr := flag.Int("V", 0, "verbosity level (default to 0)")
 	assertOnlyPtr := flag.Bool("assert_only", false, "generate assertion catalog ONLY - no coverage instrumentation (default to false)")
 	catalogDirPtr := flag.String("catalog_dir", "", "file path where assertion catalog will be generated")
-	instrVersionPtr := flag.String("instrumentor_version", "latest", "version of the SDK instrumentation package to require")
+	instrVersionPtr := flag.String("instrumentor_version", thisVersion, "version of the SDK instrumentation package to require")
 	localSDKPathPtr := flag.String("local_sdk_path", "", "path to the local Antithesis SDK")
 	skipTestFilesPtr := flag.Bool("skip_test_files", false, "Skip instrumentation and cataloging for '*_test.go' files (default to false)")
 	skipProtoBufFilesPtr := flag.Bool("skip_protobuf_files", false, "Skip instrumentation and cataloging for '*.pb.go' files (default to false)")
