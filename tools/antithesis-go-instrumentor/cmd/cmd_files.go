@@ -180,7 +180,6 @@ func (cfx *CommandFiles) WrapUp() {
 		}
 	}
 
-	// common.CopyRecursiveNoClobber(cfx.inputDirectory, cfx.customerDirectory)
 	if err := common.CopyRecursiveDir(cfx.inputDirectory, cfx.customerDirectory); err == nil {
 		cfx.logWriter.Printf("All other files copied unmodified from %s to %s", cfx.inputDirectory, cfx.customerDirectory)
 	} else {

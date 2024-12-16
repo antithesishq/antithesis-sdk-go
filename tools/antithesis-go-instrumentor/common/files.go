@@ -87,7 +87,6 @@ func OpenExistingDir(dirName string) (dir *os.File, err error) {
 		quietClose(dir)
 		dir = nil
 		err = fmt.Errorf("%q is not a directory", dirName)
-		// return
 	}
 	return
 }
@@ -154,7 +153,6 @@ func CopyFile(from, to string) (err error) {
 func CopyRecursiveDir(from, to string) (err error) {
 
 	var fromDir *os.File
-	// var toDir *os.File
 
 	var fromDirEntries []os.DirEntry
 	var fileInfo os.FileInfo
