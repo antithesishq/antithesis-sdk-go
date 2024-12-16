@@ -29,7 +29,8 @@ func main() {
 	// Parse and validate command arguments
 	// Establish global logging
 	//--------------------------------------------------------------------------------
-	cmd_args := cmd.ParseArgs(versionString)
+	thisVersion := fmt.Sprintf("v%s", internal.SDK_Version)
+	cmd_args := cmd.ParseArgs(versionString, thisVersion)
 	if cmd_args.ShowVersion {
 		fmt.Println(strings.TrimSpace(versionString))
 		os.Exit(0)
