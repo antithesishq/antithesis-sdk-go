@@ -38,12 +38,20 @@ func WriteTextFile(text, file_name string) (err error) {
 	var f *os.File
 	if f, err = os.Create(file_name); err != nil {
 		logWriter.Printf("Error: could not create %s", file_name)
+		quietClose(f)
 		return
 	}
-	defer f.Close()
+
 	if _, err = f.WriteString(text); err != nil {
+		quietClose(f)
 		logWriter.Printf("Error: Could not write text to %s", file_name)
+	} else {
+		err = f.Close()
+		if err != nil {
+			logWriter.Printf("Error: Could not sync text to %s", file_name)
+		}
 	}
+
 	return
 }
 
@@ -70,20 +78,26 @@ func OpenExistingDir(dirName string) (dir *os.File, err error) {
 	}
 
 	if dirInfo, err = dir.Stat(); err != nil {
-		dir.Close()
+		quietClose(dir)
 		dir = nil
 		return
 	}
 
 	if !dirInfo.IsDir() {
-		dir.Close()
+		quietClose(dir)
 		dir = nil
 		err = fmt.Errorf("%q is not a directory", dirName)
-		return
+		// return
 	}
 	return
 }
 
+// Use quietClose when there are files that should be closed, and
+// the caller has already decided to return `err`.  Do not use
+// quietClose where the return value from Close(), on a writable file
+// is important to isolate and preserve.
+//
+// Ref: https://www.joeshaw.org/dont-defer-close-on-writable-files/
 func quietClose(fps ...*os.File) {
 	for _, fp := range fps {
 		if fp != nil {
@@ -156,10 +170,12 @@ func CopyRecursiveDir(from, to string) (err error) {
 
 	// Read the 'from' directory (and close its *File)
 	if fromDirEntries, err = fromDir.ReadDir(0); err != nil {
-		fromDir.Close()
+		quietClose(fromDir)
 		return
 	}
-	fromDir.Close()
+	if err = fromDir.Close(); err != nil {
+		return
+	}
 
 	for _, dirEntry := range fromDirEntries {
 		if fileInfo, err = dirEntry.Info(); err != nil {
