@@ -3,7 +3,9 @@ package common
 import (
 	"crypto/sha256"
 	"encoding/hex"
+	"errors"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -36,31 +38,198 @@ func WriteTextFile(text, file_name string) (err error) {
 	var f *os.File
 	if f, err = os.Create(file_name); err != nil {
 		logWriter.Printf("Error: could not create %s", file_name)
+		quietClose(f)
 		return
 	}
-	defer f.Close()
+
 	if _, err = f.WriteString(text); err != nil {
+		quietClose(f)
 		logWriter.Printf("Error: Could not write text to %s", file_name)
+	} else {
+		err = f.Close()
+		if err != nil {
+			logWriter.Printf("Error: Could not sync text to %s", file_name)
+		}
+	}
+
+	return
+}
+
+func EnsureDirExists(dirName string) (err error) {
+	var dirInfo os.FileInfo
+	if dirInfo, err = os.Stat(dirName); err != nil {
+		err = os.MkdirAll(dirName, 0777)
+		return
+	}
+
+	// We stat-ed an existing directory or something else
+	if !dirInfo.IsDir() {
+		err = fmt.Errorf("%q is not a directory", dirName)
 	}
 	return
 }
 
-func CopyRecursiveNoClobber(from, to string) {
-	commandLine := fmt.Sprintf("cp -n -R %s/* %s", from, to)
+func OpenExistingDir(dirName string) (dir *os.File, err error) {
+	var dirInfo os.FileInfo
+
+	if dir, err = os.Open(dirName); err != nil {
+		dir = nil
+		return
+	}
+
+	if dirInfo, err = dir.Stat(); err != nil {
+		quietClose(dir)
+		dir = nil
+		return
+	}
+
+	if !dirInfo.IsDir() {
+		quietClose(dir)
+		dir = nil
+		err = fmt.Errorf("%q is not a directory", dirName)
+	}
+	return
+}
+
+// Use quietClose when there are files that should be closed, and
+// the caller has already decided to return `err`.  Do not use
+// quietClose where the return value from Close(), on a writable file
+// is important to isolate and preserve.
+//
+// Ref: https://www.joeshaw.org/dont-defer-close-on-writable-files/
+func quietClose(fps ...*os.File) {
+	for _, fp := range fps {
+		if fp != nil {
+			fp.Close()
+		}
+	}
+}
+
+func CopyFile(from, to string) (err error) {
+	var fromFile *os.File
+	var toFile *os.File
+	var fileInfo os.FileInfo
+
+	if fromFile, err = os.Open(from); err != nil {
+		quietClose(fromFile)
+		return
+	}
+
+	if toFile, err = os.Create(to); err != nil {
+		quietClose(fromFile, toFile)
+		return
+	}
+
+	if _, err = io.Copy(toFile, fromFile); err != nil {
+		quietClose(fromFile, toFile)
+		return
+	}
+
+	if err = toFile.Sync(); err != nil {
+		quietClose(fromFile, toFile)
+		return
+	}
+
+	// Dont use quietClose so that Close() errors can be properly reported
+	if fromFile != nil {
+		if err = fromFile.Close(); err != nil {
+			quietClose(toFile)
+			return
+		}
+	}
+	if toFile != nil {
+		if err = toFile.Close(); err != nil {
+			return
+		}
+	}
+
+	if fileInfo, err = os.Stat(from); err != nil {
+		return
+	}
+	err = os.Chmod(to, fileInfo.Mode())
+	return
+}
+
+func CopyRecursiveDir(from, to string) (err error) {
+
+	var fromDir *os.File
+
+	var fromDirEntries []os.DirEntry
+	var fileInfo os.FileInfo
+
+	if fromDir, err = OpenExistingDir(from); err != nil {
+		return
+	}
+
+	// Make sure the 'to' path is a directory that exists
+	if err = EnsureDirExists(to); err != nil {
+		return
+	}
+
+	// Read the 'from' directory (and close its *File)
+	if fromDirEntries, err = fromDir.ReadDir(0); err != nil {
+		quietClose(fromDir)
+		return
+	}
+	if err = fromDir.Close(); err != nil {
+		return
+	}
+
+	for _, dirEntry := range fromDirEntries {
+		if fileInfo, err = dirEntry.Info(); err != nil {
+			return
+		}
+		filename := fileInfo.Name()
+		fromPath := filepath.Join(from, filename)
+		toPath := filepath.Join(to, filename)
+		fileMode := fileInfo.Mode()
+
+		if fileMode.IsDir() {
+			if err = CopyRecursiveDir(fromPath, toPath); err != nil {
+				return
+			}
+			continue
+		}
+		if (fileMode & os.ModeSymlink) == os.ModeSymlink {
+			if _, err = os.Stat(toPath); errors.Is(err, os.ErrNotExist) {
+				var target string
+				if target, err = os.Readlink(fromPath); err != nil {
+					return
+				}
+				if err = os.Symlink(target, toPath); err != nil {
+					return
+				}
+			}
+		}
+
+		if fileMode.IsRegular() {
+			if _, err = os.Stat(toPath); errors.Is(err, os.ErrNotExist) {
+				if err = CopyFile(fromPath, toPath); err != nil {
+					return
+				}
+			}
+		}
+	}
+
+	return
+}
+
+func ShowDirRecursive(dir, desc string) {
+	commandLine := fmt.Sprintf("ls -lR %s", dir)
 	cmd := exec.Command("bash", "-c", commandLine)
 	logWriter.Printf("")
-	logWriter.Printf("Copying all other files (non-instrumented files)")
+	logWriter.Printf("Directory Listing (%s)", desc)
 	logWriter.Printf("Executing %s", commandLine)
 	allOutput, err := cmd.CombinedOutput()
 	allText := strings.TrimSpace(string(allOutput))
 	lines := strings.Split(allText, "\n")
 	for _, line := range lines {
 		if len(line) > 0 {
-			logWriter.Printf("cp: %s", line)
+			logWriter.Printf("ls: %s", line)
 		}
 	}
 	if err != nil {
-		logWriter.Printf("cp completed with %+v", err)
+		logWriter.Printf("ls completed with %+v", err)
 	}
 }
 
