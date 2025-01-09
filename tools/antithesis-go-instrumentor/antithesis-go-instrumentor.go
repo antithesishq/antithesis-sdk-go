@@ -77,8 +77,17 @@ func main() {
 			continue
 		}
 
-		if instrumented_source := cI.InstrumentFile(file_name); instrumented_source != "" {
-			cmd_files.WriteInstrumentedOutput(file_name, instrumented_source, cI)
+		should_attempt_cataloging := true
+		if cmd_files.WantsInstrumentor() {
+			instrumented_source := cI.InstrumentFile(file_name)
+			if instrumented_source == "" {
+				should_attempt_cataloging = false
+			} else {
+				cmd_files.WriteInstrumentedOutput(file_name, instrumented_source, cI)
+			}
+		}
+
+		if should_attempt_cataloging {
 			aScanner.ScanFile(file_name)
 			cmd_files.UpdateDependentModules(file_name)
 		}

@@ -335,6 +335,10 @@ func (cfx *CommandFiles) FindSourceCode() (paths []string, numSkipped int, err e
 	return
 }
 
+func (cfx *CommandFiles) WantsInstrumentor() bool {
+	return cfx.wantsInstrumentor
+}
+
 func (cfx *CommandFiles) UsingSymbols() string {
 	usingSymbols := ""
 	if cfx.wantsInstrumentor {

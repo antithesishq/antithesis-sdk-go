@@ -3,7 +3,9 @@
 package assert
 
 import (
+	"log"
 	"math"
+	"reflect"
 	"sync"
 
 	"github.com/antithesishq/antithesis-sdk-go/internal"
@@ -25,11 +27,22 @@ const (
 )
 
 func gapTypeForOperand[T Number](num T) numericGapType {
-	gapType := integerGapType
+	var gapType numericGapType = integerGapType
 
 	switch any(num).(type) {
 	case float32, float64:
 		gapType = floatGapType
+	case int, int8, int16, int32, int64, uint, uint8, uint16, uint32, uint64, uintptr:
+		gapType = integerGapType
+	default:
+		numVal := reflect.ValueOf(num)
+		if numVal.CanUint() {
+			gapType = integerGapType
+		} else if numVal.CanInt() {
+			gapType = integerGapType
+		} else if numVal.CanFloat() {
+			gapType = floatGapType
+		}
 	}
 	return gapType
 }
@@ -117,6 +130,8 @@ func newGapValue[T numConstraint](sz T, is_neg bool) any {
 	case float64:
 		return gapValue[float64]{gap_size: float64(sz), gap_is_negative: is_neg}
 	}
+
+	log.Printf("Unknown gapValue type: %+v", sz)
 	return nil
 }
 

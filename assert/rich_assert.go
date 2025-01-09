@@ -2,6 +2,11 @@
 
 package assert
 
+import (
+	"log"
+	"reflect"
+)
+
 // A type for writing raw assertions.
 // guidanceFnType allows the assertion to provide guidance to
 // the Antithesis platform when testing in Antithesis.
@@ -70,7 +75,20 @@ func newOperands[T Number](left, right T) any {
 	case float32, float64:
 		return numericOperands[float64]{float64(left), float64(right)}
 	}
-	return nil
+
+	// Got this far, and still not sure?
+	leftVal := reflect.ValueOf(left)
+	rightVal := reflect.ValueOf(right)
+	if leftVal.CanUint() {
+		return numericOperands[uint64]{leftVal.Uint(), rightVal.Uint()}
+	} else if leftVal.CanInt() {
+		return numericOperands[int64]{leftVal.Int(), rightVal.Int()}
+	} else if leftVal.CanFloat() {
+		return numericOperands[float64]{leftVal.Float(), rightVal.Float()}
+	} else {
+		log.Printf("Unknown left operand type: %+v", left)
+		return nil
+	}
 }
 
 func build_numeric_guidance[T Number](gt guidanceFnType, message string, left, right T, loc *locationInfo, id string, hit bool) *guidanceInfo {
