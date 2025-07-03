@@ -79,9 +79,10 @@ func main() {
 
 		if instrumented_source := cI.InstrumentFile(file_name); instrumented_source != "" {
 			cmd_files.WriteInstrumentedOutput(file_name, instrumented_source, cI)
-			aScanner.ScanFile(file_name)
 			cmd_files.UpdateDependentModules(file_name)
 		}
+		
+		aScanner.ScanFile(file_name)
 	}
 	cmd_files.ShowDependentModules()
 

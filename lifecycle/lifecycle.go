@@ -6,7 +6,7 @@
 //
 // [Antithesis Go SDK]: https://antithesis.com/docs/using_antithesis/sdk/go/
 // [Antithesis platform]: https://antithesis.com
-// [triage report]: https://antithesis.com/docs/reports/triage/
+// [triage report]: https://antithesis.com/docs/reports/
 package lifecycle
 
 import (
@@ -30,7 +30,7 @@ func SetupComplete(details any) {
 //
 // In addition to details, you also provide an eventName, which is the name of the event that you are logging. This name will appear in the logs section of a [triage report].
 //
-// [triage report]: https://antithesis.com/docs/reports/triage/
+// [triage report]: https://antithesis.com/docs/reports/
 func SendEvent(eventName string, details any) {
 	internal.Json_data(map[string]any{eventName: details})
 }

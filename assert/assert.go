@@ -17,11 +17,11 @@
 // [test properties]: https://antithesis.com/docs/using_antithesis/properties/
 // [workload]: https://antithesis.com/docs/getting_started/first_test/
 // [antithesis-go-generator]: https://antithesis.com/docs/using_antithesis/sdk/go/instrumentor/
-// [triage report]: https://antithesis.com/docs/reports/triage/
+// [triage report]: https://antithesis.com/docs/reports/
 // [here]: https://antithesis.com/docs/using_antithesis/sdk/fallback/
 // [Sometimes assertions]: https://antithesis.com/docs/best_practices/sometimes_assertions/
 //
-// [details]: https://antithesis.com/docs/reports/triage/#details
+// [details]: https://antithesis.com/docs/reports/
 package assert
 
 type assertInfo struct {
