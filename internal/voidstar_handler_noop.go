@@ -1,4 +1,4 @@
-//go:build !no_antithesis_sdk && (!linux || !amd64 || !cgo)
+//go:build enable_antithesis_sdk && (!linux || !amd64 || !cgo)
 
 package internal
 
