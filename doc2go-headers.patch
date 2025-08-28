@@ -1,0 +1,78 @@
+diff --git a/internal/html/tmpl/package.html b/internal/html/tmpl/package.html
+index b081d51c30..551076b084 100644
+--- a/internal/html/tmpl/package.html
++++ b/internal/html/tmpl/package.html
+@@ -8,14 +8,14 @@
+ {{ define "NavbarExtra" }} | <a href="#pkg-index">Index</a>{{ end -}}
+ 
+ {{ define "Body" -}}
+-<h2 id="pkg-overview" {{- if pagefind }} data-pagefind-meta="Import path:{{ .ImportPath }}"{{end }}>
++<h1 id="pkg-overview" {{- if pagefind }} data-pagefind-meta="Import path:{{ .ImportPath }}"{{end }}>
+   {{- with .BinName }}{{ . }}{{ else }}package {{ .Name }}{{ end -}}
+-</h2>
++</h1>
+ {{ .Import | code }}
+ {{ .Doc | doc 3 -}}
+ {{ template "examples" (dict "Level" 3 "Examples" .Examples) -}}
+ 
+-<h3 id="pkg-index" {{- pagefindIgnore -}}>Index</h3>
++<h2 id="pkg-index" {{- pagefindIgnore -}}>Index</h2>
+ {{ if or .Constants .Variables .Functions .Types -}}
+ <ul {{- pagefindIgnore -}}>
+   {{ if .Constants }}<li><a href="#pkg-constants">Constants</a></li>{{ end -}}
+@@ -42,7 +42,7 @@
+ {{- end }}
+ 
+ {{- with .AllExamples -}}
+-<h4 id="pkg-examples" {{- pagefindIgnore -}}>Examples</h4>
++<h3 id="pkg-examples" {{- pagefindIgnore -}}>Examples</h3>
+ <ul>
+   {{ range . -}}
+     {{- $id := printf "example-%s" .Parent.String -}}
+@@ -55,20 +55,20 @@
+ {{- end -}}
+ 
+ {{ with .Constants -}}
+-  <h3 id="pkg-constants" {{- pagefindIgnore -}}>Constants</h3>
++  <h2 id="pkg-constants" {{- pagefindIgnore -}}>Constants</h2>
+   {{ range . }}{{ template "constOrVar" . }}{{ end -}}
+ {{ end -}}
+ 
+ {{ with .Variables -}}
+-  <h3 id="pkg-variables" {{- pagefindIgnore -}}>Variables</h3>
++  <h2 id="pkg-variables" {{- pagefindIgnore -}}>Variables</h2>
+   {{ range . }}{{ template "constOrVar" . }}{{ end -}}
+ {{ end -}}
+ 
+ {{ with .Functions -}}
+-  <h3 id="pkg-functions" {{- pagefindIgnore -}}>Functions</h3>
++  <h2 id="pkg-functions" {{- pagefindIgnore -}}>Functions</h2>
+   {{ range . -}}
+     {{ if .Deprecated }}<details class="deprecated"><summary>{{ end -}}
+-      <h3 id="{{ .Name }}">func {{ .Name }} {{- template "deprecatedTag" . }}</h3>
++      <h2 id="{{ .Name }}">func {{ .Name }} {{- template "deprecatedTag" . }}</h2>
+     {{- if .Deprecated }}</summary>{{ end }}
+     {{ .Decl | code }}
+     {{ .Doc | doc 4 -}}
+@@ -78,10 +78,10 @@
+ {{ end -}}
+ 
+ {{ with .Types -}}
+-  <h3 id="pkg-types" {{- pagefindIgnore -}}>Types</h3>
++  <h2 id="pkg-types" {{- pagefindIgnore -}}>Types</h2>
+   {{ range . -}}
+     {{ if .Deprecated }}<details class="deprecated"><summary>{{ end -}}
+-    <h3 id="{{ .Name }}">type {{ .Name }} {{- template "deprecatedTag" . }}</h3>
++    <h2 id="{{ .Name }}">type {{ .Name }} {{- template "deprecatedTag" . }}</h2>
+     {{- if .Deprecated }}</summary>{{ end }}
+     {{ .Decl | code }}
+     {{ .Doc | doc 4 -}}
+@@ -120,7 +120,7 @@
+   {{ $id := .Name -}}
+   {{ with .RecvType }}{{ $id = printf "%s.%s" . $id }}{{ end -}}
+   {{ if .Deprecated }}<details class="deprecated"><summary>{{ end -}}
+-    <h4 id="{{ $id }}">func {{ with .Recv }}({{ . }}) {{end }}{{ .Name }} {{- template "deprecatedTag" . }}</h4>
++    <h3 id="{{ $id }}">func {{ with .Recv }}({{ . }}) {{end }}{{ .Name }} {{- template "deprecatedTag" . }}</h3>
+   {{- if .Deprecated }}</summary>{{ end }}
+   {{ .Decl | code }}
+   {{ .Doc | doc 5 -}}
