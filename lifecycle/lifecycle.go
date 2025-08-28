@@ -17,7 +17,7 @@ import (
 //
 // Calling this function multiple times or from multiple processes will have no effect. Antithesis will treat the first time any process called this function as the moment that the setup was completed.
 //
-// [injecting faults]: https://antithesis.com/docs/applications/reliability/fault_injection/
+// [injecting faults]: https://antithesis.com/docs/environment/fault_injection/
 func SetupComplete(details any) {
 	statusBlock := map[string]any{
 		"status":  "complete",

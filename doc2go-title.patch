@@ -1,0 +1,12 @@
+diff --git a/internal/html/tmpl/package.html b/internal/html/tmpl/package.html
+index 551076b084..893dff9a2d 100644
+--- a/internal/html/tmpl/package.html
++++ b/internal/html/tmpl/package.html
+@@ -1,6 +1,6 @@
+ {{ define "Head" -}}
+ <title>
+-  {{- with .BinName }}{{ . }}{{ else }}{{ .Name }}{{ end -}}
++  %TITLE%
+ </title>
+ {{ end -}}
+ 

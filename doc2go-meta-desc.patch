@@ -1,0 +1,13 @@
+diff --git a/internal/html/tmpl/package.html b/internal/html/tmpl/package.html
+index 893dff9a2d..b3ec7886f7 100644
+--- a/internal/html/tmpl/package.html
++++ b/internal/html/tmpl/package.html
+@@ -2,6 +2,8 @@
+ <title>
+   %TITLE%
+ </title>
++
++<meta name="description" content="%META_DESCRIPTION%">
+ {{ end -}}
+ 
+ {{ define "PkgVersion" }}{{ with .PkgVersion }}{{ . }} | {{ end }}{{ end }}
