@@ -209,122 +209,50 @@ func add_boolean_details(details map[string]any, named_bools []NamedBool) map[st
 
 // Equivalent to asserting Always(left > right, message, details). Information about left and right will automatically be added to the details parameter, with keys left and right. If you use this function for assertions that compare numeric quantities, you may help Antithesis find more bugs.
 func AlwaysGreaterThan[T Number](left, right T, message string, details map[string]any) {
-	loc := newLocationInfo(offsetAPICaller)
-	id := makeKey(message, loc)
-	condition := left > right
-	all_details := add_numeric_details(details, left, right)
-	assertImpl(condition, message, all_details, loc, wasHit, mustBeHit, universalTest, alwaysDisplay, id)
-
-	numericGuidanceImpl(left, right, message, id, loc, guidanceFnMinimize, wasHit)
+	AlwaysGreaterThanInner(left, right, message, details)
 }
 
 // Equivalent to asserting Always(left >= right, message, details). Information about left and right will automatically be added to the details parameter, with keys left and right. If you use this function for assertions that compare numeric quantities, you may help Antithesis find more bugs.
 func AlwaysGreaterThanOrEqualTo[T Number](left, right T, message string, details map[string]any) {
-	loc := newLocationInfo(offsetAPICaller)
-	id := makeKey(message, loc)
-	condition := left >= right
-	all_details := add_numeric_details(details, left, right)
-	assertImpl(condition, message, all_details, loc, wasHit, mustBeHit, universalTest, alwaysDisplay, id)
-
-	numericGuidanceImpl(left, right, message, id, loc, guidanceFnMinimize, wasHit)
+	AlwaysGreaterThanOrEqualToInner(left, right, message, details)
 }
 
 // Equivalent to asserting Sometimes(T left > T right, message, details). Information about left and right will automatically be added to the details parameter, with keys left and right. If you use this function for assertions that compare numeric quantities, you may help Antithesis find more bugs.
 func SometimesGreaterThan[T Number](left, right T, message string, details map[string]any) {
-	loc := newLocationInfo(offsetAPICaller)
-	id := makeKey(message, loc)
-	condition := left > right
-	all_details := add_numeric_details(details, left, right)
-	assertImpl(condition, message, all_details, loc, wasHit, mustBeHit, existentialTest, sometimesDisplay, id)
-
-	numericGuidanceImpl(left, right, message, id, loc, guidanceFnMaximize, wasHit)
+	SometimesGreaterThanInner(left, right, message, details)
 }
 
 // Equivalent to asserting Sometimes(T left >= T right, message, details). Information about left and right will automatically be added to the details parameter, with keys left and right. If you use this function for assertions that compare numeric quantities, you may help Antithesis find more bugs.
 func SometimesGreaterThanOrEqualTo[T Number](left, right T, message string, details map[string]any) {
-	loc := newLocationInfo(offsetAPICaller)
-	id := makeKey(message, loc)
-	condition := left >= right
-	all_details := add_numeric_details(details, left, right)
-	assertImpl(condition, message, all_details, loc, wasHit, mustBeHit, existentialTest, sometimesDisplay, id)
-
-	numericGuidanceImpl(left, right, message, id, loc, guidanceFnMaximize, wasHit)
+	SometimesGreaterThanOrEqualToInner(left, right, message, details)
 }
 
 // Equivalent to asserting Always(left < right, message, details). Information about left and right will automatically be added to the details parameter, with keys left and right. If you use this function for assertions that compare numeric quantities, you may help Antithesis find more bugs.
 func AlwaysLessThan[T Number](left, right T, message string, details map[string]any) {
-	loc := newLocationInfo(offsetAPICaller)
-	id := makeKey(message, loc)
-	condition := left < right
-	all_details := add_numeric_details(details, left, right)
-	assertImpl(condition, message, all_details, loc, wasHit, mustBeHit, universalTest, alwaysDisplay, id)
-
-	numericGuidanceImpl(left, right, message, id, loc, guidanceFnMaximize, wasHit)
+	AlwaysLessThanInner(left, right, message, details)
 }
 
 // Equivalent to asserting Always(left <= right, message, details). Information about left and right will automatically be added to the details parameter, with keys left and right. If you use this function for assertions that compare numeric quantities, you may help Antithesis find more bugs.
 func AlwaysLessThanOrEqualTo[T Number](left, right T, message string, details map[string]any) {
-	loc := newLocationInfo(offsetAPICaller)
-	id := makeKey(message, loc)
-	condition := left <= right
-	all_details := add_numeric_details(details, left, right)
-	assertImpl(condition, message, all_details, loc, wasHit, mustBeHit, universalTest, alwaysDisplay, id)
-
-	numericGuidanceImpl(left, right, message, id, loc, guidanceFnMaximize, wasHit)
+	AlwaysLessThanOrEqualToInner(left, right, message, details)
 }
 
 // Equivalent to asserting Sometimes(T left < T right, message, details). Information about left and right will automatically be added to the details parameter, with keys left and right. If you use this function for assertions that compare numeric quantities, you may help Antithesis find more bugs.
 func SometimesLessThan[T Number](left, right T, message string, details map[string]any) {
-	loc := newLocationInfo(offsetAPICaller)
-	id := makeKey(message, loc)
-	condition := left < right
-	all_details := add_numeric_details(details, left, right)
-	assertImpl(condition, message, all_details, loc, wasHit, mustBeHit, existentialTest, sometimesDisplay, id)
-
-	numericGuidanceImpl(left, right, message, id, loc, guidanceFnMinimize, wasHit)
+	SometimesLessThanInner(left, right, message, details)
 }
 
 // Equivalent to asserting Sometimes(T left <= T right, message, details). Information about left and right will automatically be added to the details parameter, with keys left and right. If you use this function for assertions that compare numeric quantities, you may help Antithesis find more bugs.
 func SometimesLessThanOrEqualTo[T Number](left, right T, message string, details map[string]any) {
-	loc := newLocationInfo(offsetAPICaller)
-	id := makeKey(message, loc)
-	condition := left <= right
-	all_details := add_numeric_details(details, left, right)
-	assertImpl(condition, message, all_details, loc, wasHit, mustBeHit, existentialTest, sometimesDisplay, id)
-
-	numericGuidanceImpl(left, right, message, id, loc, guidanceFnMinimize, wasHit)
+	SometimesLessThanOrEqualToInner(left, right, message, details)
 }
 
 // Asserts that every time this is called, at least one bool in named_bools is true. Equivalent to Always(named_bools[0].second || named_bools[1].second || ..., message, details). If you use this for assertions about the behavior of booleans, you may help Antithesis find more bugs. Information about named_bools will automatically be added to the details parameter, and the keys will be the names of the bools.
 func AlwaysSome(named_bools []NamedBool, message string, details map[string]any) {
-	loc := newLocationInfo(offsetAPICaller)
-	id := makeKey(message, loc)
-	disjunction := false
-	for _, named_bool := range named_bools {
-		if named_bool.Second {
-			disjunction = true
-			break
-		}
-	}
-	all_details := add_boolean_details(details, named_bools)
-	assertImpl(disjunction, message, all_details, loc, wasHit, mustBeHit, universalTest, alwaysDisplay, id)
-
-	booleanGuidanceImpl(named_bools, message, id, loc, guidanceFnWantNone, wasHit)
+	AlwaysSomeInner(named_bools, message, details)
 }
 
 // Asserts that at least one time this is called, every bool in named_bools is true. Equivalent to Sometimes(named_bools[0].second && named_bools[1].second && ..., message, details). If you use this for assertions about the behavior of booleans, you may help Antithesis find more bugs. Information about named_bools will automatically be added to the details parameter, and the keys will be the names of the bools.
 func SometimesAll(named_bools []NamedBool, message string, details map[string]any) {
-	loc := newLocationInfo(offsetAPICaller)
-	id := makeKey(message, loc)
-	conjunction := true
-	for _, named_bool := range named_bools {
-		if !named_bool.Second {
-			conjunction = false
-			break
-		}
-	}
-	all_details := add_boolean_details(details, named_bools)
-	assertImpl(conjunction, message, all_details, loc, wasHit, mustBeHit, existentialTest, sometimesDisplay, id)
-
-	booleanGuidanceImpl(named_bools, message, id, loc, guidanceFnWantAll, wasHit)
+	SometimesAllInner(named_bools, message, details)
 }

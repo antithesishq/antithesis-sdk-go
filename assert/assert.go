@@ -129,37 +129,27 @@ const (
 
 // Always asserts that condition is true every time this function is called, and that it is called at least once. The corresponding test property will be viewable in the Antithesis SDK: Always group of your triage report.
 func Always(condition bool, message string, details map[string]any) {
-	locationInfo := newLocationInfo(offsetAPICaller)
-	id := makeKey(message, locationInfo)
-	assertImpl(condition, message, details, locationInfo, wasHit, mustBeHit, universalTest, alwaysDisplay, id)
+	AlwaysInner(condition, message, details)
 }
 
 // AlwaysOrUnreachable asserts that condition is true every time this function is called. The corresponding test property will pass if the assertion is never encountered (unlike Always assertion types). This test property will be viewable in the “Antithesis SDK: Always” group of your triage report.
 func AlwaysOrUnreachable(condition bool, message string, details map[string]any) {
-	locationInfo := newLocationInfo(offsetAPICaller)
-	id := makeKey(message, locationInfo)
-	assertImpl(condition, message, details, locationInfo, wasHit, optionallyHit, universalTest, alwaysOrUnreachableDisplay, id)
+	AlwaysOrUnreachableInner(condition, message, details)
 }
 
 // Sometimes asserts that condition is true at least one time that this function was called. (If the assertion is never encountered, the test property will therefore fail.) This test property will be viewable in the “Antithesis SDK: Sometimes” group.
 func Sometimes(condition bool, message string, details map[string]any) {
-	locationInfo := newLocationInfo(offsetAPICaller)
-	id := makeKey(message, locationInfo)
-	assertImpl(condition, message, details, locationInfo, wasHit, mustBeHit, existentialTest, sometimesDisplay, id)
+	SometimesInner(condition, message, details)
 }
 
 // Unreachable asserts that a line of code is never reached. The corresponding test property will fail if this function is ever called. (If it is never called the test property will therefore pass.) This test property will be viewable in the “Antithesis SDK: Reachablity assertions” group.
 func Unreachable(message string, details map[string]any) {
-	locationInfo := newLocationInfo(offsetAPICaller)
-	id := makeKey(message, locationInfo)
-	assertImpl(false, message, details, locationInfo, wasHit, optionallyHit, reachabilityTest, unreachableDisplay, id)
+	UnreachableInner(message, details)
 }
 
 // Reachable asserts that a line of code is reached at least once. The corresponding test property will pass if this function is ever called. (If it is never called the test property will therefore fail.) This test property will be viewable in the “Antithesis SDK: Reachablity assertions” group.
 func Reachable(message string, details map[string]any) {
-	locationInfo := newLocationInfo(offsetAPICaller)
-	id := makeKey(message, locationInfo)
-	assertImpl(true, message, details, locationInfo, wasHit, mustBeHit, reachabilityTest, reachableDisplay, id)
+	ReachableInner(message, details)
 }
 
 // AssertRaw is a low-level method designed to be used by third-party frameworks. Regular users of the assert package should not call it.

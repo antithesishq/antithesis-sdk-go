@@ -70,6 +70,12 @@ func main() {
 	//--------------------------------------------------------------------------------
 	// Process all files (ignore previously generated assertion catalogs)
 	//--------------------------------------------------------------------------------
+	for _, file_name := range source_files {
+		aScanner.ScanFileForInnerAssertions(file_name)
+	}
+
+	aScanner.LogAssertionWrappers()
+
 	cmd_files.ShowDependentModules()
 	for _, file_name := range source_files {
 		if assertions.IsGeneratedFile(file_name) {
@@ -81,7 +87,7 @@ func main() {
 			cmd_files.WriteInstrumentedOutput(file_name, instrumented_source, cI)
 			cmd_files.UpdateDependentModules(file_name)
 		}
-		
+
 		aScanner.ScanFile(file_name)
 	}
 	cmd_files.ShowDependentModules()

@@ -39,24 +39,29 @@ type AntGuidance struct {
 
 // Capitalized struct items are accessed outside this file
 type AssertionScanner struct {
-	assertionHintMap   AssertionHints
-	guidanceHintMap    GuidanceHints
-	fset               *token.FileSet
-	logWriter          *common.LogWriter
-	symbolTableName    string
-	funcName           string
-	receiver           string
-	packageName        string
-	moduleName         string
-	notifierPackage    string
-	notifierModuleName string
-	baseInputDir       string
-	baseTargetDir      string
-	expects            []*AntExpect
-	guidance           []*AntGuidance
-	imports            []string
-	filesCataloged     int
-	verbose            bool
+	assertionHintMap                    AssertionHints
+	innerToNormalAssertNames            map[string]string
+	guidanceHintMap                     GuidanceHints
+	fset                                *token.FileSet
+	logWriter                           *common.LogWriter
+	symbolTableName                     string
+	funcName                            string
+	funcDecl                            *ast.FuncDecl
+	receiver                            string
+	packageName                         string
+	shortPackageName                    string
+	moduleName                          string
+	notifierPackage                     string
+	notifierModuleName                  string
+	baseInputDir                        string
+	baseTargetDir                       string
+	expects                             []*AntExpect
+	guidance                            []*AntGuidance
+	assertPackageImportNames            []string
+	importNameToPackageName             map[string]string
+	packageNameToWrapperNameToAssertion map[string]map[string]string
+	filesCataloged                      int
+	verbose                             bool
 }
 
 // filter Guidance to just numeric
@@ -90,28 +95,44 @@ func NewAssertionScanner(verbose bool, moduleName string, symbolTableName string
 	}
 
 	aScanner := AssertionScanner{
-		moduleName:       moduleName,
-		fset:             token.NewFileSet(),
-		imports:          []string{},
-		expects:          []*AntExpect{},
-		guidance:         []*AntGuidance{},
-		verbose:          verbose,
-		funcName:         "",
-		receiver:         "",
-		packageName:      "",
-		baseInputDir:     sourceDir,
-		baseTargetDir:    targetDir,
-		assertionHintMap: SetupHintMap(),
-		guidanceHintMap:  SetupGuidanceHintMap(),
-		symbolTableName:  symbolTableName,
-		filesCataloged:   0,
-		logWriter:        logWriter,
+		moduleName:                          moduleName,
+		fset:                                token.NewFileSet(),
+		assertPackageImportNames:            []string{},
+		importNameToPackageName:             map[string]string{},
+		expects:                             []*AntExpect{},
+		guidance:                            []*AntGuidance{},
+		verbose:                             verbose,
+		funcName:                            "",
+		receiver:                            "",
+		packageName:                         "",
+		baseInputDir:                        sourceDir,
+		baseTargetDir:                       targetDir,
+		assertionHintMap:                    SetupHintMap(),
+		innerToNormalAssertNames:            SetupInnerAssertionMap(),
+		packageNameToWrapperNameToAssertion: map[string]map[string]string{},
+		guidanceHintMap:                     SetupGuidanceHintMap(),
+		symbolTableName:                     symbolTableName,
+		filesCataloged:                      0,
+		logWriter:                           logWriter,
 	}
 	return &aScanner
 }
 
 func (aScanner *AssertionScanner) GetLogger() *common.LogWriter {
 	return aScanner.logWriter
+}
+
+func (aScanner *AssertionScanner) ScanFileForInnerAssertions(file_path string) {
+	var file *ast.File
+	var err error
+
+	aScanner.reset_for_file(file_path)
+	if file, err = parser.ParseFile(aScanner.fset, file_path, nil, 0); err != nil {
+		panic(err)
+	}
+
+	aScanner.logWriter.Printf("Catalog preprocessing: looking for assertion wrappers in %s", file_path)
+	ast.Inspect(file, aScanner.node_preprocessor)
 }
 
 func (aScanner *AssertionScanner) ScanFile(file_path string) {
@@ -173,9 +194,12 @@ func (aScanner *AssertionScanner) reset_for_file(file_path string) {
 	if aScanner.logWriter.VerboseLevel(2) {
 		aScanner.logWriter.Printf(">>     File: %s\n", file_path)
 	}
-	aScanner.imports = []string{}
+	aScanner.assertPackageImportNames = []string{}
+	aScanner.importNameToPackageName = make(map[string]string)
 	aScanner.funcName = ""
+	aScanner.funcDecl = nil
 	aScanner.packageName = ""
+	aScanner.shortPackageName = ""
 	aScanner.receiver = ""
 }
 
@@ -197,22 +221,14 @@ func (aScanner *AssertionScanner) module_relative_name(file_path string) string 
 	return revised_path
 }
 
-func (aScanner *AssertionScanner) node_inspector(x ast.Node) bool {
-	var call_expr *ast.CallExpr
-	var func_decl *ast.FuncDecl
+func (aScanner *AssertionScanner) setCurrentPackageName(x ast.Node) {
 	var package_file *ast.File
-	var import_spec *ast.ImportSpec
-	var fun_expr ast.Expr
-	var call_args []ast.Expr
 	var ok bool
-	var path_name string
-
-	assertPackageName := common.AssertPackageName()
 
 	if aScanner.packageName == "" {
 		if package_file, ok = x.(*ast.File); ok {
 			// subtract aScanner.baseInputDir from the full file name in full_position
-			// and use that top qualify packageName
+			// and use that to qualify packageName
 			// eg. the "abc" package within "ms-test" module is imported like this:
 			//    import "ms-test/abc"
 			//
@@ -248,47 +264,150 @@ func (aScanner *AssertionScanner) node_inspector(x ast.Node) bool {
 				prefix := relative_name[0:idx]
 				aScanner.packageName = fmt.Sprintf("%s%c%s", cooked_moduleName, os.PathSeparator, prefix)
 			}
+
+			// Also set the "short" package name that is literally just the name of the package.
+			// packageName is useful for location info in assertions, while shortPackageName is useful for
+			// matching the names of packages in import statements when resolving wrapped assertions
+			aScanner.shortPackageName = package_file.Name.Name
+		}
+	}
+}
+
+func (aScanner *AssertionScanner) setCurrentFunction(func_decl *ast.FuncDecl) {
+	// Set the current function declaration
+	aScanner.funcDecl = func_decl
+
+	// Set the current function name
+	aScanner.funcName = common.NAME_NOT_AVAILABLE
+	if func_ident := func_decl.Name; func_ident != nil {
+		aScanner.funcName = func_ident.Name
+	}
+
+	// Set the current function receiver
+	aScanner.receiver = ""
+	if recv := func_decl.Recv; recv != nil {
+		if num_fields := recv.NumFields(); num_fields > 0 {
+			if field_list := recv.List; field_list != nil {
+				if recv_type := field_list[0].Type; recv_type != nil {
+					aScanner.receiver = types.ExprString(recv_type)
+				}
+			}
 		}
 	}
 
-	if import_spec, ok = x.(*ast.ImportSpec); ok {
-		path_name, _ = strconv.Unquote(import_spec.Path.Value)
-		alias := ""
-		if import_spec.Name != nil {
-			alias = import_spec.Name.Name
-		}
-		if path_name == assertPackageName {
-			call_qualifier := path.Base(path_name)
-			if alias != "" {
-				call_qualifier = alias
-			}
-			aScanner.imports = append(aScanner.imports, call_qualifier)
-		}
+	if aScanner.logWriter.VerboseLevel(2) {
+		aScanner.logWriter.Printf(">>       Func: %s %s\n", aScanner.funcName, aScanner.receiver)
+	}
+}
 
-		return true // ast.inspect() can deal with this
+func (aScanner *AssertionScanner) setCurrentImports(import_spec *ast.ImportSpec) {
+	assertPackageName := common.AssertPackageName()
+
+	var path_name string
+	path_name, _ = strconv.Unquote(import_spec.Path.Value)
+	call_qualifier := path.Base(path_name)
+	if import_spec.Name != nil && import_spec.Name.Name != "" {
+		call_qualifier = import_spec.Name.Name
+	}
+
+	// If the imported package exactly matches the path of our assert package, then we store the name it was imported as
+	if path_name == assertPackageName {
+		aScanner.assertPackageImportNames = append(aScanner.assertPackageImportNames, call_qualifier)
+	}
+
+	// Store a map of "imported-as-name" to the original package path
+	aScanner.importNameToPackageName[call_qualifier] = path.Base(path_name)
+}
+
+// First pass through the AST. This looks for any methods that call our
+// wrapped assertion functions and saves information about them for the second pass.
+// Specifically, how this works is that in this pass, we record the list of (wrapperMethodName, wrapperMethodPackageName, antithesisAssertionName)
+// tuples that we see. (We really record this as a nested dictionary for efficiency).
+// Then, during the second pass, we catalog any calls we find to each wrapperMethodPackageName.wrapperMethodName() as the associated antithesisAssertionName
+func (aScanner *AssertionScanner) node_preprocessor(x ast.Node) bool {
+	var call_expr *ast.CallExpr
+	var func_decl *ast.FuncDecl
+	var import_spec *ast.ImportSpec
+	var ok bool
+
+	// Get the package name for this file, if we haven't yet
+	aScanner.setCurrentPackageName(x)
+
+	// Collect the imports. We'll need this during this pass so that we can track aliases of
+	// the assert package, so that we can find any methods that call our wrapped assertions
+	if import_spec, ok = x.(*ast.ImportSpec); ok {
+		aScanner.setCurrentImports(import_spec)
 	}
 
 	// Track current funcName and receiver (type)
 	if func_decl, ok = x.(*ast.FuncDecl); ok {
-		aScanner.funcName = common.NAME_NOT_AVAILABLE
-		if func_ident := func_decl.Name; func_ident != nil {
-			aScanner.funcName = func_ident.Name
-		}
-		aScanner.receiver = ""
-		if recv := func_decl.Recv; recv != nil {
-			if num_fields := recv.NumFields(); num_fields > 0 {
-				if field_list := recv.List; field_list != nil {
-					if recv_type := field_list[0].Type; recv_type != nil {
-						aScanner.receiver = types.ExprString(recv_type)
-					}
+		aScanner.setCurrentFunction(func_decl)
+	}
+
+	// If we hit a function call expression, we need to see if that function call represents a call to one of our wrapped
+	// methods. If so, we'll record the function it's being called from as a wrapper function.
+	if call_expr, ok = x.(*ast.CallExpr); ok {
+		// We expect any call to a wrapped method to be a selector expression (e.g. assert.AlwaysInner(...))
+		// Function call expressions can also be identity expressions (ast.Ident - e.g. AlwaysInner(...))
+		// This could happen if people use dot-import, but we're not supporting this at this time, and is discouraged in general by the go docs.
+		var sel_expr *ast.SelectorExpr
+		if sel_expr, ok = call_expr.Fun.(*ast.SelectorExpr); ok {
+			calledFunctionName := sel_expr.Sel.Name
+			if assertFunctionName, ok := aScanner.innerToNormalAssertNames[calledFunctionName]; ok {
+				aScanner.logWriter.PrintfIfVerbose(1, "Found assertion wrapper: %v wraps %v\n", calledFunctionName, assertFunctionName)
+
+				// Validate that the message parameter is still a string and still in the same location as the underlying assertion method.
+				// We need this to be the case so that we can still catalog the string message name for the wrapper.
+				if !aScanner.validateMessageParameter(aScanner.funcDecl, aScanner.funcName, assertFunctionName) {
+					aScanner.logWriter.Fatalf("Wrapper %v is invalid - see earlier message for details. Exiting", aScanner.funcName)
 				}
+
+				if _, ok := aScanner.packageNameToWrapperNameToAssertion[aScanner.shortPackageName]; !ok {
+					aScanner.packageNameToWrapperNameToAssertion[aScanner.shortPackageName] = make(map[string]string)
+				}
+
+				if _, ok := aScanner.packageNameToWrapperNameToAssertion[aScanner.shortPackageName][aScanner.funcName]; ok {
+					aScanner.logWriter.Fatalf("Wrapper %v is invalid - wrappers can only contain one inner assertion", aScanner.funcName)
+				}
+
+				// Validate that the wrapper doesn't have a receiver. We could conceivably support this, but for the time being it makes the
+				// implementation simpler since it makes the cataloging logic simpler in the second AST pass.
+				if aScanner.funcDecl.Recv != nil && len(aScanner.funcDecl.Recv.List) > 0 {
+					aScanner.logWriter.Fatalf("Wrapper %v is invalid - wrappers cannot take receivers", aScanner.funcName)
+				}
+
+				aScanner.packageNameToWrapperNameToAssertion[aScanner.shortPackageName][aScanner.funcName] = assertFunctionName
 			}
-		}
-		if aScanner.logWriter.VerboseLevel(2) {
-			aScanner.logWriter.Printf(">>       Func: %s %s\n", aScanner.funcName, aScanner.receiver)
 		}
 	}
 
+	return true
+}
+
+func (aScanner *AssertionScanner) node_inspector(x ast.Node) bool {
+	var call_expr *ast.CallExpr
+	var func_decl *ast.FuncDecl
+	var import_spec *ast.ImportSpec
+	var fun_expr ast.Expr
+	var call_args []ast.Expr
+	var ok bool
+
+	// Get the package name for this file, if we haven't yet
+	aScanner.setCurrentPackageName(x)
+
+	// Collect the imports. We'll need this during this pass so that we can track aliases of
+	// the assert package, so that we can find any methods that call our wrapped assertions
+	if import_spec, ok = x.(*ast.ImportSpec); ok {
+		aScanner.setCurrentImports(import_spec)
+	}
+
+	// Track current funcName and receiver (type)
+	if func_decl, ok = x.(*ast.FuncDecl); ok {
+		aScanner.setCurrentFunction(func_decl)
+	}
+
+	// When we find a function call expression, we want to see if that call represents a call to one of our assertion
+	// methods OR one of the wrapper methods we found in the first AST pass. If so, catalog it.
 	if call_expr, ok = x.(*ast.CallExpr); ok {
 		fun_expr = call_expr.Fun
 		call_args = call_expr.Args
@@ -307,6 +426,26 @@ func (aScanner *AssertionScanner) node_inspector(x ast.Node) bool {
 			if call_ident != nil {
 				call_name = call_ident.Name
 			}
+
+			// If the function name matches the name of a function that we found to be a wrapper function, then we should catalog
+			// every instance of that wrapper function.
+			if wrapperNameToAssertion, ok := aScanner.packageNameToWrapperNameToAssertion[aScanner.shortPackageName]; ok {
+				if assertionName, ok := wrapperNameToAssertion[call_name]; ok {
+					aScanner.logWriter.PrintfIfVerbose(2, "Found an inner assertion: %v wraps %v\n", call_name, assertionName)
+
+					full_position := aScanner.fset.Position(call_ident.Pos())
+					relative_file_path := aScanner.module_relative_name(full_position.Filename)
+
+					if wrapped_hint, ok := aScanner.assertionHintMap[assertionName]; ok {
+						aScanner.addAssertion(assertionName, wrapped_hint, call_args, relative_file_path, full_position)
+					} else if wrapped_guidance_hint, ok := aScanner.guidanceHintMap[assertionName]; ok {
+						aScanner.addGuidance(assertionName, wrapped_guidance_hint, call_args, relative_file_path, full_position)
+					} else {
+						panic("Should never get here - couldn't find assertion or guidance hint")
+					}
+				}
+			}
+
 			if aScanner.logWriter.VerboseLevel(2) {
 				aScanner.logWriter.Printf("Found call to %s()\n", call_name)
 			}
@@ -316,68 +455,101 @@ func (aScanner *AssertionScanner) node_inspector(x ast.Node) bool {
 		if sel_expr, ok = fun_expr.(*ast.SelectorExpr); ok {
 			full_position := aScanner.fset.Position(sel_expr.Pos())
 			relative_file_path := aScanner.module_relative_name(full_position.Filename)
-			expr_text := analyzed_expr(aScanner.imports, sel_expr.X)
-			target_func := sel_expr.Sel.Name
-			if func_hints := aScanner.assertionHintMap.HintsForName(target_func); func_hints != nil && expr_text != "" {
-				test_name := arg_at_index(call_args, func_hints.MessageArg)
-				if test_name == common.NAME_NOT_AVAILABLE {
-					generated_msg := fmt.Sprintf("%s[%d]", relative_file_path, full_position.Line)
-					test_name = fmt.Sprintf("Message from %s", strconv.Quote(generated_msg))
-				}
-				expect := AntExpect{
-					Assertion:         target_func,
-					Message:           test_name,
-					Classname:         aScanner.packageName,
-					Funcname:          aScanner.funcName,
-					Receiver:          aScanner.receiver,
-					Filename:          relative_file_path,
-					Line:              full_position.Line,
-					AssertionFuncInfo: func_hints,
-				}
-				aScanner.expects = append(aScanner.expects, &expect)
-			} // assertionHint
+			isAssertionPackage := doesSelectorMatchAssertionPackage(aScanner.assertPackageImportNames, sel_expr.X)
+			calledFunctionName := sel_expr.Sel.Name
 
-			if guidance_func_hints := aScanner.guidanceHintMap.GuidanceHintsForName(target_func); guidance_func_hints != nil && expr_text != "" {
-				test_name := arg_at_index(call_args, guidance_func_hints.MessageArg)
-				if test_name == common.NAME_NOT_AVAILABLE {
-					generated_msg := fmt.Sprintf("%s[%d]", relative_file_path, full_position.Line)
-					test_name = fmt.Sprintf("Message from %s", strconv.Quote(generated_msg))
+			// Normal (non-wrapped) assertions
+			if isAssertionPackage {
+				if func_hints := aScanner.assertionHintMap.HintsForName(calledFunctionName); func_hints != nil {
+					aScanner.addAssertion(calledFunctionName, func_hints, call_args, relative_file_path, full_position)
 				}
-				// The registration for the Guidance function itself
-				guidance_expect := AntGuidance{
-					Assertion:        target_func,
-					Message:          test_name,
-					Classname:        aScanner.packageName,
-					Funcname:         aScanner.funcName,
-					Receiver:         aScanner.receiver,
-					Filename:         relative_file_path,
-					Line:             full_position.Line,
-					GuidanceFuncInfo: guidance_func_hints,
-				}
-				aScanner.guidance = append(aScanner.guidance, &guidance_expect)
 
-				// The Related Assertion derived from target_func("AlwaysGreaterThan") => derived_target_func("Always")
-				expect := AntExpect{
-					Assertion: target_func_from_guidance(target_func),
-					Message:   test_name,
-					Classname: aScanner.packageName,
-					Funcname:  aScanner.funcName,
-					Receiver:  aScanner.receiver,
-					Filename:  relative_file_path,
-					Line:      full_position.Line,
-					// NOTE: AssertionFuncInfo.TargetFunc is a guidance func name
-					// and AssertionFuncInfo.MessageArg refers to a Guidance Function argument number.
-					//
-					// GenerateAssertionsCatalog() does not use either of TargetFunc or MessageArg
-					// attributes of AssertionFuncInfo, so it is safe to pass the AssertionFuncInfo
-					// from the guidance func here.
-					AssertionFuncInfo: &guidance_func_hints.AssertionFuncInfo,
+				if guidance_func_hints := aScanner.guidanceHintMap.GuidanceHintsForName(calledFunctionName); guidance_func_hints != nil {
+					aScanner.addGuidance(calledFunctionName, guidance_func_hints, call_args, relative_file_path, full_position)
 				}
-				aScanner.expects = append(aScanner.expects, &expect)
-			} // assertionHint
+			}
+
+			// Inner assertions
+			selectorName := getSelectorExpressionName(sel_expr.X)
+			if packageName, ok := aScanner.importNameToPackageName[selectorName]; ok {
+				if wrapperNameToAssertion, ok := aScanner.packageNameToWrapperNameToAssertion[packageName]; ok {
+					if assertionName, ok := wrapperNameToAssertion[calledFunctionName]; ok {
+						aScanner.logWriter.PrintfIfVerbose(2, "Found inner assertion: %v wraps %v\n", calledFunctionName, assertionName)
+
+						if wrapped_hint, ok := aScanner.assertionHintMap[assertionName]; ok {
+							aScanner.addAssertion(assertionName, wrapped_hint, call_args, relative_file_path, full_position)
+						} else if wrapped_guidance_hint, ok := aScanner.guidanceHintMap[assertionName]; ok {
+							aScanner.addGuidance(assertionName, wrapped_guidance_hint, call_args, relative_file_path, full_position)
+						} else {
+							panic("Should never get here - couldn't find assertion or guidance hint")
+						}
+					}
+				}
+			}
 		}
 	}
 	return true
+}
+
+func (aScanner *AssertionScanner) addGuidance(assertion_function_name string, guidance_hint *GuidanceFuncInfo, call_args []ast.Expr, relative_file_path string, full_position token.Position) {
+	test_name := arg_at_index(call_args, guidance_hint.MessageArg)
+	if test_name == common.NAME_NOT_AVAILABLE {
+		generated_msg := fmt.Sprintf("%s[%d]", relative_file_path, full_position.Line)
+		test_name = fmt.Sprintf("Message from %s", strconv.Quote(generated_msg))
+	}
+
+	// The registration for the Guidance function itself
+	guidance_expect := AntGuidance{
+		Assertion:        assertion_function_name,
+		Message:          test_name,
+		Classname:        aScanner.packageName,
+		Funcname:         aScanner.funcName,
+		Receiver:         aScanner.receiver,
+		Filename:         relative_file_path,
+		Line:             full_position.Line,
+		GuidanceFuncInfo: guidance_hint,
+	}
+	aScanner.guidance = append(aScanner.guidance, &guidance_expect)
+
+	// The Related Assertion derived from target_func("AlwaysGreaterThan") => derived_target_func("Always")
+	expect := AntExpect{
+		Assertion: target_func_from_guidance(assertion_function_name),
+		Message:   test_name,
+		Classname: aScanner.packageName,
+		Funcname:  aScanner.funcName,
+		Receiver:  aScanner.receiver,
+		Filename:  relative_file_path,
+		Line:      full_position.Line,
+		// NOTE: AssertionFuncInfo.TargetFunc is a guidance func name
+		// and AssertionFuncInfo.MessageArg refers to a Guidance Function argument number.
+		//
+		// GenerateAssertionsCatalog() does not use either of TargetFunc or MessageArg
+		// attributes of AssertionFuncInfo, so it is safe to pass the AssertionFuncInfo
+		// from the guidance func here.
+		AssertionFuncInfo: &guidance_hint.AssertionFuncInfo,
+	}
+	aScanner.expects = append(aScanner.expects, &expect)
+}
+
+func (aScanner *AssertionScanner) addAssertion(assertion_function_name string, assertion_hint *AssertionFuncInfo, call_args []ast.Expr, relative_file_path string, full_position token.Position) {
+	test_name := arg_at_index(call_args, assertion_hint.MessageArg)
+	if test_name == common.NAME_NOT_AVAILABLE {
+		generated_msg := fmt.Sprintf("%s[%d]", relative_file_path, full_position.Line)
+		test_name = fmt.Sprintf("Message from %s", strconv.Quote(generated_msg))
+	}
+
+	expect := AntExpect{
+		Assertion:         assertion_function_name,
+		Message:           test_name,
+		Classname:         aScanner.packageName,
+		Funcname:          aScanner.funcName,
+		Receiver:          aScanner.receiver,
+		Filename:          relative_file_path,
+		Line:              full_position.Line,
+		AssertionFuncInfo: assertion_hint,
+	}
+
+	aScanner.expects = append(aScanner.expects, &expect)
 }
 
 func target_func_from_guidance(guidance_func string) string {
@@ -431,15 +603,20 @@ func arg_at_index(args []ast.Expr, idx int) string {
 	return common.NAME_NOT_AVAILABLE
 }
 
-func analyzed_expr(imports []string, expr ast.Expr) string {
-	expr_name := ""
-	if expr_id, ok := expr.(*ast.Ident); ok {
-		expr_name = expr_id.Name
-	}
+func doesSelectorMatchAssertionPackage(imports []string, expr ast.Expr) bool {
+	expr_name := getSelectorExpressionName(expr)
+
 	for _, import_name := range imports {
 		if import_name == expr_name {
-			return expr_name
+			return true
 		}
+	}
+	return false
+}
+
+func getSelectorExpressionName(expr ast.Expr) string {
+	if expr_id, ok := expr.(*ast.Ident); ok {
+		return expr_id.Name
 	}
 	return ""
 }
@@ -508,4 +685,112 @@ func (aScanner *AssertionScanner) getConstMap() map[string]bool {
 	const_map["existentialTest"] = cond_tracker[Existential_test]
 	const_map["reachabilityTest"] = cond_tracker[Reachability_test]
 	return const_map
+}
+
+func (aScanner *AssertionScanner) LogAssertionWrappers() {
+	if aScanner.logWriter.VerboseLevel(1) {
+		for k, v := range aScanner.packageNameToWrapperNameToAssertion {
+			for k2, v2 := range v {
+				aScanner.logWriter.Printf("Wrapper map entry (package, wrapperMethodName, assertion) (%v, %v, %v)", k, k2, v2)
+			}
+		}
+	}
+}
+
+func SetupInnerAssertionMap() map[string]string {
+	return map[string]string{
+		// Basic assertions
+		"AlwaysInner":              "Always",
+		"AlwaysOrUnreachableInner": "AlwaysOrUnreachable",
+		"SometimesInner":           "Sometimes",
+		"UnreachableInner":         "Unreachable",
+		"ReachableInner":           "Reachable",
+
+		// Rich assertions
+		"AlwaysGreaterThanInner":             "AlwaysGreaterThan",
+		"AlwaysGreaterThanOrEqualToInner":    "AlwaysGreaterThanOrEqualTo",
+		"SometimesGreaterThanInner":          "SometimesGreaterThan",
+		"SometimesGreaterThanOrEqualToInner": "SometimesGreaterThanOrEqualTo",
+		"AlwaysLessThanInner":                "AlwaysLessThan",
+		"AlwaysLessThanOrEqualToInner":       "AlwaysLessThanOrEqualTo",
+		"SometimesLessThanInner":             "SometimesLessThan",
+		"SometimesLessThanOrEqualToInner":    "SometimesLessThanOrEqualTo",
+		"AlwaysSomeInner":                    "AlwaysSome",
+		"SometimesAllInner":                  "SometimesAll",
+	}
+}
+
+// Returns true if the message parameter is both:
+// - A string
+// - The same parameter number in the method signature of the associated wrapped assertion method
+func (aScanner *AssertionScanner) validateMessageParameter(fd *ast.FuncDecl, wrapperFunctionName string, assertionFunctionName string) bool {
+	// Get the expected message index by looking at the hint map for the underlying function
+	var expectedMessageIndex int
+	if wrapped_hint, ok := aScanner.assertionHintMap[assertionFunctionName]; ok {
+		expectedMessageIndex = wrapped_hint.MessageArg
+	} else if wrapped_guidance_hint, ok := aScanner.guidanceHintMap[assertionFunctionName]; ok {
+		expectedMessageIndex = wrapped_guidance_hint.MessageArg
+	} else {
+		panic("Should never get here - couldn't find assertion or guidance hint")
+	}
+
+	if fd == nil {
+		aScanner.logWriter.Printf("Must have function declaration\n")
+		return false
+	}
+
+	parameterIdentifier, parameterTypeExpression := getNthParameter(fd.Type.Params, expectedMessageIndex)
+	if parameterIdentifier == nil {
+		aScanner.logWriter.Printf("Wrapper assertions must have the message parameter in the same location as the inner assertion. %v should have message as parameter number %v (zero-indexed)", wrapperFunctionName, expectedMessageIndex)
+		return false
+	}
+
+	actualNthParameterName := parameterIdentifier.Name
+	if actualNthParameterName != "message" {
+		aScanner.logWriter.Printf("Wrapper assertions must have the message parameter in the same location as the inner assertion. %v should have message as parameter number %v (zero-indexed), but the parameter at that location has name %v", wrapperFunctionName, expectedMessageIndex, actualNthParameterName)
+		return false
+	}
+
+	parameterTypeidentifier, ok := parameterTypeExpression.(*ast.Ident)
+	if !ok {
+		aScanner.logWriter.Printf("Wrapper assertions must have a message parameter typed as a string, but %v found some other type", wrapperFunctionName)
+		return false
+	}
+	if parameterTypeidentifier.Name != "string" {
+		aScanner.logWriter.Printf("Wrapper assertions must have a message parameter typed as a string, but %v found type %v", wrapperFunctionName, parameterTypeidentifier.Name)
+		return false
+	}
+
+	return true
+}
+
+// Returns both the identifier (to get the name) and the type expression (to get the type) of the nth parameter
+func getNthParameter(fieldList *ast.FieldList, n int) (*ast.Ident, ast.Expr) {
+	if fieldList == nil || n < 0 {
+		return nil, nil
+	}
+
+	// The outer list is a list of parameter groups. Usually a group has a single parameter, but a group has multiple parameters
+	// when they share a type expression [e.g. func foo(x, y int)]
+	currentIndex := 0
+	for _, f := range fieldList.List {
+		// If a field has no names, it's an unnamed parameter. We can return (nil, nil) since we're using this for validation,
+		// and an unnamed parameter should cause a validation error.
+		if len(f.Names) == 0 {
+			if currentIndex == n {
+				return nil, nil
+			}
+			currentIndex++
+		} else {
+			// Otherwise, iterate through the parameters in the group until we find the nth parameter or we exhaust this group
+			for _, name := range f.Names {
+				if currentIndex == n {
+					return name, f.Type
+				}
+				currentIndex++
+			}
+		}
+	}
+
+	return nil, nil
 }

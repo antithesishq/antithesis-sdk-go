@@ -77,3 +77,9 @@ func (lW *LogWriter) Fatal(v ...any) {
 func (lW *LogWriter) Fatalf(format string, v ...any) {
 	lW.logger.Fatalf(format, v...)
 }
+
+func (lW *LogWriter) PrintfIfVerbose(level int, format string, v ...any) {
+	if lW.VerboseLevel(level) {
+		lW.Printf(format, v...)
+	}
+}
