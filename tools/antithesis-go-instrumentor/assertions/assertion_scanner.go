@@ -37,31 +37,36 @@ type AntGuidance struct {
 	Line      int
 }
 
+type WrapperInfo struct {
+	Assertion  string
+	MessageArg int
+}
+
 // Capitalized struct items are accessed outside this file
 type AssertionScanner struct {
-	assertionHintMap                    AssertionHints
-	innerToNormalAssertNames            map[string]string
-	guidanceHintMap                     GuidanceHints
-	fset                                *token.FileSet
-	logWriter                           *common.LogWriter
-	symbolTableName                     string
-	funcName                            string
-	funcDecl                            *ast.FuncDecl
-	receiver                            string
-	packageName                         string
-	shortPackageName                    string
-	moduleName                          string
-	notifierPackage                     string
-	notifierModuleName                  string
-	baseInputDir                        string
-	baseTargetDir                       string
-	expects                             []*AntExpect
-	guidance                            []*AntGuidance
-	assertPackageImportNames            []string
-	importNameToPackageName             map[string]string
-	packageNameToWrapperNameToAssertion map[string]map[string]string
-	filesCataloged                      int
-	verbose                             bool
+	assertionHintMap               AssertionHints
+	innerToNormalAssertNames       map[string]string
+	guidanceHintMap                GuidanceHints
+	fset                           *token.FileSet
+	logWriter                      *common.LogWriter
+	symbolTableName                string
+	funcName                       string
+	funcDecl                       *ast.FuncDecl
+	receiver                       string
+	packageName                    string
+	shortPackageName               string
+	moduleName                     string
+	notifierPackage                string
+	notifierModuleName             string
+	baseInputDir                   string
+	baseTargetDir                  string
+	expects                        []*AntExpect
+	guidance                       []*AntGuidance
+	assertPackageImportNames       []string
+	importNameToPackageName        map[string]string
+	packageNameToWrapperNameToInfo map[string]map[string]WrapperInfo
+	filesCataloged                 int
+	verbose                        bool
 }
 
 // filter Guidance to just numeric
@@ -95,25 +100,25 @@ func NewAssertionScanner(verbose bool, moduleName string, symbolTableName string
 	}
 
 	aScanner := AssertionScanner{
-		moduleName:                          moduleName,
-		fset:                                token.NewFileSet(),
-		assertPackageImportNames:            []string{},
-		importNameToPackageName:             map[string]string{},
-		expects:                             []*AntExpect{},
-		guidance:                            []*AntGuidance{},
-		verbose:                             verbose,
-		funcName:                            "",
-		receiver:                            "",
-		packageName:                         "",
-		baseInputDir:                        sourceDir,
-		baseTargetDir:                       targetDir,
-		assertionHintMap:                    SetupHintMap(),
-		innerToNormalAssertNames:            SetupInnerAssertionMap(),
-		packageNameToWrapperNameToAssertion: map[string]map[string]string{},
-		guidanceHintMap:                     SetupGuidanceHintMap(),
-		symbolTableName:                     symbolTableName,
-		filesCataloged:                      0,
-		logWriter:                           logWriter,
+		moduleName:                     moduleName,
+		fset:                           token.NewFileSet(),
+		assertPackageImportNames:       []string{},
+		importNameToPackageName:        map[string]string{},
+		expects:                        []*AntExpect{},
+		guidance:                       []*AntGuidance{},
+		verbose:                        verbose,
+		funcName:                       "",
+		receiver:                       "",
+		packageName:                    "",
+		baseInputDir:                   sourceDir,
+		baseTargetDir:                  targetDir,
+		assertionHintMap:               SetupHintMap(),
+		innerToNormalAssertNames:       SetupInnerAssertionMap(),
+		packageNameToWrapperNameToInfo: map[string]map[string]WrapperInfo{},
+		guidanceHintMap:                SetupGuidanceHintMap(),
+		symbolTableName:                symbolTableName,
+		filesCataloged:                 0,
+		logWriter:                      logWriter,
 	}
 	return &aScanner
 }
@@ -356,17 +361,12 @@ func (aScanner *AssertionScanner) node_preprocessor(x ast.Node) bool {
 			if assertFunctionName, ok := aScanner.innerToNormalAssertNames[calledFunctionName]; ok {
 				aScanner.logWriter.PrintfIfVerbose(1, "Found assertion wrapper: %v wraps %v\n", calledFunctionName, assertFunctionName)
 
-				// Validate that the message parameter is still a string and still in the same location as the underlying assertion method.
-				// We need this to be the case so that we can still catalog the string message name for the wrapper.
-				if !aScanner.validateMessageParameter(aScanner.funcDecl, aScanner.funcName, assertFunctionName) {
+				isValid, parameterIndex := aScanner.getMessageParameter(aScanner.funcDecl)
+				if !isValid {
 					aScanner.logWriter.Fatalf("Wrapper %v is invalid - see earlier message for details. Exiting", aScanner.funcName)
 				}
 
-				if _, ok := aScanner.packageNameToWrapperNameToAssertion[aScanner.shortPackageName]; !ok {
-					aScanner.packageNameToWrapperNameToAssertion[aScanner.shortPackageName] = make(map[string]string)
-				}
-
-				if _, ok := aScanner.packageNameToWrapperNameToAssertion[aScanner.shortPackageName][aScanner.funcName]; ok {
+				if _, ok := aScanner.packageNameToWrapperNameToInfo[aScanner.shortPackageName][aScanner.funcName]; ok {
 					aScanner.logWriter.Fatalf("Wrapper %v is invalid - wrappers can only contain one inner assertion", aScanner.funcName)
 				}
 
@@ -376,7 +376,14 @@ func (aScanner *AssertionScanner) node_preprocessor(x ast.Node) bool {
 					aScanner.logWriter.Fatalf("Wrapper %v is invalid - wrappers cannot take receivers", aScanner.funcName)
 				}
 
-				aScanner.packageNameToWrapperNameToAssertion[aScanner.shortPackageName][aScanner.funcName] = assertFunctionName
+				if _, ok := aScanner.packageNameToWrapperNameToInfo[aScanner.shortPackageName]; !ok {
+					aScanner.packageNameToWrapperNameToInfo[aScanner.shortPackageName] = make(map[string]WrapperInfo)
+				}
+
+				aScanner.packageNameToWrapperNameToInfo[aScanner.shortPackageName][aScanner.funcName] = WrapperInfo{
+					Assertion:  assertFunctionName,
+					MessageArg: parameterIndex,
+				}
 			}
 		}
 	}
@@ -429,17 +436,17 @@ func (aScanner *AssertionScanner) node_inspector(x ast.Node) bool {
 
 			// If the function name matches the name of a function that we found to be a wrapper function, then we should catalog
 			// every instance of that wrapper function.
-			if wrapperNameToAssertion, ok := aScanner.packageNameToWrapperNameToAssertion[aScanner.shortPackageName]; ok {
-				if assertionName, ok := wrapperNameToAssertion[call_name]; ok {
-					aScanner.logWriter.PrintfIfVerbose(2, "Found an inner assertion: %v wraps %v\n", call_name, assertionName)
+			if wrapperNameToInfo, ok := aScanner.packageNameToWrapperNameToInfo[aScanner.shortPackageName]; ok {
+				if wrapperInfo, ok := wrapperNameToInfo[call_name]; ok {
+					aScanner.logWriter.PrintfIfVerbose(2, "Found an inner assertion: %v wraps %v\n", call_name, wrapperInfo.Assertion)
 
 					full_position := aScanner.fset.Position(call_ident.Pos())
 					relative_file_path := aScanner.module_relative_name(full_position.Filename)
 
-					if wrapped_hint, ok := aScanner.assertionHintMap[assertionName]; ok {
-						aScanner.addAssertion(assertionName, wrapped_hint, call_args, relative_file_path, full_position)
-					} else if wrapped_guidance_hint, ok := aScanner.guidanceHintMap[assertionName]; ok {
-						aScanner.addGuidance(assertionName, wrapped_guidance_hint, call_args, relative_file_path, full_position)
+					if wrapped_hint, ok := aScanner.assertionHintMap[wrapperInfo.Assertion]; ok {
+						aScanner.addAssertion(wrapperInfo.Assertion, wrapped_hint, call_args, relative_file_path, full_position, wrapperInfo.MessageArg)
+					} else if wrapped_guidance_hint, ok := aScanner.guidanceHintMap[wrapperInfo.Assertion]; ok {
+						aScanner.addGuidance(wrapperInfo.Assertion, wrapped_guidance_hint, call_args, relative_file_path, full_position, wrapperInfo.MessageArg)
 					} else {
 						panic("Should never get here - couldn't find assertion or guidance hint")
 					}
@@ -461,25 +468,25 @@ func (aScanner *AssertionScanner) node_inspector(x ast.Node) bool {
 			// Normal (non-wrapped) assertions
 			if isAssertionPackage {
 				if func_hints := aScanner.assertionHintMap.HintsForName(calledFunctionName); func_hints != nil {
-					aScanner.addAssertion(calledFunctionName, func_hints, call_args, relative_file_path, full_position)
+					aScanner.addAssertion(calledFunctionName, func_hints, call_args, relative_file_path, full_position, func_hints.MessageArg)
 				}
 
 				if guidance_func_hints := aScanner.guidanceHintMap.GuidanceHintsForName(calledFunctionName); guidance_func_hints != nil {
-					aScanner.addGuidance(calledFunctionName, guidance_func_hints, call_args, relative_file_path, full_position)
+					aScanner.addGuidance(calledFunctionName, guidance_func_hints, call_args, relative_file_path, full_position, guidance_func_hints.MessageArg)
 				}
 			}
 
 			// Inner assertions
 			selectorName := getSelectorExpressionName(sel_expr.X)
 			if packageName, ok := aScanner.importNameToPackageName[selectorName]; ok {
-				if wrapperNameToAssertion, ok := aScanner.packageNameToWrapperNameToAssertion[packageName]; ok {
-					if assertionName, ok := wrapperNameToAssertion[calledFunctionName]; ok {
-						aScanner.logWriter.PrintfIfVerbose(2, "Found inner assertion: %v wraps %v\n", calledFunctionName, assertionName)
+				if wrapperNameToInfo, ok := aScanner.packageNameToWrapperNameToInfo[packageName]; ok {
+					if wrapperInfo, ok := wrapperNameToInfo[calledFunctionName]; ok {
+						aScanner.logWriter.PrintfIfVerbose(2, "Found inner assertion: %v wraps %v\n", calledFunctionName, wrapperInfo.Assertion)
 
-						if wrapped_hint, ok := aScanner.assertionHintMap[assertionName]; ok {
-							aScanner.addAssertion(assertionName, wrapped_hint, call_args, relative_file_path, full_position)
-						} else if wrapped_guidance_hint, ok := aScanner.guidanceHintMap[assertionName]; ok {
-							aScanner.addGuidance(assertionName, wrapped_guidance_hint, call_args, relative_file_path, full_position)
+						if wrapped_hint, ok := aScanner.assertionHintMap[wrapperInfo.Assertion]; ok {
+							aScanner.addAssertion(wrapperInfo.Assertion, wrapped_hint, call_args, relative_file_path, full_position, wrapperInfo.MessageArg)
+						} else if wrapped_guidance_hint, ok := aScanner.guidanceHintMap[wrapperInfo.Assertion]; ok {
+							aScanner.addGuidance(wrapperInfo.Assertion, wrapped_guidance_hint, call_args, relative_file_path, full_position, wrapperInfo.MessageArg)
 						} else {
 							panic("Should never get here - couldn't find assertion or guidance hint")
 						}
@@ -491,8 +498,8 @@ func (aScanner *AssertionScanner) node_inspector(x ast.Node) bool {
 	return true
 }
 
-func (aScanner *AssertionScanner) addGuidance(assertion_function_name string, guidance_hint *GuidanceFuncInfo, call_args []ast.Expr, relative_file_path string, full_position token.Position) {
-	test_name := arg_at_index(call_args, guidance_hint.MessageArg)
+func (aScanner *AssertionScanner) addGuidance(assertion_function_name string, guidance_hint *GuidanceFuncInfo, call_args []ast.Expr, relative_file_path string, full_position token.Position, messageArg int) {
+	test_name := arg_at_index(call_args, messageArg)
 	if test_name == common.NAME_NOT_AVAILABLE {
 		generated_msg := fmt.Sprintf("%s[%d]", relative_file_path, full_position.Line)
 		test_name = fmt.Sprintf("Message from %s", strconv.Quote(generated_msg))
@@ -531,8 +538,8 @@ func (aScanner *AssertionScanner) addGuidance(assertion_function_name string, gu
 	aScanner.expects = append(aScanner.expects, &expect)
 }
 
-func (aScanner *AssertionScanner) addAssertion(assertion_function_name string, assertion_hint *AssertionFuncInfo, call_args []ast.Expr, relative_file_path string, full_position token.Position) {
-	test_name := arg_at_index(call_args, assertion_hint.MessageArg)
+func (aScanner *AssertionScanner) addAssertion(assertion_function_name string, assertion_hint *AssertionFuncInfo, call_args []ast.Expr, relative_file_path string, full_position token.Position, messageArg int) {
+	test_name := arg_at_index(call_args, messageArg)
 	if test_name == common.NAME_NOT_AVAILABLE {
 		generated_msg := fmt.Sprintf("%s[%d]", relative_file_path, full_position.Line)
 		test_name = fmt.Sprintf("Message from %s", strconv.Quote(generated_msg))
@@ -689,9 +696,9 @@ func (aScanner *AssertionScanner) getConstMap() map[string]bool {
 
 func (aScanner *AssertionScanner) LogAssertionWrappers() {
 	if aScanner.logWriter.VerboseLevel(1) {
-		for k, v := range aScanner.packageNameToWrapperNameToAssertion {
+		for k, v := range aScanner.packageNameToWrapperNameToInfo {
 			for k2, v2 := range v {
-				aScanner.logWriter.Printf("Wrapper map entry (package, wrapperMethodName, assertion) (%v, %v, %v)", k, k2, v2)
+				aScanner.logWriter.Printf("Wrapper map entry (package, wrapperMethodName, assertion, messageArg) (%v, %v, %v, %v)", k, k2, v2.Assertion, v2.MessageArg)
 			}
 		}
 	}
@@ -720,77 +727,47 @@ func SetupInnerAssertionMap() map[string]string {
 	}
 }
 
-// Returns true if the message parameter is both:
-// - A string
-// - The same parameter number in the method signature of the associated wrapped assertion method
-func (aScanner *AssertionScanner) validateMessageParameter(fd *ast.FuncDecl, wrapperFunctionName string, assertionFunctionName string) bool {
-	// Get the expected message index by looking at the hint map for the underlying function
-	var expectedMessageIndex int
-	if wrapped_hint, ok := aScanner.assertionHintMap[assertionFunctionName]; ok {
-		expectedMessageIndex = wrapped_hint.MessageArg
-	} else if wrapped_guidance_hint, ok := aScanner.guidanceHintMap[assertionFunctionName]; ok {
-		expectedMessageIndex = wrapped_guidance_hint.MessageArg
-	} else {
-		panic("Should never get here - couldn't find assertion or guidance hint")
-	}
-
+func (aScanner *AssertionScanner) getMessageParameter(fd *ast.FuncDecl) (bool, int) {
 	if fd == nil {
-		aScanner.logWriter.Printf("Must have function declaration\n")
-		return false
+		aScanner.logWriter.Printf("Wrapper function must have function declaration\n")
+		return false, -1
 	}
 
-	parameterIdentifier, parameterTypeExpression := getNthParameter(fd.Type.Params, expectedMessageIndex)
-	if parameterIdentifier == nil {
-		aScanner.logWriter.Printf("Wrapper assertions must have the message parameter in the same location as the inner assertion. %v should have message as parameter number %v (zero-indexed)", wrapperFunctionName, expectedMessageIndex)
-		return false
-	}
-
-	actualNthParameterName := parameterIdentifier.Name
-	if actualNthParameterName != "message" {
-		aScanner.logWriter.Printf("Wrapper assertions must have the message parameter in the same location as the inner assertion. %v should have message as parameter number %v (zero-indexed), but the parameter at that location has name %v", wrapperFunctionName, expectedMessageIndex, actualNthParameterName)
-		return false
-	}
-
-	parameterTypeidentifier, ok := parameterTypeExpression.(*ast.Ident)
-	if !ok {
-		aScanner.logWriter.Printf("Wrapper assertions must have a message parameter typed as a string, but %v found some other type", wrapperFunctionName)
-		return false
-	}
-	if parameterTypeidentifier.Name != "string" {
-		aScanner.logWriter.Printf("Wrapper assertions must have a message parameter typed as a string, but %v found type %v", wrapperFunctionName, parameterTypeidentifier.Name)
-		return false
-	}
-
-	return true
-}
-
-// Returns both the identifier (to get the name) and the type expression (to get the type) of the nth parameter
-func getNthParameter(fieldList *ast.FieldList, n int) (*ast.Ident, ast.Expr) {
-	if fieldList == nil || n < 0 {
-		return nil, nil
+	fieldList := fd.Type.Params
+	if fieldList == nil {
+		aScanner.logWriter.Printf("Wrapper function must have a message parameter\n")
+		return false, -1
 	}
 
 	// The outer list is a list of parameter groups. Usually a group has a single parameter, but a group has multiple parameters
 	// when they share a type expression [e.g. func foo(x, y int)]
 	currentIndex := 0
 	for _, f := range fieldList.List {
-		// If a field has no names, it's an unnamed parameter. We can return (nil, nil) since we're using this for validation,
-		// and an unnamed parameter should cause a validation error.
+		// If a field has no names, it's an unnamed parameter
 		if len(f.Names) == 0 {
-			if currentIndex == n {
-				return nil, nil
-			}
 			currentIndex++
 		} else {
-			// Otherwise, iterate through the parameters in the group until we find the nth parameter or we exhaust this group
+			// Otherwise, iterate through the parameters in the group until we find the message parameter or we exhaust this group
 			for _, name := range f.Names {
-				if currentIndex == n {
-					return name, f.Type
+				if name.Name == "message" {
+					// Check if the message parameter is a string, return false if so
+					if messageTypeidentifier, ok := f.Type.(*ast.Ident); ok {
+						if messageTypeidentifier.Name == "string" {
+							return true, currentIndex
+						}
+
+						aScanner.logWriter.Printf("Message parameter must be a string")
+						return false, -1
+					} else {
+						aScanner.logWriter.Printf("Message parameter must be a string")
+						return false, -1
+					}
 				}
 				currentIndex++
 			}
 		}
 	}
 
-	return nil, nil
+	aScanner.logWriter.Printf("Wrapper function must have a message parameter\n")
+	return false, -1
 }
