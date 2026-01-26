@@ -102,8 +102,13 @@ let
       licenses = lib.licenses.mit;
     };
   };
+
+  go_sdk_no_antithesis = go_sdk.overrideAttrs (old: {
+    pname = "antithesis-go-sdk-no-antithesis";
+    checkFlags = (old.checkFlags or []) ++ ["-tags=no_antithesis_sdk"];
+  });
 in
 
 {
-  inherit docs go_sdk;
+  inherit docs go_sdk go_sdk_no_antithesis;
 }
