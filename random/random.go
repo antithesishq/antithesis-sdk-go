@@ -16,6 +16,8 @@ import (
 )
 
 // GetRandom returns a uint64 value chosen by Antithesis. You should not store this value or use it to seed a PRNG, but should use it immediately.
+//
+// Deprecated: Use [Source] instead of calling this function directly.
 func GetRandom() uint64 {
 	return internal.Get_random()
 }
