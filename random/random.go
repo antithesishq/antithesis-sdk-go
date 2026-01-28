@@ -1,6 +1,6 @@
 //go:build !no_antithesis_sdk
 
-// Package random requests both structured and unstructured randomness from the Antithesis environment. is part of the [Antithesis Go SDK], which enables Go applications to integrate with the [Antithesis platform].
+// Package random is part of the [Antithesis Go SDK], which enables Go applications to integrate with the [Antithesis platform].
 //
 // These functions should not be used to seed a conventional PRNG, and should not have their return values stored and used to make a decision at a later time. Doing either of these things makes it much harder for the Antithesis platform to control the history of your program's execution, and also makes it harder for Antithesis to learn which inputs provided at which times are most fruitful. Instead, you should call a function from the random package every time your program or [workload] needs to make a decision, at the moment that you need to make the decision.
 //
