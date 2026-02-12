@@ -3,9 +3,12 @@
 package random
 
 import (
-	"math/rand"
+	crand "crypto/rand"
+	"encoding/binary"
 )
 
 func GetRandom() uint64 {
-	return rand.Uint64()
+	var tmp [8]byte
+	crand.Read(tmp[:])
+	return binary.LittleEndian.Uint64(tmp[:])
 }
