@@ -42,15 +42,12 @@ type CommandFiles struct {
 	// by the antithesis fuzzer
 	symbolsDirectory string
 
-	// The directory that the generated assertion catalog
-	// will be written to.  By default, this file will be
-	// written to the 'inputDirectory' when instrumentation
-	// is not performed.  If instrumentation is performed,
-	// the generated assertion catalog will be written to
-	// the customerDirectory.  In both cases, the catalogPath
-	// is used to directly specify what directory the
-	// generated assertion catalog should be written to.
-	catalogPath string
+	// The base directory where assertion catalog(s) will be written.
+	// For assert-only mode, this is the inputDirectory.
+	// For full instrumentation, this is the customerDirectory.
+	// Per-binary catalogs are placed in subdirectories matching
+	// each main package's relative position.
+	catalogBaseDir string
 
 	// The instrumentation (only) base output directory
 	// Is required to exist, and to be empty prior to instrumentation
@@ -144,7 +141,6 @@ func (cfx *CommandFiles) NewCoverageInstrumentor() *instrumentor.CoverageInstrum
 		GoInstrumentor:    file_instrumentor,
 		SymTable:          symTable,
 		UsingSymbols:      cfx.UsingSymbols(),
-		FullCatalogPath:   cfx.catalogPath,
 		PreviousEdge:      0,
 		FilesInstrumented: 0,
 		FilesSkipped:      cfx.filesSkipped,
@@ -360,6 +356,10 @@ func (cfx *CommandFiles) CreateSymbolTableWriter(filesHash string) (symWriter *i
 
 func (cfx *CommandFiles) GetNotifierDirectory() string {
 	return cfx.notifierDirectory
+}
+
+func (cfx *CommandFiles) GetCatalogBaseDir() string {
+	return cfx.catalogBaseDir
 }
 
 func (cfx *CommandFiles) ShowDependentModules() {

@@ -93,7 +93,7 @@ let
 
     src = ./.;
 
-    vendorHash = "sha256-+TgeewwzcAgvj0tTcb25pegmJ/IhuQJkXiLrHMfLpDY=";
+    vendorHash = "sha256-vdeLRKq5Lnof1gfHKfQ3pd9q3gXdqUgNmR6bmOn181U=";
 
     meta = {
       description = "Antithesis go sdk.";
