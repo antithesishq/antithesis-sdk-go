@@ -3,16 +3,14 @@ package assertions
 import (
 	"fmt"
 	"go/ast"
-	"go/parser"
-	"go/token"
 	"go/types"
-	"os"
-	"path"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
 
 	"github.com/antithesishq/antithesis-sdk-go/tools/antithesis-go-instrumentor/common"
+	"golang.org/x/tools/go/packages"
 )
 
 type AntExpect struct {
@@ -37,32 +35,43 @@ type AntGuidance struct {
 	Line      int
 }
 
-// Capitalized struct items are accessed outside this file
+// AssertionScanner scans Go packages using go/packages to find assertion
+// and guidance calls, producing per-binary catalog data.
 type AssertionScanner struct {
-	assertionHintMap   AssertionHints
-	guidanceHintMap    GuidanceHints
-	fset               *token.FileSet
-	logWriter          *common.LogWriter
-	symbolTableName    string
-	funcName           string
-	receiver           string
-	packageName        string
-	moduleName         string
-	notifierPackage    string
-	notifierModuleName string
-	baseInputDir       string
-	baseTargetDir      string
-	expects            []*AntExpect
-	guidance           []*AntGuidance
-	imports            []string
-	filesCataloged     int
-	verbose            bool
+	assertionHintMap AssertionHints
+	guidanceHintMap  GuidanceHints
+	logWriter        *common.LogWriter
+	baseInputDir     string
+	baseTargetDir    string
+	verbose          bool
+	filesCataloged   int
+
+	// Results: per-binary catalogs
+	binaries []*binaryCatalog
+}
+
+// binaryCatalog represents a discovered main package and its reachable assertions.
+type binaryCatalog struct {
+	dir      string // absolute path of the main package directory
+	relDir   string // directory relative to the module root
+	expects  []*AntExpect
+	guidance []*AntGuidance
+}
+
+func (bc *binaryCatalog) hasAssertions() bool {
+	return len(bc.expects) > 0 || len(bc.guidance) > 0
+}
+
+// packageResult caches the scan result for a single package.
+type packageResult struct {
+	expects  []*AntExpect
+	guidance []*AntGuidance
 }
 
 // filter Guidance to just numeric
-func (aScanner *AssertionScanner) numericGuidance() []*AntGuidance {
+func numericGuidance(guidance []*AntGuidance) []*AntGuidance {
 	numeric_guidance := []*AntGuidance{}
-	for _, aG := range aScanner.guidance {
+	for _, aG := range guidance {
 		gp := aG.GuidanceFn
 		if gp == GuidanceFnMaximize || gp == GuidanceFnMinimize {
 			numeric_guidance = append(numeric_guidance, aG)
@@ -72,9 +81,9 @@ func (aScanner *AssertionScanner) numericGuidance() []*AntGuidance {
 }
 
 // filter Guidance to just boolean
-func (aScanner *AssertionScanner) booleanGuidance() []*AntGuidance {
+func booleanGuidance(guidance []*AntGuidance) []*AntGuidance {
 	boolean_guidance := []*AntGuidance{}
-	for _, aG := range aScanner.guidance {
+	for _, aG := range guidance {
 		gp := aG.GuidanceFn
 		if gp == GuidanceFnWantAll || gp == GuidanceFnWantNone {
 			boolean_guidance = append(boolean_guidance, aG)
@@ -83,27 +92,15 @@ func (aScanner *AssertionScanner) booleanGuidance() []*AntGuidance {
 	return boolean_guidance
 }
 
-func NewAssertionScanner(verbose bool, moduleName string, symbolTableName string, sourceDir string, targetDir string) *AssertionScanner {
+func NewAssertionScanner(verbose bool, sourceDir string, targetDir string) *AssertionScanner {
 	logWriter := common.GetLogWriter()
-	if logWriter.VerboseLevel(2) {
-		logWriter.Printf(">> Module: %s\n", moduleName)
-	}
 
 	aScanner := AssertionScanner{
-		moduleName:       moduleName,
-		fset:             token.NewFileSet(),
-		imports:          []string{},
-		expects:          []*AntExpect{},
-		guidance:         []*AntGuidance{},
 		verbose:          verbose,
-		funcName:         "",
-		receiver:         "",
-		packageName:      "",
 		baseInputDir:     sourceDir,
 		baseTargetDir:    targetDir,
 		assertionHintMap: SetupHintMap(),
 		guidanceHintMap:  SetupGuidanceHintMap(),
-		symbolTableName:  symbolTableName,
 		filesCataloged:   0,
 		logWriter:        logWriter,
 	}
@@ -114,211 +111,215 @@ func (aScanner *AssertionScanner) GetLogger() *common.LogWriter {
 	return aScanner.logWriter
 }
 
-func (aScanner *AssertionScanner) ScanFile(file_path string) {
-	var file *ast.File
-	var err error
-
-	aScanner.logWriter.Printf("Cataloging %s", file_path)
-	aScanner.reset_for_file(file_path)
-	if file, err = parser.ParseFile(aScanner.fset, file_path, nil, 0); err != nil {
-		panic(err)
-	}
-
-	ast.Inspect(file, aScanner.node_inspector)
-	aScanner.filesCataloged++
-}
-
+// HasAssertionsDefined returns true if any binary has assertions.
 func (aScanner *AssertionScanner) HasAssertionsDefined() bool {
-	return len(aScanner.expects) > 0
+	for _, bc := range aScanner.binaries {
+		if bc.hasAssertions() {
+			return true
+		}
+	}
+	return false
 }
 
-func (aScanner *AssertionScanner) WriteAssertionCatalog(versionText string) {
+// WriteAssertionCatalogs writes one catalog per binary into the appropriate
+// directory under baseTargetDir. For assert-only mode, baseTargetDir ==
+// baseInputDir.
+func (aScanner *AssertionScanner) WriteAssertionCatalogs(versionText string) {
 	now := time.Now()
 	createDate := now.Format("Mon Jan 2 15:04:05 MST 2006")
 
-	expects := aScanner.expects
-	has_expects := len(expects) > 0
+	for _, bc := range aScanner.binaries {
+		if !bc.hasAssertions() {
+			continue
+		}
 
-	numeric_guidance := aScanner.numericGuidance()
-	has_numeric_guidance := len(numeric_guidance) > 0
+		expects := bc.expects
+		numericGuidance := numericGuidance(bc.guidance)
+		booleanGuidance := booleanGuidance(bc.guidance)
 
-	boolean_guidance := aScanner.booleanGuidance()
-	has_boolean_guidance := len(boolean_guidance) > 0
+		genInfo := GenInfo{
+			ExpectedVals:        expects,
+			NumericGuidanceVals: numericGuidance,
+			BooleanGuidanceVals: booleanGuidance,
+			AssertPackageName:   common.AssertPackageName(),
+			VersionText:         versionText,
+			CreateDate:          createDate,
+			HasAssertions:       len(expects) > 0,
+			HasNumericGuidance:  len(numericGuidance) > 0,
+			HasBooleanGuidance:  len(booleanGuidance) > 0,
+			ConstMap:            getConstMap(expects),
+			logWriter:           common.GetLogWriter(),
+		}
 
-	genInfo := GenInfo{
-		ExpectedVals:        expects,
-		NumericGuidanceVals: numeric_guidance,
-		BooleanGuidanceVals: boolean_guidance,
-		AssertPackageName:   common.AssertPackageName(),
-		VersionText:         versionText,
-		CreateDate:          createDate,
-		HasAssertions:       has_expects,
-		HasNumericGuidance:  has_numeric_guidance,
-		HasBooleanGuidance:  has_boolean_guidance,
-		ConstMap:            aScanner.getConstMap(),
-		logWriter:           common.GetLogWriter(),
+		outputDir := filepath.Join(aScanner.baseTargetDir, bc.relDir)
+		GenerateAssertionsCatalog(outputDir, &genInfo)
 	}
-
-	// destination name is expected to be a file_path
-	// destination name will have '_antithesis_catalog.go' appended to it
-	GenerateAssertionsCatalog(aScanner.moduleName, &genInfo)
 }
 
 func (aScanner *AssertionScanner) SummarizeWork() {
 	numCataloged := aScanner.filesCataloged
 	aScanner.logWriter.Printf("%d '.go' %s cataloged", numCataloged, common.Pluralize(numCataloged, "file"))
+	numBinaries := len(aScanner.binaries)
+	catalogsWritten := 0
+	for _, bc := range aScanner.binaries {
+		if bc.hasAssertions() {
+			catalogsWritten++
+		}
+	}
+	aScanner.logWriter.Printf("%d %s discovered, %d %s written",
+		numBinaries, common.Pluralize(numBinaries, "binary"),
+		catalogsWritten, common.Pluralize(catalogsWritten, "catalog"))
 }
 
-func (aScanner *AssertionScanner) reset_for_file(file_path string) {
-	if aScanner.logWriter.VerboseLevel(2) {
-		aScanner.logWriter.Printf(">>     File: %s\n", file_path)
-	}
-	aScanner.imports = []string{}
-	aScanner.funcName = ""
-	aScanner.packageName = ""
-	aScanner.receiver = ""
-}
-
-func (aScanner *AssertionScanner) module_relative_name(file_path string) string {
-	base_dir := common.CanonicalizeDirectory(aScanner.baseInputDir)
-	full_file_path := common.CanonicalizeDirectory(file_path)
-
-	// skip over the base inputDirectory from the inputfilename,
-	// and create the output directories needed
-	if !strings.HasPrefix(full_file_path, base_dir) {
-		return file_path
+// ScanAll loads all packages under baseInputDir using go/packages, identifies
+// main packages, computes per-binary reachability, and scans for assertions.
+func (aScanner *AssertionScanner) ScanAll() error {
+	cfg := &packages.Config{
+		Mode: packages.NeedName |
+			packages.NeedFiles |
+			packages.NeedTypes |
+			packages.NeedTypesInfo |
+			packages.NeedSyntax |
+			packages.NeedImports |
+			packages.NeedDeps |
+			packages.NeedModule,
+		Dir: aScanner.baseInputDir,
 	}
 
-	skipLength := len(base_dir)
-	if len(base_dir) > 1 {
-		skipLength += 1
+	if aScanner.logWriter.VerboseLevel(1) {
+		aScanner.logWriter.Printf("Loading packages from %s", aScanner.baseInputDir)
 	}
-	revised_path := full_file_path[skipLength:]
-	return revised_path
-}
 
-func (aScanner *AssertionScanner) node_inspector(x ast.Node) bool {
-	var call_expr *ast.CallExpr
-	var func_decl *ast.FuncDecl
-	var package_file *ast.File
-	var import_spec *ast.ImportSpec
-	var fun_expr ast.Expr
-	var call_args []ast.Expr
-	var ok bool
-	var path_name string
+	pkgs, err := packages.Load(cfg, "./...")
+	if err != nil {
+		return fmt.Errorf("go/packages load failed: %w", err)
+	}
 
-	assertPackageName := common.AssertPackageName()
+	// Check for package errors
+	var loadErrors []string
+	packages.Visit(pkgs, nil, func(pkg *packages.Package) {
+		for _, e := range pkg.Errors {
+			loadErrors = append(loadErrors, fmt.Sprintf("%s: %s", pkg.PkgPath, e.Msg))
+		}
+	})
+	if len(loadErrors) > 0 {
+		return fmt.Errorf("package load errors:\n  %s", strings.Join(loadErrors, "\n  "))
+	}
 
-	if aScanner.packageName == "" {
-		if package_file, ok = x.(*ast.File); ok {
-			// subtract aScanner.baseInputDir from the full file name in full_position
-			// and use that top qualify packageName
-			// eg. the "abc" package within "ms-test" module is imported like this:
-			//    import "ms-test/abc"
-			//
-			// The abc package has files named f1.go and f2.go
-			// when instrumenting file f1.go, it is located in "ms-test/abc/f1.go"
-			// similarly, instrumenting file f2.go, it is located in "ms-test/abc/f2.go"
-			// Note that the package_file.Name.Name is simply "abc" corresponding
-			// to the "package abc" statement at the top of f1.go (or f2.go)
-			//
-			// The package name that should be placed in aScanner.packageName is "ms-test/abc"
-			// and should not simply be "abc".
-			//
-			// Go programs always, by definition, all contain a package named "main".  Files
-			// that are instrumented from package "main" should set aScanner.packageName to
-			// "main", and not to "ms-test/main".
-			//
+	// Identify main packages
+	var mainPkgs []*packages.Package
+	for _, pkg := range pkgs {
+		if pkg.Name == "main" {
+			mainPkgs = append(mainPkgs, pkg)
+		}
+	}
 
-			cooked_moduleName := aScanner.moduleName // source filename
-			base_target_dir := aScanner.baseTargetDir
-			if strings.HasPrefix(cooked_moduleName, base_target_dir) {
-				lx := len(base_target_dir)
-				if len(base_target_dir) > 1 {
-					lx += 1
+	if len(mainPkgs) == 0 {
+		aScanner.logWriter.Printf("Warning: no main packages found in %s", aScanner.baseInputDir)
+		return nil
+	}
+
+	if aScanner.logWriter.VerboseLevel(1) {
+		aScanner.logWriter.Printf("Found %d main %s", len(mainPkgs), common.Pluralize(len(mainPkgs), "package"))
+		for _, pkg := range mainPkgs {
+			aScanner.logWriter.Printf("  main: %s", pkg.PkgPath)
+		}
+	}
+
+	// For each main package, compute reachable packages and scan.
+	// Cache per-package results so shared dependencies are only scanned once.
+	assertPkgPath := common.AssertPackageName()
+	pkgCache := make(map[string]*packageResult)
+
+	for _, mainPkg := range mainPkgs {
+		aScanner.logWriter.Printf("Cataloging %s", mainPkg.PkgPath)
+		reachable := collectReachable(mainPkg)
+
+		bc := &binaryCatalog{
+			dir:    mainPkg.Dir,
+			relDir: aScanner.relativeDir(mainPkg.Dir),
+		}
+		for _, pkg := range reachable {
+			pr, ok := pkgCache[pkg.ID]
+			if !ok {
+				pr = &packageResult{}
+				if aScanner.logWriter.VerboseLevel(1) {
+					aScanner.logWriter.Printf("Scanning %s", pkg.PkgPath)
 				}
-				cooked_moduleName = cooked_moduleName[lx:]
+				for _, file := range pkg.Syntax {
+					aScanner.filesCataloged++
+					funcName := ""
+					receiver := ""
+					ast.Inspect(file, func(x ast.Node) bool {
+						funcName, receiver = aScanner.node_inspector(x, pkg, assertPkgPath, pr, funcName, receiver)
+						return true
+					})
+				}
+				pkgCache[pkg.ID] = pr
 			}
-			xpos := aScanner.fset.Position(package_file.Pos())
-			relative_name := aScanner.module_relative_name(xpos.Filename)
-			idx := strings.LastIndex(relative_name, string(os.PathSeparator))
-			if idx == -1 {
-				aScanner.packageName = package_file.Name.Name
-			} else {
-				prefix := relative_name[0:idx]
-				aScanner.packageName = fmt.Sprintf("%s%c%s", cooked_moduleName, os.PathSeparator, prefix)
-			}
+			bc.expects = append(bc.expects, pr.expects...)
+			bc.guidance = append(bc.guidance, pr.guidance...)
+		}
+		aScanner.binaries = append(aScanner.binaries, bc)
+
+		if aScanner.logWriter.VerboseLevel(1) {
+			aScanner.logWriter.Printf("Binary %s: %d assertions, %d guidance entries",
+				bc.relDir, len(bc.expects), len(bc.guidance))
 		}
 	}
 
-	if import_spec, ok = x.(*ast.ImportSpec); ok {
-		path_name, _ = strconv.Unquote(import_spec.Path.Value)
-		alias := ""
-		if import_spec.Name != nil {
-			alias = import_spec.Name.Name
-		}
-		if path_name == assertPackageName {
-			call_qualifier := path.Base(path_name)
-			if alias != "" {
-				call_qualifier = alias
-			}
-			aScanner.imports = append(aScanner.imports, call_qualifier)
-		}
+	return nil
+}
 
-		return true // ast.inspect() can deal with this
-	}
+func (aScanner *AssertionScanner) node_inspector(x ast.Node, pkg *packages.Package, assertPkgPath string, data *packageResult, funcName string, receiver string) (string, string) {
+	var func_decl *ast.FuncDecl
+	var call_expr *ast.CallExpr
+	var ok bool
 
 	// Track current funcName and receiver (type)
 	if func_decl, ok = x.(*ast.FuncDecl); ok {
-		aScanner.funcName = common.NAME_NOT_AVAILABLE
+		funcName = common.NAME_NOT_AVAILABLE
 		if func_ident := func_decl.Name; func_ident != nil {
-			aScanner.funcName = func_ident.Name
+			funcName = func_ident.Name
 		}
-		aScanner.receiver = ""
+		receiver = ""
 		if recv := func_decl.Recv; recv != nil {
 			if num_fields := recv.NumFields(); num_fields > 0 {
 				if field_list := recv.List; field_list != nil {
 					if recv_type := field_list[0].Type; recv_type != nil {
-						aScanner.receiver = types.ExprString(recv_type)
+						receiver = types.ExprString(recv_type)
 					}
 				}
 			}
 		}
-		if aScanner.logWriter.VerboseLevel(2) {
-			aScanner.logWriter.Printf(">>       Func: %s %s\n", aScanner.funcName, aScanner.receiver)
-		}
 	}
 
 	if call_expr, ok = x.(*ast.CallExpr); ok {
-		fun_expr = call_expr.Fun
-		call_args = call_expr.Args
-
-		// TODO Check the behavior when 'dot-import' is used to import
-		// a package directly into a source file's namespace
-		//
-		// All supported use cases are expected to be identified by
-		// ast.SelectorExpr (which specifies an Expression 'X' and a 'Name')
-		// For example, the SelectorExpr for strings.HasPrefix()
-		// sel_expr.X is "strings"
-		// sel_expr.Name is "HasPrefix"
-		var call_ident *ast.Ident
-		if call_ident, ok = fun_expr.(*ast.Ident); ok {
-			call_name := "<anon>"
-			if call_ident != nil {
-				call_name = call_ident.Name
-			}
-			if aScanner.logWriter.VerboseLevel(2) {
-				aScanner.logWriter.Printf("Found call to %s()\n", call_name)
-			}
-		}
-
 		var sel_expr *ast.SelectorExpr
-		if sel_expr, ok = fun_expr.(*ast.SelectorExpr); ok {
-			full_position := aScanner.fset.Position(sel_expr.Pos())
-			relative_file_path := aScanner.module_relative_name(full_position.Filename)
-			expr_text := analyzed_expr(aScanner.imports, sel_expr.X)
-			target_func := sel_expr.Sel.Name
-			if func_hints := aScanner.assertionHintMap.HintsForName(target_func); func_hints != nil && expr_text != "" {
+		if sel_expr, ok = call_expr.Fun.(*ast.SelectorExpr); ok {
+			// Use type info to resolve the called function
+			// in the SDK assert package
+			obj := pkg.TypesInfo.Uses[sel_expr.Sel]
+			if obj == nil {
+				return funcName, receiver
+			}
+
+			fn, ok := obj.(*types.Func)
+			if !ok {
+				return funcName, receiver
+			}
+
+			if fn.Pkg() == nil || fn.Pkg().Path() != assertPkgPath {
+				return funcName, receiver
+			}
+
+			target_func := fn.Name()
+			full_position := pkg.Fset.Position(sel_expr.Pos())
+			relative_file_path := aScanner.relativeDir(full_position.Filename)
+			packageName := pkg.PkgPath
+			call_args := call_expr.Args
+
+			if func_hints := aScanner.assertionHintMap.HintsForName(target_func); func_hints != nil {
 				test_name := arg_at_index(call_args, func_hints.MessageArg)
 				if test_name == common.NAME_NOT_AVAILABLE {
 					generated_msg := fmt.Sprintf("%s[%d]", relative_file_path, full_position.Line)
@@ -327,17 +328,17 @@ func (aScanner *AssertionScanner) node_inspector(x ast.Node) bool {
 				expect := AntExpect{
 					Assertion:         target_func,
 					Message:           test_name,
-					Classname:         aScanner.packageName,
-					Funcname:          aScanner.funcName,
-					Receiver:          aScanner.receiver,
+					Classname:         packageName,
+					Funcname:          funcName,
+					Receiver:          receiver,
 					Filename:          relative_file_path,
 					Line:              full_position.Line,
 					AssertionFuncInfo: func_hints,
 				}
-				aScanner.expects = append(aScanner.expects, &expect)
-			} // assertionHint
+				data.expects = append(data.expects, &expect)
+			}
 
-			if guidance_func_hints := aScanner.guidanceHintMap.GuidanceHintsForName(target_func); guidance_func_hints != nil && expr_text != "" {
+			if guidance_func_hints := aScanner.guidanceHintMap.GuidanceHintsForName(target_func); guidance_func_hints != nil {
 				test_name := arg_at_index(call_args, guidance_func_hints.MessageArg)
 				if test_name == common.NAME_NOT_AVAILABLE {
 					generated_msg := fmt.Sprintf("%s[%d]", relative_file_path, full_position.Line)
@@ -347,22 +348,22 @@ func (aScanner *AssertionScanner) node_inspector(x ast.Node) bool {
 				guidance_expect := AntGuidance{
 					Assertion:        target_func,
 					Message:          test_name,
-					Classname:        aScanner.packageName,
-					Funcname:         aScanner.funcName,
-					Receiver:         aScanner.receiver,
+					Classname:        packageName,
+					Funcname:         funcName,
+					Receiver:         receiver,
 					Filename:         relative_file_path,
 					Line:             full_position.Line,
 					GuidanceFuncInfo: guidance_func_hints,
 				}
-				aScanner.guidance = append(aScanner.guidance, &guidance_expect)
+				data.guidance = append(data.guidance, &guidance_expect)
 
 				// The Related Assertion derived from target_func("AlwaysGreaterThan") => derived_target_func("Always")
 				expect := AntExpect{
 					Assertion: target_func_from_guidance(target_func),
 					Message:   test_name,
-					Classname: aScanner.packageName,
-					Funcname:  aScanner.funcName,
-					Receiver:  aScanner.receiver,
+					Classname: packageName,
+					Funcname:  funcName,
+					Receiver:  receiver,
 					Filename:  relative_file_path,
 					Line:      full_position.Line,
 					// NOTE: AssertionFuncInfo.TargetFunc is a guidance func name
@@ -373,11 +374,49 @@ func (aScanner *AssertionScanner) node_inspector(x ast.Node) bool {
 					// from the guidance func here.
 					AssertionFuncInfo: &guidance_func_hints.AssertionFuncInfo,
 				}
-				aScanner.expects = append(aScanner.expects, &expect)
+				data.expects = append(data.expects, &expect)
 			} // assertionHint
 		}
 	}
-	return true
+	return funcName, receiver
+}
+
+func (aScanner *AssertionScanner) relativeDir(dir string) string {
+	rel, err := filepath.Rel(aScanner.baseInputDir, dir)
+	if err != nil {
+		return dir
+	}
+	return rel
+}
+
+// collectReachable returns all packages transitively reachable from pkg
+// that belong to the same module. Packages from the standard library or
+// other modules are skipped.
+func collectReachable(pkg *packages.Package) []*packages.Package {
+	if pkg.Module == nil {
+		return nil
+	}
+	modulePath := pkg.Module.Path
+
+	visited := make(map[string]bool)
+	var result []*packages.Package
+
+	var walk func(p *packages.Package)
+	walk = func(p *packages.Package) {
+		if visited[p.ID] {
+			return
+		}
+		visited[p.ID] = true
+		if p.Module == nil || p.Module.Path != modulePath {
+			return
+		}
+		result = append(result, p)
+		for _, imp := range p.Imports {
+			walk(imp)
+		}
+	}
+	walk(pkg)
+	return result
 }
 
 func target_func_from_guidance(guidance_func string) string {
@@ -431,19 +470,6 @@ func arg_at_index(args []ast.Expr, idx int) string {
 	return common.NAME_NOT_AVAILABLE
 }
 
-func analyzed_expr(imports []string, expr ast.Expr) string {
-	expr_name := ""
-	if expr_id, ok := expr.(*ast.Ident); ok {
-		expr_name = expr_id.Name
-	}
-	for _, import_name := range imports {
-		if import_name == expr_name {
-			return expr_name
-		}
-	}
-	return ""
-}
-
 const (
 	Cond_false = iota
 	Cond_true
@@ -469,12 +495,12 @@ const (
 // "reachability", then the corresponding go const should not be
 // output to the generated Assertions Catalog '.go' file.
 // --------------------------------------------------------------------------------
-func (aScanner *AssertionScanner) getConstMap() map[string]bool {
+func getConstMap(expects []*AntExpect) map[string]bool {
 	cond_tracker := make([]bool, Num_conditions)
-	if len(aScanner.expects) > 0 {
+	if len(expects) > 0 {
 		cond_tracker[Not_hit] = true
 	}
-	for _, an_expect := range aScanner.expects {
+	for _, an_expect := range expects {
 		pAFI := an_expect.AssertionFuncInfo
 		if pAFI.MustHit {
 			cond_tracker[Must_be_hit] = true

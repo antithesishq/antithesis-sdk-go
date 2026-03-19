@@ -35,9 +35,8 @@ type CoverageInstrumentor struct {
 	GoInstrumentor    *Instrumentor
 	SymTable          *SymbolTable
 	logWriter         *common.LogWriter
-	UsingSymbols      string
-	FullCatalogPath   string
-	NotifierPackage   string
+	UsingSymbols    string
+	NotifierPackage string
 	PreviousEdge      int
 	FilesInstrumented int
 	FilesSkipped      int
