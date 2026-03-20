@@ -3,8 +3,9 @@ package assertions
 import (
 	"os"
 	"path/filepath"
-	"strings"
 	"testing"
+
+	qt "github.com/go-quicktest/qt"
 
 	"github.com/antithesishq/antithesis-sdk-go/tools/antithesis-go-instrumentor/common"
 )
@@ -64,39 +65,16 @@ func TestCatalogContents(t *testing.T) {
 	// Verify the file was created
 	outputPath := filepath.Join(outputDir, common.GENERATED_CATALOG_FILE)
 	content, err := os.ReadFile(outputPath)
-	if err != nil {
-		t.Fatalf("failed to read generated catalog: %v", err)
-	}
+	qt.Assert(t, qt.IsNil(err))
 
 	text := string(content)
 
-	// Verify package declaration
-	if !strings.Contains(text, "package main") {
-		t.Error("catalog should contain 'package main'")
-	}
-
-	// Verify import
-	if !strings.Contains(text, `import "github.com/antithesishq/antithesis-sdk-go/assert"`) {
-		t.Error("catalog should import assert package")
-	}
-
-	// Verify assertion calls
-	if !strings.Contains(text, `assert.AssertRaw(`) {
-		t.Error("catalog should contain AssertRaw calls")
-	}
-
-	if !strings.Contains(text, `"test always"`) {
-		t.Error("catalog should contain the 'test always' message")
-	}
-
-	if !strings.Contains(text, `"test reachable"`) {
-		t.Error("catalog should contain the 'test reachable' message")
-	}
-
-	// Verify version text is included
-	if !strings.Contains(text, "test version") {
-		t.Error("catalog should contain version text")
-	}
+	qt.Check(t, qt.StringContains(text, "package main"))
+	qt.Check(t, qt.StringContains(text, `import "github.com/antithesishq/antithesis-sdk-go/assert"`))
+	qt.Check(t, qt.StringContains(text, `assert.AssertRaw(`))
+	qt.Check(t, qt.StringContains(text, `"test always"`))
+	qt.Check(t, qt.StringContains(text, `"test reachable"`))
+	qt.Check(t, qt.StringContains(text, "test version"))
 }
 
 func TestCatalogNumericGuidance(t *testing.T) {
@@ -141,15 +119,9 @@ func TestCatalogNumericGuidance(t *testing.T) {
 
 	outputPath := filepath.Join(outputDir, common.GENERATED_CATALOG_FILE)
 	content, err := os.ReadFile(outputPath)
-	if err != nil {
-		t.Fatalf("failed to read generated catalog: %v", err)
-	}
+	qt.Assert(t, qt.IsNil(err))
 
 	text := string(content)
-	if !strings.Contains(text, "assert.NumericGuidanceRaw(") {
-		t.Error("catalog should contain NumericGuidanceRaw call")
-	}
-	if !strings.Contains(text, `"x > y"`) {
-		t.Error("catalog should contain guidance message")
-	}
+	qt.Check(t, qt.StringContains(text, "assert.NumericGuidanceRaw("))
+	qt.Check(t, qt.StringContains(text, `"x > y"`))
 }
