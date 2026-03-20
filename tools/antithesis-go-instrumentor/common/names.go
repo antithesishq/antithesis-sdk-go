@@ -8,7 +8,7 @@ const (
 	ASSERT_PACKAGE             = "assert"
 	INSTRUMENTATION_PACKAGE    = "instrumentation"
 	NOTIFIER_MODULE_NAME       = "antithesis.notifier"
-	GENERATED_SUFFIX           = "_antithesis_catalog.go"
+	GENERATED_CATALOG_FILE     = "antithesis_catalog.go"
 	INSTRUMENTED_SOURCE_FOLDER = "customer"
 	SYMBOLS_FOLDER             = "symbols"
 	SYMBOLS_FILE_HASH_PREFIX   = "go"

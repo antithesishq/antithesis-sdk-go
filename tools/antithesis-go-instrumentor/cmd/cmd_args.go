@@ -18,7 +18,6 @@ type CommandArgs struct {
 	logWriter           *common.LogWriter
 	excludeFile         string
 	symPrefix           string
-	catalogDir          string
 	inputDir            string
 	outputDir           string
 	instrumentorVersion string
@@ -38,7 +37,7 @@ func ParseArgs(versionText string, thisVersion string) *CommandArgs {
 	logfilePtr := flag.String("logfile", "", "file path to log into (default=stderr)")
 	verbosePtr := flag.Int("V", 0, "verbosity level (default to 0)")
 	assertOnlyPtr := flag.Bool("assert_only", false, "generate assertion catalog ONLY - no coverage instrumentation (default to false)")
-	catalogDirPtr := flag.String("catalog_dir", "", "file path where assertion catalog will be generated")
+	catalogDirPtr := flag.String("catalog_dir", "", "(deprecated, ignored)")
 	instrVersionPtr := flag.String("instrumentor_version", thisVersion, "version of the SDK instrumentation package to require")
 	localSDKPathPtr := flag.String("local_sdk_path", "", "path to the local Antithesis SDK")
 	skipTestFilesPtr := flag.Bool("skip_test_files", false, "Skip instrumentation and cataloging for '*_test.go' files (default to false)")
@@ -57,7 +56,6 @@ func ParseArgs(versionText string, thisVersion string) *CommandArgs {
 	cmdArgs.logWriter = common.NewLogWriter(*logfilePtr, *verbosePtr)
 	cmdArgs.wantsInstrumentor = !*assertOnlyPtr
 	cmdArgs.symPrefix = strings.TrimSpace(*prefixPtr)
-	cmdArgs.catalogDir = strings.TrimSpace(*catalogDirPtr)
 	cmdArgs.excludeFile = strings.TrimSpace(*exclusionsPtr)
 	cmdArgs.instrumentorVersion = strings.TrimSpace(*instrVersionPtr)
 	cmdArgs.localSDKPath = strings.TrimSpace(*localSDKPathPtr)
@@ -69,6 +67,10 @@ func ParseArgs(versionText string, thisVersion string) *CommandArgs {
 	numArgsRequired := 1
 	if cmdArgs.wantsInstrumentor {
 		numArgsRequired++
+	}
+
+	if *catalogDirPtr != "" {
+		cmdArgs.logWriter.Printf("Warning: -catalog_dir is deprecated and will be ignored")
 	}
 
 	if flag.NArg() < numArgsRequired {
@@ -86,10 +88,9 @@ func ParseArgs(versionText string, thisVersion string) *CommandArgs {
 		fmt.Fprintf(os.Stderr, "  - The target_dir should be an existing, but empty directory\n")
 		fmt.Fprintf(os.Stderr, "\n\n")
 		fmt.Fprintf(os.Stderr, "The Assertions catalog will be registered in a generated file:\n")
-		fmt.Fprintf(os.Stderr, "  <module-name>_antithesis_catalog.go\n")
+		fmt.Fprintf(os.Stderr, "  antithesis_catalog.go\n")
 		fmt.Fprintf(os.Stderr, "\n")
 		fmt.Fprintf(os.Stderr, "  - For assertions support, the catalog will be created in the go_project_dir\n")
-		fmt.Fprintf(os.Stderr, "  - Override this directory using '-catalog_dir path_to-directory'\n")
 		fmt.Fprintf(os.Stderr, "  - For full instrumentation, the catalog will be created under the target_dir\n")
 		fmt.Fprintf(os.Stderr, "\n\n")
 		flag.Usage()
@@ -124,9 +125,6 @@ func (ca *CommandArgs) ShowArguments() {
 	if ca.localSDKPath != "" {
 		ca.logWriter.Printf("localSDKPath: %q", ca.localSDKPath)
 	}
-	if ca.catalogDir != "" {
-		ca.logWriter.Printf("catalogDir: %q", ca.catalogDir)
-	}
 	if ca.wantsInstrumentor {
 		ca.logWriter.Printf("outputDir: %q", ca.outputDir)
 		if ca.excludeFile != "" {
@@ -159,9 +157,8 @@ func (ca *CommandArgs) NewCommandFiles() (cfx *CommandFiles, err error) {
 		symtablePrefix = ca.symPrefix + "-"
 	}
 
-	moduleName := ""
 	if err == nil {
-		if moduleName, err = GetModuleName(customerInputDirectory); err != nil {
+		if _, err = GetModuleName(customerInputDirectory); err != nil {
 			err = fmt.Errorf("unable to obtain go module name from %q", customerInputDirectory)
 		}
 	}
@@ -182,24 +179,10 @@ func (ca *CommandArgs) NewCommandFiles() (cfx *CommandFiles, err error) {
 		return
 	}
 
-	catalogDir := ca.catalogDir
-	if catalogDir == "" {
-		catalogDir = customerInputDirectory
-		if ca.wantsInstrumentor {
-			catalogDir = customerDirectory
-		}
+	catalogBaseDir := customerInputDirectory
+	if ca.wantsInstrumentor {
+		catalogBaseDir = customerDirectory
 	}
-
-	// It is possible that module names have "/" in their name
-	// It is less likely they have "\" in their name
-	// In either case, these characters are replaced with "_V_"
-	// to compose the catalogPath. This catalogPath is used as the
-	// main portion of a filepath which will contain the assertion
-	// catalog. See details in function 'expectOutputFile' found
-	// in 'catalog_output.go'
-	tempName := strings.ReplaceAll(moduleName, "/", "_V_")
-	flattenedModuleName := strings.ReplaceAll(tempName, "\\", "_V_")
-	catalogPath := filepath.Join(catalogDir, flattenedModuleName)
 
 	cfx = &CommandFiles{
 		outputDirectory:     outputDirectory,
@@ -207,7 +190,7 @@ func (ca *CommandArgs) NewCommandFiles() (cfx *CommandFiles, err error) {
 		customerDirectory:   customerDirectory,
 		notifierDirectory:   notifierDirectory,
 		symbolsDirectory:    symbolsDirectory,
-		catalogPath:         catalogPath,
+		catalogBaseDir:      catalogBaseDir,
 		excludeFile:         ca.excludeFile,
 		wantsInstrumentor:   ca.wantsInstrumentor,
 		symtablePrefix:      symtablePrefix,
