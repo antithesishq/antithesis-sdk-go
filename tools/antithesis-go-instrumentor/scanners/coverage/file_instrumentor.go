@@ -1,4 +1,4 @@
-package instrumentor
+package coverage
 
 import (
 	"fmt"
@@ -7,11 +7,13 @@ import (
 	"go/parser"
 	"go/token"
 	"os"
+	"path/filepath"
 	"regexp"
 	"sort"
 	"strconv"
 	"strings"
 
+	"github.com/antithesishq/antithesis-sdk-go/tools/antithesis-go-instrumentor/config"
 	"github.com/antithesishq/antithesis-sdk-go/tools/antithesis-go-instrumentor/common"
 	"golang.org/x/tools/go/ast/astutil"
 )
@@ -116,6 +118,64 @@ func (cI *CoverageInstrumentor) SummarizeWork(numFiles int) {
 		numFiles, common.Pluralize(numFiles, "file"),
 		numFilesSkipped, common.Pluralize(numFilesSkipped, "file"),
 		numEdges, common.Pluralize(numEdges, "edge"))
+}
+
+func NewCoverageInstrumentor(cfg *config.Config) *CoverageInstrumentor {
+	var goInstrumentor *Instrumentor
+	var symTable *SymbolTable
+
+	notifierModuleName := common.FullNotifierName(cfg.FilesHash)
+	symbolTableFilename := ""
+
+	if cfg.WantsInstrumentor {
+		logWriter := common.GetLogWriter()
+		logWriter.Printf("Writing instrumented source to %s", cfg.CustomerDirectory)
+
+		symbolTableFileBasename := fmt.Sprintf("%s%s-%s", cfg.SymtablePrefix, common.SYMBOLS_FILE_HASH_PREFIX, cfg.FilesHash)
+		symbolTableFilename = symbolTableFileBasename + common.SYMBOLS_FILE_SUFFIX
+		symbolsPath := filepath.Join(cfg.SymbolsDirectory, symbolTableFilename)
+		var err error
+		symTable, err = CreateSymbolTableFile(symbolsPath, symbolTableFileBasename)
+		if err != nil {
+			logWriter.Fatalf("Could not write symbol table header: %s", err.Error())
+		}
+
+		goInstrumentor = CreateInstrumentor(cfg.InputDirectory, notifierModuleName, symTable)
+	}
+
+	usingSymbols := ""
+	if cfg.WantsInstrumentor {
+		usingSymbols = symbolTableFilename
+	}
+
+	cI := CoverageInstrumentor{
+		GoInstrumentor:    goInstrumentor,
+		SymTable:          symTable,
+		UsingSymbols:      usingSymbols,
+		PreviousEdge:      0,
+		FilesInstrumented: 0,
+		FilesSkipped:      cfg.FilesSkipped,
+		NotifierPackage:   common.NotifierPackage(cfg.FilesHash),
+	}
+	return &cI
+}
+
+func (cI *CoverageInstrumentor) WriteInstrumentedOutput(cfg *config.Config, fileName string, instrumentedSource string) {
+	// skip over the base inputDirectory from the inputfilename,
+	// and create the output directories needed
+	skipLength := len(cfg.InputDirectory)
+	outputPath := filepath.Join(cfg.CustomerDirectory, fileName[skipLength:])
+	outputSubdirectory := filepath.Dir(outputPath)
+	os.MkdirAll(outputSubdirectory, 0755)
+
+	logWriter := common.GetLogWriter()
+	if logWriter.VerboseLevel(1) {
+		logWriter.Printf("Writing instrumented file %s with edges %d–%d", outputPath, cI.PreviousEdge, cI.GoInstrumentor.CurrentEdge)
+	}
+
+	if err := common.WriteTextFile(instrumentedSource, outputPath); err == nil {
+		cI.FilesInstrumented++
+	}
 }
 
 // IsFunctionExported checks the comments preceding a function declaration

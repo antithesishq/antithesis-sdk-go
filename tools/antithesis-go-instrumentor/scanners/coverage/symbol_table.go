@@ -1,4 +1,4 @@
-package instrumentor
+package coverage
 
 import (
 	"bufio"

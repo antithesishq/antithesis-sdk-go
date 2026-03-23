@@ -2,7 +2,7 @@ package main
 
 import (
 	"github.com/antithesishq/antithesis-sdk-go/assert"
-	_ "github.com/antithesishq/antithesis-sdk-go/tools/antithesis-go-instrumentor/assertions/testdata/multi_main/pkg/shared"
+	_ "github.com/antithesishq/antithesis-sdk-go/tools/antithesis-go-instrumentor/scanners/assertions/testdata/multi_main/pkg/shared"
 )
 
 func main() {

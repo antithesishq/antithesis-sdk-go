@@ -131,7 +131,7 @@ func TestNoAssertions(t *testing.T) {
 // additional assertions.
 func TestCatalogStability(t *testing.T) {
 	// Locate the repo root so we can set up a replace directive.
-	repoRoot, err := filepath.Abs(filepath.Join("..", "..", ".."))
+	repoRoot, err := filepath.Abs(filepath.Join("..", "..", "..", ".."))
 	qt.Assert(t, qt.IsNil(err))
 
 	// The SDK's internal package uses cgo. Disable it so that the test

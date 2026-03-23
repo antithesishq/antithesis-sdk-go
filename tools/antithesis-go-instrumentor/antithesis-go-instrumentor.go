@@ -7,9 +7,11 @@ import (
 	"strings"
 
 	"github.com/antithesishq/antithesis-sdk-go/internal"
-	"github.com/antithesishq/antithesis-sdk-go/tools/antithesis-go-instrumentor/assertions"
-	"github.com/antithesishq/antithesis-sdk-go/tools/antithesis-go-instrumentor/cmd"
+	"github.com/antithesishq/antithesis-sdk-go/tools/antithesis-go-instrumentor/args"
+	"github.com/antithesishq/antithesis-sdk-go/tools/antithesis-go-instrumentor/config"
 	"github.com/antithesishq/antithesis-sdk-go/tools/antithesis-go-instrumentor/common"
+	"github.com/antithesishq/antithesis-sdk-go/tools/antithesis-go-instrumentor/scanners/assertions"
+	"github.com/antithesishq/antithesis-sdk-go/tools/antithesis-go-instrumentor/scanners/coverage"
 )
 
 var logWriter *common.LogWriter
@@ -30,31 +32,31 @@ func main() {
 	// Establish global logging
 	//--------------------------------------------------------------------------------
 	thisVersion := fmt.Sprintf("v%s", internal.SDK_Version)
-	cmd_args := cmd.ParseArgs(versionString, thisVersion)
-	if cmd_args.ShowVersion {
+	parsedArgs := args.ParseArgs(versionString, thisVersion)
+	if parsedArgs.ShowVersion {
 		fmt.Println(strings.TrimSpace(versionString))
 		os.Exit(0)
 	}
-	if cmd_args.InvalidArgs {
+	if parsedArgs.InvalidArgs {
 		os.Exit(1)
 	}
 
 	logWriter = common.GetLogWriter()
 	logWriter.Printf("%s", strings.TrimSpace(versionString))
-	cmd_args.ShowArguments()
+	parsedArgs.ShowArguments()
 
 	//--------------------------------------------------------------------------------
 	// Verify Directories and Files are all as expected
 	// Prepare instrumentation output directories
 	//--------------------------------------------------------------------------------
-	var cmd_files *cmd.CommandFiles
-	if cmd_files, err = cmd_args.NewCommandFiles(); err != nil {
+	var cfg *config.Config
+	if cfg, err = config.NewConfig(parsedArgs); err != nil {
 		logWriter.Printf("%s", err.Error())
 		os.Exit(1)
 	}
 
 	var source_files []string
-	if source_files, err = cmd_files.GetSourceFiles(); err != nil {
+	if source_files, err = cfg.GetSourceFiles(); err != nil {
 		logWriter.Printf("%s", err.Error())
 		os.Exit(1)
 	}
@@ -62,14 +64,14 @@ func main() {
 	//--------------------------------------------------------------------------------
 	// Setup coverage processor
 	//--------------------------------------------------------------------------------
-	cI := cmd_files.NewCoverageInstrumentor()
-	source_dir := cmd_files.GetSourceDir()
-	target_dir := cmd_files.GetTargetDir()
+	cI := coverage.NewCoverageInstrumentor(cfg)
+	source_dir := cfg.GetSourceDir()
+	target_dir := cfg.GetTargetDir()
 
 	//--------------------------------------------------------------------------------
 	// Pass 1: Coverage instrumentation (file-by-file)
 	//--------------------------------------------------------------------------------
-	cmd_files.ShowDependentModules()
+	cfg.ShowDependentModules()
 	for _, file_name := range source_files {
 		if assertions.IsGeneratedFile(file_name) {
 			logWriter.Printf("Skipping %s", file_name)
@@ -77,20 +79,20 @@ func main() {
 		}
 
 		if instrumented_source := cI.InstrumentFile(file_name); instrumented_source != "" {
-			cmd_files.WriteInstrumentedOutput(file_name, instrumented_source, cI)
-			cmd_files.UpdateDependentModules(file_name)
+			cI.WriteInstrumentedOutput(cfg, file_name, instrumented_source)
+			cfg.UpdateDependentModules(file_name)
 		}
 	}
-	cmd_files.ShowDependentModules()
+	cfg.ShowDependentModules()
 
 	//--------------------------------------------------------------------------------
 	// Wrap-up coverage instrumentation and generate notifier module
 	//--------------------------------------------------------------------------------
 	edge_count := cI.WrapUp()
 	if edge_count > 0 {
-		notifierDir := cmd_files.GetNotifierDirectory()
+		notifierDir := cfg.GetNotifierDirectory()
 		cI.WriteNotifierSource(notifierDir, edge_count)
-		cmd_files.CreateNotifierModule()
+		cfg.CreateNotifierModule()
 	}
 
 	//--------------------------------------------------------------------------------
@@ -101,10 +103,10 @@ func main() {
 		logWriter.Printf("Assertion scanning failed: %s", err.Error())
 		logWriter.Printf("Assertion catalogs will not be generated")
 	} else if aScanner.HasAssertionsDefined() {
-		aScanner.WriteAssertionCatalogs(cmd_args.VersionText)
+		aScanner.WriteAssertionCatalogs(parsedArgs.VersionText)
 	}
 
-	cmd_files.WrapUp()
+	cfg.WrapUp()
 
 	//--------------------------------------------------------------------------------
 	// Summarize results in logger
