@@ -137,7 +137,7 @@ var (
 	symbolHashRe   = regexp.MustCompile(`go-[0-9a-f]{12}\b`)
 	sdkVersionRe   = regexp.MustCompile(`antithesis-sdk-go v[\d.]+`)
 	goVersionRe    = regexp.MustCompile(`(?m)^go \d+\.\d+(?:\.\d+)?$`)
-	absPathRe      = regexp.MustCompile(`/[^\t\n]*/(?:testdata/input|input)/`)
+	absPathRe      = regexp.MustCompile(`/[^\t\n]*/input/`)
 	instrumentorRe = regexp.MustCompile(`# instrumentor = .+`)
 	sdkReplaceRe   = regexp.MustCompile(`(?m)^replace github\.com/antithesishq/antithesis-sdk-go => .+$`)
 )
