@@ -13,8 +13,9 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/antithesishq/antithesis-sdk-go/tools/antithesis-go-instrumentor/config"
 	"github.com/antithesishq/antithesis-sdk-go/tools/antithesis-go-instrumentor/common"
+	commonconfig "github.com/antithesishq/antithesis-sdk-go/tools/antithesis-go-instrumentor/config"
+	covconfig "github.com/antithesishq/antithesis-sdk-go/tools/antithesis-go-instrumentor/scanners/coverage/config"
 	"golang.org/x/tools/go/ast/astutil"
 )
 
@@ -120,31 +121,31 @@ func (cI *CoverageInstrumentor) SummarizeWork(numFiles int) {
 		numEdges, common.Pluralize(numEdges, "edge"))
 }
 
-func NewCoverageInstrumentor(cfg *config.Config) *CoverageInstrumentor {
+func NewCoverageInstrumentor(cc *commonconfig.CommonConfig, cov *covconfig.CoverageConfig) *CoverageInstrumentor {
 	var goInstrumentor *Instrumentor
 	var symTable *SymbolTable
 
-	notifierModuleName := common.FullNotifierName(cfg.FilesHash)
+	notifierModuleName := common.FullNotifierName(cc.FilesHash)
 	symbolTableFilename := ""
 
-	if cfg.WantsInstrumentor {
+	if cc.WantsInstrumentor {
 		logWriter := common.GetLogWriter()
-		logWriter.Printf("Writing instrumented source to %s", cfg.CustomerDirectory)
+		logWriter.Printf("Writing instrumented source to %s", cc.CustomerDirectory)
 
-		symbolTableFileBasename := fmt.Sprintf("%s%s-%s", cfg.SymtablePrefix, common.SYMBOLS_FILE_HASH_PREFIX, cfg.FilesHash)
+		symbolTableFileBasename := fmt.Sprintf("%s%s-%s", cov.SymtablePrefix, common.SYMBOLS_FILE_HASH_PREFIX, cc.FilesHash)
 		symbolTableFilename = symbolTableFileBasename + common.SYMBOLS_FILE_SUFFIX
-		symbolsPath := filepath.Join(cfg.SymbolsDirectory, symbolTableFilename)
+		symbolsPath := filepath.Join(cov.SymbolsDirectory, symbolTableFilename)
 		var err error
 		symTable, err = CreateSymbolTableFile(symbolsPath, symbolTableFileBasename)
 		if err != nil {
 			logWriter.Fatalf("Could not write symbol table header: %s", err.Error())
 		}
 
-		goInstrumentor = CreateInstrumentor(cfg.InputDirectory, notifierModuleName, symTable)
+		goInstrumentor = CreateInstrumentor(cc.InputDirectory, notifierModuleName, symTable)
 	}
 
 	usingSymbols := ""
-	if cfg.WantsInstrumentor {
+	if cc.WantsInstrumentor {
 		usingSymbols = symbolTableFilename
 	}
 
@@ -154,17 +155,17 @@ func NewCoverageInstrumentor(cfg *config.Config) *CoverageInstrumentor {
 		UsingSymbols:      usingSymbols,
 		PreviousEdge:      0,
 		FilesInstrumented: 0,
-		FilesSkipped:      cfg.FilesSkipped,
-		NotifierPackage:   common.NotifierPackage(cfg.FilesHash),
+		FilesSkipped:      cc.FilesSkipped,
+		NotifierPackage:   common.NotifierPackage(cc.FilesHash),
 	}
 	return &cI
 }
 
-func (cI *CoverageInstrumentor) WriteInstrumentedOutput(cfg *config.Config, fileName string, instrumentedSource string) {
+func (cI *CoverageInstrumentor) WriteInstrumentedOutput(cc *commonconfig.CommonConfig, fileName string, instrumentedSource string) {
 	// skip over the base inputDirectory from the inputfilename,
 	// and create the output directories needed
-	skipLength := len(cfg.InputDirectory)
-	outputPath := filepath.Join(cfg.CustomerDirectory, fileName[skipLength:])
+	skipLength := len(cc.InputDirectory)
+	outputPath := filepath.Join(cc.CustomerDirectory, fileName[skipLength:])
 	outputSubdirectory := filepath.Dir(outputPath)
 	os.MkdirAll(outputSubdirectory, 0755)
 

@@ -8,10 +8,11 @@ import (
 
 	"github.com/antithesishq/antithesis-sdk-go/internal"
 	"github.com/antithesishq/antithesis-sdk-go/tools/antithesis-go-instrumentor/args"
-	"github.com/antithesishq/antithesis-sdk-go/tools/antithesis-go-instrumentor/config"
 	"github.com/antithesishq/antithesis-sdk-go/tools/antithesis-go-instrumentor/common"
+	"github.com/antithesishq/antithesis-sdk-go/tools/antithesis-go-instrumentor/config"
 	"github.com/antithesishq/antithesis-sdk-go/tools/antithesis-go-instrumentor/scanners/assertions"
 	"github.com/antithesishq/antithesis-sdk-go/tools/antithesis-go-instrumentor/scanners/coverage"
+	covconfig "github.com/antithesishq/antithesis-sdk-go/tools/antithesis-go-instrumentor/scanners/coverage/config"
 )
 
 var logWriter *common.LogWriter
@@ -20,8 +21,6 @@ var logWriter *common.LogWriter
 var versionText string
 
 func main() {
-	var err error
-
 	versionString := strings.TrimSpace(versionText)
 	if strings.Contains(versionText, "%s") {
 		versionString = fmt.Sprintf(versionString, internal.SDK_Version)
@@ -49,14 +48,20 @@ func main() {
 	// Verify Directories and Files are all as expected
 	// Prepare instrumentation output directories
 	//--------------------------------------------------------------------------------
-	var cfg *config.Config
-	if cfg, err = config.NewConfig(parsedArgs); err != nil {
+	cov, err := covconfig.NewCoverageConfig(parsedArgs)
+	if err != nil {
+		logWriter.Printf("%s", err.Error())
+		os.Exit(1)
+	}
+
+	cc, err := config.NewCommonConfig(parsedArgs)
+	if err != nil {
 		logWriter.Printf("%s", err.Error())
 		os.Exit(1)
 	}
 
 	var source_files []string
-	if source_files, err = cfg.GetSourceFiles(); err != nil {
+	if source_files, err = cov.GetSourceFiles(cc); err != nil {
 		logWriter.Printf("%s", err.Error())
 		os.Exit(1)
 	}
@@ -64,14 +69,14 @@ func main() {
 	//--------------------------------------------------------------------------------
 	// Setup coverage processor
 	//--------------------------------------------------------------------------------
-	cI := coverage.NewCoverageInstrumentor(cfg)
-	source_dir := cfg.GetSourceDir()
-	target_dir := cfg.GetTargetDir()
+	cI := coverage.NewCoverageInstrumentor(cc, cov)
+	source_dir := cc.GetSourceDir()
+	target_dir := cc.GetTargetDir()
 
 	//--------------------------------------------------------------------------------
 	// Pass 1: Coverage instrumentation (file-by-file)
 	//--------------------------------------------------------------------------------
-	cfg.ShowDependentModules()
+	cov.ShowDependentModules(cc)
 	for _, file_name := range source_files {
 		if assertions.IsGeneratedFile(file_name) {
 			logWriter.Printf("Skipping %s", file_name)
@@ -79,20 +84,20 @@ func main() {
 		}
 
 		if instrumented_source := cI.InstrumentFile(file_name); instrumented_source != "" {
-			cI.WriteInstrumentedOutput(cfg, file_name, instrumented_source)
-			cfg.UpdateDependentModules(file_name)
+			cI.WriteInstrumentedOutput(cc, file_name, instrumented_source)
+			cov.UpdateDependentModules(cc, file_name)
 		}
 	}
-	cfg.ShowDependentModules()
+	cov.ShowDependentModules(cc)
 
 	//--------------------------------------------------------------------------------
 	// Wrap-up coverage instrumentation and generate notifier module
 	//--------------------------------------------------------------------------------
 	edge_count := cI.WrapUp()
 	if edge_count > 0 {
-		notifierDir := cfg.GetNotifierDirectory()
+		notifierDir := cov.GetNotifierDirectory()
 		cI.WriteNotifierSource(notifierDir, edge_count)
-		cfg.CreateNotifierModule()
+		cov.CreateNotifierModule(cc)
 	}
 
 	//--------------------------------------------------------------------------------
@@ -106,7 +111,7 @@ func main() {
 		aScanner.WriteAssertionCatalogs(parsedArgs.VersionText)
 	}
 
-	cfg.WrapUp()
+	cov.WrapUp(cc)
 
 	//--------------------------------------------------------------------------------
 	// Summarize results in logger
