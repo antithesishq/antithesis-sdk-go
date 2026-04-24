@@ -13,7 +13,6 @@ import (
 
 // Args holds the parsed command-line arguments.
 type Args struct {
-	logWriter         *common.LogWriter
 	ExcludeFile       string
 	SymPrefix         string
 	InputDir          string
@@ -21,6 +20,8 @@ type Args struct {
 	InstrumentorVersion string
 	LocalSDKPath      string
 	VersionText       string
+	LogFile           string
+	VerbosityLevel    common.Verbosity
 	ShowVersion       bool
 	InvalidArgs       bool
 	WantsInstrumentor bool
@@ -51,7 +52,8 @@ func ParseArgs(versionText string, thisVersion string) *Args {
 		return &args
 	}
 
-	args.logWriter = common.NewLogWriter(*logfilePtr, *verbosePtr)
+	args.LogFile = strings.TrimSpace(*logfilePtr)
+	args.VerbosityLevel = common.Verbosity(*verbosePtr)
 	args.WantsInstrumentor = !*assertOnlyPtr
 	args.SymPrefix = strings.TrimSpace(*prefixPtr)
 	args.ExcludeFile = strings.TrimSpace(*exclusionsPtr)
@@ -68,7 +70,7 @@ func ParseArgs(versionText string, thisVersion string) *Args {
 	}
 
 	if *catalogDirPtr != "" {
-		args.logWriter.Printf("Warning: -catalog_dir is deprecated and will be ignored")
+		fmt.Fprintf(os.Stderr, "Warning: -catalog_dir is deprecated and will be ignored\n")
 	}
 
 	if flag.NArg() < numArgsRequired {
@@ -119,26 +121,27 @@ func ParseArgs(versionText string, thisVersion string) *Args {
 }
 
 func (args *Args) ShowArguments() {
-	args.logWriter.Printf("inputDir: %q", args.InputDir)
+	logger := common.Logger
+	logger.Printf(common.Normal, "inputDir: %q", args.InputDir)
 	if args.LocalSDKPath != "" {
-		args.logWriter.Printf("localSDKPath: %q", args.LocalSDKPath)
+		logger.Printf(common.Normal, "localSDKPath: %q", args.LocalSDKPath)
 	}
 	if args.WantsInstrumentor {
-		args.logWriter.Printf("outputDir: %q", args.OutputDir)
+		logger.Printf(common.Normal, "outputDir: %q", args.OutputDir)
 		if args.ExcludeFile != "" {
-			args.logWriter.Printf("excludeFile: %q", args.ExcludeFile)
+			logger.Printf(common.Normal, "excludeFile: %q", args.ExcludeFile)
 		}
 		if args.SymPrefix != "" {
-			args.logWriter.Printf("symPrefix: %q", args.SymPrefix)
+			logger.Printf(common.Normal, "symPrefix: %q", args.SymPrefix)
 		}
 	}
 
 	// Intentional: no need to show anything if not skipping
 	if args.SkipTestFiles {
-		args.logWriter.Printf("skipTestFiles: %t", args.SkipTestFiles)
+		logger.Printf(common.Normal, "skipTestFiles: %t", args.SkipTestFiles)
 	}
 	if args.SkipProtoBufFiles {
-		args.logWriter.Printf("skipProtoBufFiles: %t", args.SkipProtoBufFiles)
+		logger.Printf(common.Normal, "skipProtoBufFiles: %t", args.SkipProtoBufFiles)
 	}
 }
 

@@ -110,21 +110,19 @@ func (cov *CoverageConfig) FindSourceCode(cc *commonconfig.CommonConfig) (paths 
 
 	cov.dependentModules = map[string]bool{}
 
-	logWriter := cc.LogWriter
-	logWriter.Printf("Scanning %s recursively for .go source", cc.InputDirectory)
+	logger := common.Logger
+	logger.Printf(common.Normal, "Scanning %s recursively for .go source", cc.InputDirectory)
 	// Files are read in lexical order, i.e. we can later deterministically
 	// hash their content: https://pkg.go.dev/path/filepath#WalkDir
 	err = filepath.WalkDir(cc.InputDirectory,
 		func(path string, info fs.DirEntry, erx error) error {
 			if erx != nil {
-				logWriter.Printf("Error %v in directory %s; skipping", erx, path)
+				logger.Printf(common.Normal, "Error %v in directory %s; skipping", erx, path)
 				return erx
 			}
 
 			if b := filepath.Base(path); strings.HasPrefix(b, ".") {
-				if logWriter.VerboseLevel(2) {
-					logWriter.Printf("Ignoring 'dot' directory: %s", path)
-				}
+				logger.Printf(common.Debug, "Ignoring 'dot' directory: %s", path)
 				if info.IsDir() {
 					return fs.SkipDir
 				}
@@ -132,9 +130,7 @@ func (cov *CoverageConfig) FindSourceCode(cc *commonconfig.CommonConfig) (paths 
 			}
 
 			if b := filepath.Base(path); b == "testdata" {
-				if logWriter.VerboseLevel(2) {
-					logWriter.Printf("Ignoring 'testdata' directory: %s", path)
-				}
+				logger.Printf(common.Debug, "Ignoring 'testdata' directory: %s", path)
 				if info.IsDir() {
 					return fs.SkipDir
 				}
@@ -143,10 +139,10 @@ func (cov *CoverageConfig) FindSourceCode(cc *commonconfig.CommonConfig) (paths 
 
 			if cc.Exclusions[path] {
 				if info.IsDir() {
-					logWriter.Printf("Ignoring excluded directory %s and its children", path)
+					logger.Printf(common.Normal, "Ignoring excluded directory %s and its children", path)
 					return fs.SkipDir
 				}
-				logWriter.Printf("Skipping excluded file %s", path)
+				logger.Printf(common.Normal, "Skipping excluded file %s", path)
 				numSkipped++
 				return nil
 			}
@@ -164,17 +160,13 @@ func (cov *CoverageConfig) FindSourceCode(cc *commonconfig.CommonConfig) (paths 
 			}
 			// This is the mandatory format of unit test file names.
 			if cc.SkipTestFiles && strings.HasSuffix(baseFile, "_test.go") {
-				if logWriter.VerboseLevel(1) {
-					logWriter.Printf("Skipping test file %s", path)
-				}
+				logger.Printf(common.Info, "Skipping test file %s", path)
 				numSkipped++
 				return nil
 			}
 
 			if cc.SkipProtoBufFiles && strings.HasSuffix(baseFile, ".pb.go") {
-				if logWriter.VerboseLevel(1) {
-					logWriter.Printf("Skipping generated file %s", path)
-				}
+				logger.Printf(common.Info, "Skipping generated file %s", path)
 				numSkipped++
 				return nil
 			}
@@ -202,28 +194,26 @@ func (cov *CoverageConfig) CreateNotifierModule(cc *commonconfig.CommonConfig) {
 	}
 }
 
-func (cov *CoverageConfig) ShowDependentModules(cc *commonconfig.CommonConfig) {
+func (cov *CoverageConfig) ShowDependentModules() {
 	isText := ""
-	cc.LogWriter.Printf("")
-	cc.LogWriter.Printf("Module Usage Summary")
+	common.Logger.Printf(common.Normal, "")
+	common.Logger.Printf(common.Normal, "Module Usage Summary")
 	for modName, used := range cov.dependentModules {
 		isText = "is"
 		if !used {
 			isText = "is not"
 		}
-		cc.LogWriter.Printf("%s %s used", modName, isText)
+		common.Logger.Printf(common.Normal, "%s %s used", modName, isText)
 	}
-	cc.LogWriter.Printf("")
+	common.Logger.Printf(common.Normal, "")
 }
 
-func (cov *CoverageConfig) UpdateDependentModules(cc *commonconfig.CommonConfig, file_name string) {
+func (cov *CoverageConfig) UpdateDependentModules(file_name string) {
 	ok := false
 	isUsed := false
 	this_dir := filepath.Clean(filepath.Dir(file_name))
 	for !ok {
-		if cc.LogWriter.VerboseLevel(2) {
-			cc.LogWriter.Printf("Checking if %q is a dependentModule", this_dir)
-		}
+		common.Logger.Printf(common.Debug, "Checking if %q is a dependentModule", this_dir)
 		if this_dir == "." {
 			break
 		}
@@ -239,7 +229,7 @@ func (cov *CoverageConfig) UpdateDependentModules(cc *commonconfig.CommonConfig,
 			ok = (old_dir == this_dir)
 		}
 	}
-	cc.LogWriter.Printf("%q does not belong to a scanned module", file_name)
+	common.Logger.Printf(common.Normal, "%q does not belong to a scanned module", file_name)
 }
 
 func (cov *CoverageConfig) WrapUp(cc *commonconfig.CommonConfig) {
@@ -270,18 +260,18 @@ func (cov *CoverageConfig) WrapUp(cc *commonconfig.CommonConfig) {
 	}
 
 	if err := common.CopyRecursiveDir(cc.InputDirectory, cc.CustomerDirectory); err == nil {
-		cc.LogWriter.Printf("All other files copied unmodified from %s to %s", cc.InputDirectory, cc.CustomerDirectory)
+		common.Logger.Printf(common.Normal, "All other files copied unmodified from %s to %s", cc.InputDirectory, cc.CustomerDirectory)
 	} else {
-		cc.LogWriter.Printf("CopyRecursiveDir err: %s", err.Error())
+		common.Logger.Printf(common.Normal, "CopyRecursiveDir err: %s", err.Error())
 	}
 
-	if cc.LogWriter.VerboseLevel(1) {
+	if common.Logger.VerboseLevel(common.Info) {
 		common.ShowDirRecursive(cc.CustomerDirectory, "instrumented files")
 	}
 
 	if cov.localSDKPath == "" {
 		common.FetchDependencies(cc.CustomerDirectory)
-		cc.LogWriter.Printf("Downloaded Antithesis dependencies")
+		common.Logger.Printf(common.Normal, "Downloaded Antithesis dependencies")
 	}
 }
 

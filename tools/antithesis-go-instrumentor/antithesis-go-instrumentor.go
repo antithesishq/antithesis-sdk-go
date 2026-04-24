@@ -15,8 +15,6 @@ import (
 	covconfig "github.com/antithesishq/antithesis-sdk-go/tools/antithesis-go-instrumentor/scanners/coverage/config"
 )
 
-var logWriter *common.LogWriter
-
 //go:embed version.txt
 var versionText string
 
@@ -40,8 +38,8 @@ func main() {
 		os.Exit(1)
 	}
 
-	logWriter = common.GetLogWriter()
-	logWriter.Printf("%s", strings.TrimSpace(versionString))
+	common.NewLogWriter(parsedArgs.LogFile, parsedArgs.VerbosityLevel)
+	common.Logger.Printf(common.Normal, "%s", strings.TrimSpace(versionString))
 	parsedArgs.ShowArguments()
 
 	//--------------------------------------------------------------------------------
@@ -50,19 +48,19 @@ func main() {
 	//--------------------------------------------------------------------------------
 	cov, err := covconfig.NewCoverageConfig(parsedArgs)
 	if err != nil {
-		logWriter.Printf("%s", err.Error())
+		common.Logger.Printf(common.Normal, "%s", err.Error())
 		os.Exit(1)
 	}
 
 	cc, err := config.NewCommonConfig(parsedArgs)
 	if err != nil {
-		logWriter.Printf("%s", err.Error())
+		common.Logger.Printf(common.Normal, "%s", err.Error())
 		os.Exit(1)
 	}
 
 	var source_files []string
 	if source_files, err = cov.GetSourceFiles(cc); err != nil {
-		logWriter.Printf("%s", err.Error())
+		common.Logger.Printf(common.Normal, "%s", err.Error())
 		os.Exit(1)
 	}
 
@@ -76,19 +74,19 @@ func main() {
 	//--------------------------------------------------------------------------------
 	// Pass 1: Coverage instrumentation (file-by-file)
 	//--------------------------------------------------------------------------------
-	cov.ShowDependentModules(cc)
+	cov.ShowDependentModules()
 	for _, file_name := range source_files {
 		if assertions.IsGeneratedFile(file_name) {
-			logWriter.Printf("Skipping %s", file_name)
+			common.Logger.Printf(common.Normal, "Skipping %s", file_name)
 			continue
 		}
 
 		if instrumented_source := cI.InstrumentFile(file_name); instrumented_source != "" {
 			cI.WriteInstrumentedOutput(cc, file_name, instrumented_source)
-			cov.UpdateDependentModules(cc, file_name)
+			cov.UpdateDependentModules(file_name)
 		}
 	}
-	cov.ShowDependentModules(cc)
+	cov.ShowDependentModules()
 
 	//--------------------------------------------------------------------------------
 	// Wrap-up coverage instrumentation and generate notifier module
@@ -103,10 +101,10 @@ func main() {
 	//--------------------------------------------------------------------------------
 	// Pass 2: Assertion catalog generation (go/packages-based, per-binary)
 	//--------------------------------------------------------------------------------
-	aScanner := assertions.NewAssertionScanner(logWriter.IsVerbose(), source_dir, target_dir)
+	aScanner := assertions.NewAssertionScanner(source_dir, target_dir)
 	if err := aScanner.ScanAll(); err != nil {
-		logWriter.Printf("Assertion scanning failed: %s", err.Error())
-		logWriter.Printf("Assertion catalogs will not be generated")
+		common.Logger.Printf(common.Normal, "Assertion scanning failed: %s", err.Error())
+		common.Logger.Printf(common.Normal, "Assertion catalogs will not be generated")
 	} else if aScanner.HasAssertionsDefined() {
 		aScanner.WriteAssertionCatalogs(parsedArgs.VersionText)
 	}

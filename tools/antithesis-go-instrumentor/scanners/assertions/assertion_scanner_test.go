@@ -13,7 +13,7 @@ import (
 )
 
 func init() {
-	// Ensure the global logWriter is initialized for tests.
+	// Ensure the global Logger is initialized for tests.
 	common.NewLogWriter("", 0)
 }
 
@@ -27,7 +27,7 @@ func absTestdata(fixture string) string {
 
 func TestSingleMain(t *testing.T) {
 	dir := absTestdata("single_main")
-	scanner := NewAssertionScanner(false, dir, dir)
+	scanner := NewAssertionScanner(dir, dir)
 	err := scanner.ScanAll()
 	qt.Assert(t, qt.IsNil(err))
 
@@ -46,7 +46,7 @@ func TestSingleMain(t *testing.T) {
 
 func TestMultiMain(t *testing.T) {
 	dir := absTestdata("multi_main")
-	scanner := NewAssertionScanner(false, dir, dir)
+	scanner := NewAssertionScanner(dir, dir)
 	err := scanner.ScanAll()
 	qt.Assert(t, qt.IsNil(err))
 
@@ -83,7 +83,7 @@ func TestMultiMain(t *testing.T) {
 
 func TestAliasedImport(t *testing.T) {
 	dir := absTestdata("aliased_import")
-	scanner := NewAssertionScanner(false, dir, dir)
+	scanner := NewAssertionScanner(dir, dir)
 	err := scanner.ScanAll()
 	qt.Assert(t, qt.IsNil(err))
 
@@ -100,7 +100,7 @@ func TestAliasedImport(t *testing.T) {
 
 func TestNoMain(t *testing.T) {
 	dir := absTestdata("no_main")
-	scanner := NewAssertionScanner(false, dir, dir)
+	scanner := NewAssertionScanner(dir, dir)
 	err := scanner.ScanAll()
 	qt.Assert(t, qt.IsNil(err))
 
@@ -110,7 +110,7 @@ func TestNoMain(t *testing.T) {
 
 func TestNoAssertions(t *testing.T) {
 	dir := absTestdata("no_assertions")
-	scanner := NewAssertionScanner(false, dir, dir)
+	scanner := NewAssertionScanner(dir, dir)
 	err := scanner.ScanAll()
 	qt.Assert(t, qt.IsNil(err))
 
@@ -160,7 +160,7 @@ func TestCatalogStability(t *testing.T) {
 	}
 
 	// First scan.
-	scanner1 := NewAssertionScanner(false, tmpDir, tmpDir)
+	scanner1 := NewAssertionScanner(tmpDir, tmpDir)
 	err = scanner1.ScanAll()
 	qt.Assert(t, qt.IsNil(err))
 	qt.Assert(t, qt.HasLen(scanner1.binaries, 1))
@@ -176,7 +176,7 @@ func TestCatalogStability(t *testing.T) {
 	qt.Assert(t, qt.IsNil(err))
 
 	// Second scan — the catalog is now present alongside main.go.
-	scanner2 := NewAssertionScanner(false, tmpDir, tmpDir)
+	scanner2 := NewAssertionScanner(tmpDir, tmpDir)
 	err = scanner2.ScanAll()
 	qt.Assert(t, qt.IsNil(err))
 	qt.Assert(t, qt.HasLen(scanner2.binaries, 1))

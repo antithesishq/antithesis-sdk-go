@@ -16,18 +16,27 @@ import (
 // if (2 <= verbosity) { log-is-enabled }
 // ------------------------------------------------------------
 
+type Verbosity int
+
+const (
+	Normal Verbosity = 0
+	Info  Verbosity = 1
+	Debug Verbosity = 2
+	Trace Verbosity = 3
+)
+
 type LogWriter struct {
 	logger    *log.Logger
-	verbosity int
+	verbosity Verbosity
 }
 
 // var logger *log.Logger
 // var verbosity int = 0
-var logWriter *LogWriter
+var Logger *LogWriter
 
-func NewLogWriter(logfileName string, vLevel int) *LogWriter {
-	if logWriter != nil {
-		return logWriter
+func NewLogWriter(logfileName string, vLevel Verbosity) {
+	if Logger != nil {
+		return
 	}
 
 	var erx error
@@ -50,24 +59,21 @@ func NewLogWriter(logfileName string, vLevel int) *LogWriter {
 		logger.Printf("WARNING Unable to Create/Open requested logfile: %q", logfilePath)
 	}
 
-	logWriter = &LogWriter{logger, verbosity}
-	return logWriter
-}
-
-func GetLogWriter() *LogWriter {
-	return NewLogWriter("", 0)
+	Logger = &LogWriter{logger, verbosity}
 }
 
 func (lW *LogWriter) IsVerbose() bool {
 	return (lW.verbosity > 0)
 }
 
-func (lW *LogWriter) VerboseLevel(v int) bool {
+func (lW *LogWriter) VerboseLevel(v Verbosity) bool {
 	return (v <= lW.verbosity)
 }
 
-func (lW *LogWriter) Printf(format string, v ...any) {
-	lW.logger.Printf(format, v...)
+func (lW *LogWriter) Printf(level Verbosity, format string, v ...any) {
+	if level <= lW.verbosity {
+		lW.logger.Printf(format, v...)
+	}
 }
 
 func (lW *LogWriter) Fatal(v ...any) {

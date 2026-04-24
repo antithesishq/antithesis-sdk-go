@@ -57,9 +57,9 @@ func TestCatalogContents(t *testing.T) {
 		HasNumericGuidance:  false,
 		HasBooleanGuidance:  false,
 		ConstMap:            getConstMap(expects),
-		logWriter:           common.GetLogWriter(),
 	}
 
+	common.NewLogWriter("", common.Normal)
 	GenerateAssertionsCatalog(outputDir, &genInfo)
 
 	// Verify the file was created
@@ -112,7 +112,6 @@ func TestCatalogNumericGuidance(t *testing.T) {
 		HasNumericGuidance:  true,
 		HasBooleanGuidance:  false,
 		ConstMap:            make(map[string]bool),
-		logWriter:           common.GetLogWriter(),
 	}
 
 	GenerateAssertionsCatalog(outputDir, &genInfo)

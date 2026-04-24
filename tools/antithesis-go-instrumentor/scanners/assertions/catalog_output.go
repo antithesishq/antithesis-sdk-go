@@ -13,7 +13,6 @@ import (
 
 type GenInfo struct {
 	ConstMap            map[string]bool
-	logWriter           *common.LogWriter
 	AssertPackageName   string
 	VersionText         string
 	CreateDate          string
@@ -32,7 +31,7 @@ func IsGeneratedFile(file_name string) bool {
 
 // expectOutputFile creates or opens the catalog output file in the given
 // directory. The file is named antithesis_catalog.go.
-func expectOutputFile(outputDir string, logWriter *common.LogWriter) (*os.File, error) {
+func expectOutputFile(outputDir string) (*os.File, error) {
 	output_file_name := filepath.Join(outputDir, common.GENERATED_CATALOG_FILE)
 
 	var file *os.File
@@ -46,9 +45,9 @@ func expectOutputFile(outputDir string, logWriter *common.LogWriter) (*os.File, 
 		}
 	}
 	if err == nil {
-		logWriter.Printf("Assertion Catalog: %q\n", output_file_name)
+		common.Logger.Printf(common.Normal, "Assertion Catalog: %q\n", output_file_name)
 	} else {
-		logWriter.Printf("Unable to generate Assertion Catalog: %q\n", output_file_name)
+		common.Logger.Printf(common.Normal, "Unable to generate Assertion Catalog: %q\n", output_file_name)
 	}
 	return file, err
 }
@@ -155,7 +154,7 @@ func GenerateAssertionsCatalog(outputDir string, genInfo *GenInfo) {
 	}
 
 	var outFile io.Writer
-	if outFile, err = expectOutputFile(outputDir, genInfo.logWriter); err != nil {
+	if outFile, err = expectOutputFile(outputDir); err != nil {
 		panic(err)
 	}
 

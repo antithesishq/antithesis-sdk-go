@@ -20,7 +20,7 @@ func GenerateNotifierSource(notifierDir string, notifierInfo *NotifierInfo) {
 	}
 
 	var outFile io.Writer
-	if outFile, err = notifierOutputFile(notifierDir, notifierInfo.logWriter); err != nil {
+	if outFile, err = notifierOutputFile(notifierDir); err != nil {
 		panic(err)
 	}
 
@@ -51,7 +51,7 @@ func Notify(edge int) {
 	return text
 }
 
-func notifierOutputFile(dir_name string, logWriter *common.LogWriter) (*os.File, error) {
+func notifierOutputFile(dir_name string) (*os.File, error) {
 	output_file_name := path.Join(dir_name, common.GENERATED_NOTIFIER_SOURCE)
 
 	var file *os.File
@@ -65,9 +65,9 @@ func notifierOutputFile(dir_name string, logWriter *common.LogWriter) (*os.File,
 		}
 	}
 	if err == nil {
-		logWriter.Printf("Notifier file: %q\n", output_file_name)
+		common.Logger.Printf(common.Normal, "Notifier file: %q\n", output_file_name)
 	} else {
-		logWriter.Printf("Unable to generate Notifier file: %q\n", output_file_name)
+		common.Logger.Printf(common.Normal, "Unable to generate Notifier file: %q\n", output_file_name)
 	}
 	return file, err
 }

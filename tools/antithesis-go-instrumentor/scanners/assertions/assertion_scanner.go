@@ -40,10 +40,8 @@ type AntGuidance struct {
 type AssertionScanner struct {
 	assertionHintMap AssertionHints
 	guidanceHintMap  GuidanceHints
-	logWriter        *common.LogWriter
 	baseInputDir     string
 	baseTargetDir    string
-	verbose          bool
 	filesCataloged   int
 
 	// Results: per-binary catalogs
@@ -92,23 +90,15 @@ func booleanGuidance(guidance []*AntGuidance) []*AntGuidance {
 	return boolean_guidance
 }
 
-func NewAssertionScanner(verbose bool, sourceDir string, targetDir string) *AssertionScanner {
-	logWriter := common.GetLogWriter()
-
+func NewAssertionScanner(sourceDir string, targetDir string) *AssertionScanner {
 	aScanner := AssertionScanner{
-		verbose:          verbose,
 		baseInputDir:     sourceDir,
 		baseTargetDir:    targetDir,
 		assertionHintMap: SetupHintMap(),
 		guidanceHintMap:  SetupGuidanceHintMap(),
 		filesCataloged:   0,
-		logWriter:        logWriter,
 	}
 	return &aScanner
-}
-
-func (aScanner *AssertionScanner) GetLogger() *common.LogWriter {
-	return aScanner.logWriter
 }
 
 // HasAssertionsDefined returns true if any binary has assertions.
@@ -148,7 +138,6 @@ func (aScanner *AssertionScanner) WriteAssertionCatalogs(versionText string) {
 			HasNumericGuidance:  len(numericGuidance) > 0,
 			HasBooleanGuidance:  len(booleanGuidance) > 0,
 			ConstMap:            getConstMap(expects),
-			logWriter:           common.GetLogWriter(),
 		}
 
 		outputDir := filepath.Join(aScanner.baseTargetDir, bc.relDir)
@@ -158,7 +147,7 @@ func (aScanner *AssertionScanner) WriteAssertionCatalogs(versionText string) {
 
 func (aScanner *AssertionScanner) SummarizeWork() {
 	numCataloged := aScanner.filesCataloged
-	aScanner.logWriter.Printf("%d '.go' %s cataloged", numCataloged, common.Pluralize(numCataloged, "file"))
+	common.Logger.Printf(common.Normal, "%d '.go' %s cataloged", numCataloged, common.Pluralize(numCataloged, "file"))
 	numBinaries := len(aScanner.binaries)
 	catalogsWritten := 0
 	for _, bc := range aScanner.binaries {
@@ -166,7 +155,7 @@ func (aScanner *AssertionScanner) SummarizeWork() {
 			catalogsWritten++
 		}
 	}
-	aScanner.logWriter.Printf("%d %s discovered, %d %s written",
+	common.Logger.Printf(common.Normal, "%d %s discovered, %d %s written",
 		numBinaries, common.Pluralize(numBinaries, "binary"),
 		catalogsWritten, common.Pluralize(catalogsWritten, "catalog"))
 }
@@ -186,9 +175,7 @@ func (aScanner *AssertionScanner) ScanAll() error {
 		Dir: aScanner.baseInputDir,
 	}
 
-	if aScanner.logWriter.VerboseLevel(1) {
-		aScanner.logWriter.Printf("Loading packages from %s", aScanner.baseInputDir)
-	}
+	common.Logger.Printf(common.Info, "Loading packages from %s", aScanner.baseInputDir)
 
 	pkgs, err := packages.Load(cfg, "./...")
 	if err != nil {
@@ -215,15 +202,13 @@ func (aScanner *AssertionScanner) ScanAll() error {
 	}
 
 	if len(mainPkgs) == 0 {
-		aScanner.logWriter.Printf("Warning: no main packages found in %s", aScanner.baseInputDir)
+		common.Logger.Printf(common.Normal, "Warning: no main packages found in %s", aScanner.baseInputDir)
 		return nil
 	}
 
-	if aScanner.logWriter.VerboseLevel(1) {
-		aScanner.logWriter.Printf("Found %d main %s", len(mainPkgs), common.Pluralize(len(mainPkgs), "package"))
-		for _, pkg := range mainPkgs {
-			aScanner.logWriter.Printf("  main: %s", pkg.PkgPath)
-		}
+	common.Logger.Printf(common.Info, "Found %d main %s", len(mainPkgs), common.Pluralize(len(mainPkgs), "package"))
+	for _, pkg := range mainPkgs {
+		common.Logger.Printf(common.Info, "  main: %s", pkg.PkgPath)
 	}
 
 	// For each main package, compute reachable packages and scan.
@@ -232,7 +217,7 @@ func (aScanner *AssertionScanner) ScanAll() error {
 	pkgCache := make(map[string]*packageResult)
 
 	for _, mainPkg := range mainPkgs {
-		aScanner.logWriter.Printf("Cataloging %s", mainPkg.PkgPath)
+		common.Logger.Printf(common.Normal, "Cataloging %s", mainPkg.PkgPath)
 		reachable := collectReachable(mainPkg)
 
 		bc := &binaryCatalog{
@@ -243,9 +228,7 @@ func (aScanner *AssertionScanner) ScanAll() error {
 			pr, ok := pkgCache[pkg.ID]
 			if !ok {
 				pr = &packageResult{}
-				if aScanner.logWriter.VerboseLevel(1) {
-					aScanner.logWriter.Printf("Scanning %s", pkg.PkgPath)
-				}
+				common.Logger.Printf(common.Info, "Scanning %s", pkg.PkgPath)
 				for _, file := range pkg.Syntax {
 					aScanner.filesCataloged++
 					funcName := ""
@@ -262,10 +245,8 @@ func (aScanner *AssertionScanner) ScanAll() error {
 		}
 		aScanner.binaries = append(aScanner.binaries, bc)
 
-		if aScanner.logWriter.VerboseLevel(1) {
-			aScanner.logWriter.Printf("Binary %s: %d assertions, %d guidance entries",
-				bc.relDir, len(bc.expects), len(bc.guidance))
-		}
+		common.Logger.Printf(common.Info, "Binary %s: %d assertions, %d guidance entries",
+			bc.relDir, len(bc.expects), len(bc.guidance))
 	}
 
 	return nil

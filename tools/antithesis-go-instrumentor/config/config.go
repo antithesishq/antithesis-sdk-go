@@ -20,9 +20,6 @@ type CommonConfig struct {
 	// of go used for this tool.
 	Exclusions map[string]bool
 
-	// Global logger
-	LogWriter *common.LogWriter
-
 	// SHA256 Hash (48-bits worth) of all the files
 	// in sourceFiles
 	FilesHash string
@@ -84,7 +81,6 @@ func NewCommonConfig(args *args.Args) (*CommonConfig, error) {
 		CustomerDirectory: customerDirectory,
 		ExcludeFile:       args.ExcludeFile,
 		WantsInstrumentor: args.WantsInstrumentor,
-		LogWriter:         common.GetLogWriter(),
 		SkipTestFiles:     args.SkipTestFiles,
 		SkipProtoBufFiles: args.SkipProtoBufFiles,
 	}, nil
