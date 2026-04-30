@@ -1,10 +1,9 @@
-package coverage
+package symboltable
 
 import (
 	"bufio"
 	"fmt"
 	"os"
-	"strings"
 )
 
 // SymbolTable is the serialization of the
@@ -12,7 +11,7 @@ import (
 // instruments.
 type SymbolTable struct {
 	Path       string
-	writer     symbolTableWriter
+	writer     *fileSymbolTableWriter
 	executable string
 }
 
@@ -46,14 +45,6 @@ func CreateSymbolTableFile(symbolTablePath, instrumentedModule string) (symbolTa
 	return
 }
 
-// CreateInMemorySymbolTable creates an in memory symbol table for testing.
-func CreateInMemorySymbolTable(symbolTablePath, instrumentedModule string) *SymbolTable {
-	w := createInMemorySymbolTableWriter()
-	symbolTable := &SymbolTable{Path: symbolTablePath, writer: w, executable: "goinstrumentor"}
-	symbolTable.writeHeader(instrumentedModule)
-	return symbolTable
-}
-
 // WriteHeader writes the Antithesis-standard symbol table header.
 func (t *SymbolTable) writeHeader(module string) error {
 	if err := t.writer.WriteLine("# language = Go"); err != nil {
@@ -79,31 +70,15 @@ func (t *SymbolTable) Close() error {
 	return t.writer.Close()
 }
 
-func (t *SymbolTable) String() string {
-	return t.writer.String()
-}
-
-// --------------------------------------------------------------------------------
-// symbolTableWriter
-// --------------------------------------------------------------------------------
-type symbolTableWriter interface {
-	WriteLine(s string) error
-	Close() error
-	String() string
-}
+// ---------------------------------------------------------------------------------
+// fileSymbolTableWriter
+// ---------------------------------------------------------------------------------
 
 type fileSymbolTableWriter struct {
 	f      *os.File
 	writer *bufio.Writer
 }
 
-type inMemorySymbolTableWriter struct {
-	writer strings.Builder
-}
-
-// --------------------------------------------------------------------------------
-// fileSymbolTableWriter
-// --------------------------------------------------------------------------------
 func createFileSymbolTableWriter(name string) (symWriter *fileSymbolTableWriter, err error) {
 	var f *os.File
 	if f, err = os.Create(name); err != nil {
@@ -130,29 +105,4 @@ func (w *fileSymbolTableWriter) Close() error {
 		return err
 	}
 	return w.f.Close()
-}
-
-func (fileSymbolTableWriter) String() string {
-	// logger.Fatalf("fileSymbolTableWriter does not support String method")
-	return ""
-}
-
-// --------------------------------------------------------------------------------
-// inMemorySymbolTableWriter
-// --------------------------------------------------------------------------------
-func createInMemorySymbolTableWriter() symbolTableWriter {
-	return &inMemorySymbolTableWriter{}
-}
-
-func (w *inMemorySymbolTableWriter) WriteLine(s string) error {
-	_, err := w.writer.WriteString(s + "\n")
-	return err
-}
-
-func (w *inMemorySymbolTableWriter) Close() error {
-	return nil
-}
-
-func (w *inMemorySymbolTableWriter) String() string {
-	return w.writer.String()
 }

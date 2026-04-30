@@ -1,4 +1,4 @@
-package coverage
+package instrumentor
 
 import (
 	"go/ast"
