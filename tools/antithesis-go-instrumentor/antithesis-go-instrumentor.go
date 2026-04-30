@@ -46,60 +46,66 @@ func main() {
 	// Verify Directories and Files are all as expected
 	// Prepare instrumentation output directories
 	//--------------------------------------------------------------------------------
-	cov, err := covconfig.NewCoverageConfig(parsedArgs)
-	if err != nil {
-		common.Logger.Printf(common.Normal, "%s", err.Error())
-		os.Exit(1)
-	}
-
 	cc, err := config.NewCommonConfig(parsedArgs)
 	if err != nil {
 		common.Logger.Printf(common.Normal, "%s", err.Error())
 		os.Exit(1)
 	}
 
-	var source_files []string
-	if source_files, err = cov.GetSourceFiles(cc); err != nil {
-		common.Logger.Printf(common.Normal, "%s", err.Error())
-		os.Exit(1)
-	}
-
-	//--------------------------------------------------------------------------------
-	// Setup coverage processor
-	//--------------------------------------------------------------------------------
-	cI := coverage.NewCoverageInstrumentor(cc, cov)
 	source_dir := cc.GetSourceDir()
-	target_dir := cc.GetTargetDir()
+	target_dir := source_dir
+
+	var cI *coverage.CoverageInstrumentor
+	var numSourceFiles int
 
 	//--------------------------------------------------------------------------------
-	// Pass 1: Coverage instrumentation (file-by-file)
+	// Coverage instrumentation (only when not in assert-only mode)
 	//--------------------------------------------------------------------------------
-	cov.ShowDependentModules()
-	for _, file_name := range source_files {
-		if assertions.IsGeneratedFile(file_name) {
-			common.Logger.Printf(common.Normal, "Skipping %s", file_name)
-			continue
+	if parsedArgs.WantsInstrumentor {
+		cov, err := covconfig.NewCoverageConfig(parsedArgs)
+		if err != nil {
+			common.Logger.Printf(common.Normal, "%s", err.Error())
+			os.Exit(1)
 		}
 
-		if instrumented_source := cI.InstrumentFile(file_name); instrumented_source != "" {
-			cI.WriteInstrumentedOutput(cc, file_name, instrumented_source)
-			cov.UpdateDependentModules(file_name)
+		var source_files []string
+		if source_files, err = cov.GetSourceFiles(cc); err != nil {
+			common.Logger.Printf(common.Normal, "%s", err.Error())
+			os.Exit(1)
 		}
+		numSourceFiles = len(source_files)
+
+		cI = coverage.NewCoverageInstrumentor(cc, cov)
+		target_dir = cc.CustomerDirectory
+
+		// Pass 1: Coverage instrumentation (file-by-file)
+		cov.ShowDependentModules()
+		for _, file_name := range source_files {
+			if assertions.IsGeneratedFile(file_name) {
+				common.Logger.Printf(common.Normal, "Skipping %s", file_name)
+				continue
+			}
+
+			if instrumented_source := cI.InstrumentFile(file_name); instrumented_source != "" {
+				cI.WriteInstrumentedOutput(cc, file_name, instrumented_source)
+				cov.UpdateDependentModules(file_name)
+			}
+		}
+		cov.ShowDependentModules()
+
+		// Wrap-up coverage instrumentation and generate notifier module
+		edge_count := cI.WrapUp()
+		if edge_count > 0 {
+			notifierDir := cov.GetNotifierDirectory()
+			cI.WriteNotifierSource(notifierDir, edge_count)
+			cov.CreateNotifierModule(cc)
+		}
+
+		cov.WrapUp(cc)
 	}
-	cov.ShowDependentModules()
 
 	//--------------------------------------------------------------------------------
-	// Wrap-up coverage instrumentation and generate notifier module
-	//--------------------------------------------------------------------------------
-	edge_count := cI.WrapUp()
-	if edge_count > 0 {
-		notifierDir := cov.GetNotifierDirectory()
-		cI.WriteNotifierSource(notifierDir, edge_count)
-		cov.CreateNotifierModule(cc)
-	}
-
-	//--------------------------------------------------------------------------------
-	// Pass 2: Assertion catalog generation (go/packages-based, per-binary)
+	// Assertion catalog generation (go/packages-based, per-binary)
 	//--------------------------------------------------------------------------------
 	aScanner := assertions.NewAssertionScanner(source_dir, target_dir)
 	if err := aScanner.ScanAll(); err != nil {
@@ -109,11 +115,11 @@ func main() {
 		aScanner.WriteAssertionCatalogs(parsedArgs.VersionText)
 	}
 
-	cov.WrapUp(cc)
-
 	//--------------------------------------------------------------------------------
 	// Summarize results in logger
 	//--------------------------------------------------------------------------------
-	cI.SummarizeWork(len(source_files))
+	if cI != nil {
+		cI.SummarizeWork(numSourceFiles)
+	}
 	aScanner.SummarizeWork()
 }

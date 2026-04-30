@@ -52,10 +52,6 @@ type NotifierInfo struct {
 }
 
 func (cI *CoverageInstrumentor) WriteNotifierSource(notifierDir string, edge_count int) {
-	if cI.GoInstrumentor == nil {
-		return
-	}
-
 	notifierInfo := NotifierInfo{
 		InstrumentationPackageName: common.InstrumentationPackageName(),
 		SymbolTableName:            cI.UsingSymbols,
@@ -67,9 +63,6 @@ func (cI *CoverageInstrumentor) WriteNotifierSource(notifierDir string, edge_cou
 }
 
 func (cI *CoverageInstrumentor) InstrumentFile(file_name string) string {
-	if cI.GoInstrumentor == nil {
-		return ""
-	}
 	var err error
 	instrumented := ""
 	common.Logger.Printf(common.Normal, "Instrumenting %s", file_name)
@@ -83,24 +76,15 @@ func (cI *CoverageInstrumentor) InstrumentFile(file_name string) string {
 }
 
 func (cI *CoverageInstrumentor) WrapUp() (edge_count int) {
-	var err error
-	edge_count = 0
-
-	if cI.GoInstrumentor != nil {
-		if err = cI.SymTable.Close(); err != nil {
-			common.Logger.Printf(common.Normal, "Error Could not close symbol table %s: %s", cI.SymTable.Path, err)
-		}
-		common.Logger.Printf(common.Normal, "Symbol table: %s", cI.SymTable.Path)
-		edge_count = cI.GoInstrumentor.CurrentEdge
+	if err := cI.SymTable.Close(); err != nil {
+		common.Logger.Printf(common.Normal, "Error Could not close symbol table %s: %s", cI.SymTable.Path, err)
 	}
+	common.Logger.Printf(common.Normal, "Symbol table: %s", cI.SymTable.Path)
+	edge_count = cI.GoInstrumentor.CurrentEdge
 	return
 }
 
 func (cI *CoverageInstrumentor) SummarizeWork(numFiles int) {
-	if cI.GoInstrumentor == nil {
-		return
-	}
-
 	numFilesSkipped := (numFiles - cI.FilesInstrumented) + cI.FilesSkipped
 	numEdges := cI.GoInstrumentor.CurrentEdge
 	common.Logger.Printf(common.Normal, "%d '.go' %s instrumented, %d %s skipped, %d %s identified",
@@ -110,36 +94,24 @@ func (cI *CoverageInstrumentor) SummarizeWork(numFiles int) {
 }
 
 func NewCoverageInstrumentor(cc *commonconfig.CommonConfig, cov *covconfig.CoverageConfig) *CoverageInstrumentor {
-	var goInstrumentor *Instrumentor
-	var symTable *SymbolTable
-
 	notifierModuleName := common.FullNotifierName(cc.FilesHash)
-	symbolTableFilename := ""
 
-	if cc.WantsInstrumentor {
-		common.Logger.Printf(common.Normal, "Writing instrumented source to %s", cc.CustomerDirectory)
+	common.Logger.Printf(common.Normal, "Writing instrumented source to %s", cc.CustomerDirectory)
 
-		symbolTableFileBasename := fmt.Sprintf("%s%s-%s", cov.SymtablePrefix, common.SYMBOLS_FILE_HASH_PREFIX, cc.FilesHash)
-		symbolTableFilename = symbolTableFileBasename + common.SYMBOLS_FILE_SUFFIX
-		symbolsPath := filepath.Join(cov.SymbolsDirectory, symbolTableFilename)
-		var err error
-		symTable, err = CreateSymbolTableFile(symbolsPath, symbolTableFileBasename)
-		if err != nil {
-			common.Logger.Fatalf("Could not write symbol table header: %s", err.Error())
-		}
-
-		goInstrumentor = CreateInstrumentor(cc.InputDirectory, notifierModuleName, symTable)
+	symbolTableFileBasename := fmt.Sprintf("%s%s-%s", cov.SymtablePrefix, common.SYMBOLS_FILE_HASH_PREFIX, cc.FilesHash)
+	symbolTableFilename := symbolTableFileBasename + common.SYMBOLS_FILE_SUFFIX
+	symbolsPath := filepath.Join(cov.SymbolsDirectory, symbolTableFilename)
+	symTable, err := CreateSymbolTableFile(symbolsPath, symbolTableFileBasename)
+	if err != nil {
+		common.Logger.Fatalf("Could not write symbol table header: %s", err.Error())
 	}
 
-	usingSymbols := ""
-	if cc.WantsInstrumentor {
-		usingSymbols = symbolTableFilename
-	}
+	goInstrumentor := CreateInstrumentor(cc.InputDirectory, notifierModuleName, symTable)
 
 	cI := CoverageInstrumentor{
 		GoInstrumentor:    goInstrumentor,
 		SymTable:          symTable,
-		UsingSymbols:      usingSymbols,
+		UsingSymbols:      symbolTableFilename,
 		PreviousEdge:      0,
 		FilesInstrumented: 0,
 		FilesSkipped:      cc.FilesSkipped,

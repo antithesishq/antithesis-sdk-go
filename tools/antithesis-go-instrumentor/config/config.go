@@ -48,12 +48,6 @@ type CommonConfig struct {
 	// list.
 	FilesSkipped int
 
-	// Indicates that instrumentation is requested (true)
-	// If set to (false) then perform assertion catalog scanning
-	// without instrumentation, which is common
-	// when execution is outside of the Antithesis environment
-	WantsInstrumentor bool
-
 	// Indicates that '*_test.go' files should be skipped (not instrumented)
 	// default is false
 	SkipTestFiles bool
@@ -80,7 +74,6 @@ func NewCommonConfig(args *args.Args) (*CommonConfig, error) {
 		InputDirectory:    customerInputDirectory,
 		CustomerDirectory: customerDirectory,
 		ExcludeFile:       args.ExcludeFile,
-		WantsInstrumentor: args.WantsInstrumentor,
 		SkipTestFiles:     args.SkipTestFiles,
 		SkipProtoBufFiles: args.SkipProtoBufFiles,
 	}, nil
@@ -89,15 +82,6 @@ func NewCommonConfig(args *args.Args) (*CommonConfig, error) {
 // CommonConfig methods
 
 func (cc *CommonConfig) GetSourceDir() string {
-	return cc.InputDirectory
-}
-
-// Full instrumentation targets the customerDirectory
-// Assertions only mode will target in-place (same as inputDirectory)
-func (cc *CommonConfig) GetTargetDir() string {
-	if cc.WantsInstrumentor {
-		return cc.CustomerDirectory
-	}
 	return cc.InputDirectory
 }
 

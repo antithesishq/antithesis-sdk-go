@@ -57,23 +57,17 @@ func NewCoverageConfig(args *args.Args) (*CoverageConfig, error) {
 		symtablePrefix = args.SymPrefix + "-"
 	}
 
-	outputDirectory := ""
-	symbolsDirectory := ""
-	notifierDirectory := ""
+	customerInputDirectory := common.GetAbsoluteDirectory(args.InputDir)
+	outputDirectory := common.GetAbsoluteDirectory(args.OutputDir)
+	if err := common.ValidateDirectories(customerInputDirectory, outputDirectory); err != nil {
+		return nil, err
+	}
 
-	if args.WantsInstrumentor {
-		customerInputDirectory := common.GetAbsoluteDirectory(args.InputDir)
-		outputDirectory = common.GetAbsoluteDirectory(args.OutputDir)
-		if err := common.ValidateDirectories(customerInputDirectory, outputDirectory); err != nil {
-			return nil, err
-		}
-
-		customerDirectory := filepath.Join(outputDirectory, common.INSTRUMENTED_SOURCE_FOLDER)
-		notifierDirectory = filepath.Join(outputDirectory, common.NOTIFIER_FOLDER)
-		symbolsDirectory = filepath.Join(outputDirectory, common.SYMBOLS_FOLDER)
-		if err := createOutputDirectories(customerDirectory, notifierDirectory, symbolsDirectory); err != nil {
-			return nil, err
-		}
+	customerDirectory := filepath.Join(outputDirectory, common.INSTRUMENTED_SOURCE_FOLDER)
+	notifierDirectory := filepath.Join(outputDirectory, common.NOTIFIER_FOLDER)
+	symbolsDirectory := filepath.Join(outputDirectory, common.SYMBOLS_FOLDER)
+	if err := createOutputDirectories(customerDirectory, notifierDirectory, symbolsDirectory); err != nil {
+		return nil, err
 	}
 
 	return &CoverageConfig{
@@ -188,10 +182,7 @@ func (cov *CoverageConfig) GetNotifierDirectory() string {
 
 func (cov *CoverageConfig) CreateNotifierModule(cc *commonconfig.CommonConfig) {
 	notifierModuleName := common.NOTIFIER_MODULE_NAME
-
-	if cc.WantsInstrumentor {
-		common.NotifierDependencies(cov.notifierDirectory, notifierModuleName, cov.instrumentorVersion, cov.localSDKPath)
-	}
+	common.NotifierDependencies(cov.notifierDirectory, notifierModuleName, cov.instrumentorVersion, cov.localSDKPath)
 }
 
 func (cov *CoverageConfig) ShowDependentModules() {
@@ -233,10 +224,6 @@ func (cov *CoverageConfig) UpdateDependentModules(file_name string) {
 }
 
 func (cov *CoverageConfig) WrapUp(cc *commonconfig.CommonConfig) {
-	if !cc.WantsInstrumentor {
-		return
-	}
-
 	notifierModule := common.FullNotifierName(cc.FilesHash)
 	notifierRelPath := ".."
 	localNotifier := filepath.Join(notifierRelPath, common.NOTIFIER_FOLDER)
