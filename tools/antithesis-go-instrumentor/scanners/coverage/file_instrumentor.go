@@ -16,8 +16,8 @@ import (
 type CoverageInstrumentor struct {
 	GoInstrumentor    *instrumentor.Instrumentor
 	SymTable          *symboltable.SymbolTable
-	UsingSymbols    string
-	NotifierPackage string
+	UsingSymbols      string
+	NotifierPackage   string
 	PreviousEdge      int
 	FilesInstrumented int
 	FilesSkipped      int

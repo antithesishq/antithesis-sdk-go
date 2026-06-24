@@ -1,6 +1,8 @@
 module example.com/e2e-test
 
-go 1.24.0
+go 1.24.5
+
+toolchain go1.24.7
 
 require (
 	antithesis.notifier/zad602425a68e v0.0.0

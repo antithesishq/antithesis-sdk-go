@@ -13,9 +13,10 @@ import (
 )
 
 const (
-	HashBitsUsed          = 48
-	HashBytesUsed         = HashBitsUsed / 8
-	EncodedHashByteLength = HashBytesUsed * 2
+	HashBitsUsed             = 48
+	HashBytesUsed            = HashBitsUsed / 8
+	EncodedHashByteLength    = HashBytesUsed * 2
+	NotifierMinimumGoVersion = "1.24.0"
 )
 
 // HashFileContent reads the binary content of
@@ -289,9 +290,10 @@ func NotifierDependencies(notifierOutputDirectory, notifierModuleName, instrumen
 			ANTITHESIS_SDK_MODULE, ANTITHESIS_SDK_MODULE, localSDKPath)
 	}
 
-	commandLine := fmt.Sprintf("(cd %s; go mod init %s; %s; go mod tidy)",
+	commandLine := fmt.Sprintf("(cd %s; go mod init %s; go mod edit -go=%s; go mod edit -toolchain=none; %s; go mod tidy; go mod edit -toolchain=none)",
 		notifierOutputDirectory,
 		notifierModuleName,
+		NotifierMinimumGoVersion,
 		dependencyRef)
 
 	cmd := exec.Command("bash", "-c", commandLine)
@@ -373,11 +375,14 @@ func ValidateDirectories(input, output string) (err error) {
 	return
 }
 
-// PathFromBaseDirectory gets the path of someDir relative to baseDir
+// PathFromBaseDirectory returns the path of someDir relative to baseDir.
+// Returns "" when baseDir == someDir, or when someDir is not under baseDir
+// (the caller in scanners/coverage/config uses an empty result to skip a
+// dependent module — see ENG-3940 for the history).
 //
 // Example:
-// PathFromBaseDirectory("/home/ricky/etcd", "/home/ricky/etcd/server/test")
 //
+//	PathFromBaseDirectory("/home/ricky/etcd", "/home/ricky/etcd/server/test")
 //	==> "server/test"
 func PathFromBaseDirectory(baseDir, someDir string) string {
 	baseNorm := CanonicalizeDirectory(baseDir)
@@ -385,14 +390,9 @@ func PathFromBaseDirectory(baseDir, someDir string) string {
 	if baseNorm == someNorm {
 		return ""
 	}
-	someOffset := someNorm
-	pattern := filepath.Join(baseNorm, "*")
-	if didMatch, _ := filepath.Match(pattern, someNorm); didMatch {
-		lx := len(baseNorm)
-		idx := lx + 1
-		if idx < len(someNorm) {
-			someOffset = someNorm[idx:]
-		}
+	rel, err := filepath.Rel(baseNorm, someNorm)
+	if err != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
+		return ""
 	}
-	return someOffset
+	return rel
 }
