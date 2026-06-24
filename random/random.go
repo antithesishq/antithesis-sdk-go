@@ -8,7 +8,7 @@
 //
 // [Antithesis Go SDK]: https://antithesis.com/docs/using_antithesis/sdk/go/
 // [Antithesis platform]: https://antithesis.com
-// [workload]: https://antithesis.com/docs/getting_started/first_test/
+// [workload]: https://antithesis.com/docs/test_templates/first_test
 package random
 
 import (

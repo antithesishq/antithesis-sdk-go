@@ -13,9 +13,10 @@ import (
 )
 
 const (
-	HashBitsUsed          = 48
-	HashBytesUsed         = HashBitsUsed / 8
-	EncodedHashByteLength = HashBytesUsed * 2
+	HashBitsUsed             = 48
+	HashBytesUsed            = HashBitsUsed / 8
+	EncodedHashByteLength    = HashBytesUsed * 2
+	NotifierMinimumGoVersion = "1.24.0"
 )
 
 // HashFileContent reads the binary content of
@@ -26,7 +27,7 @@ func HashFileContent(paths []string) string {
 	for _, path := range paths {
 		bytes, err := os.ReadFile(path)
 		if err != nil {
-			logWriter.Fatalf("Error reading file %s: %v", path, err)
+			Logger.Fatalf("Error reading file %s: %v", path, err)
 		}
 		hasher.Write(bytes)
 	}
@@ -37,18 +38,18 @@ func HashFileContent(paths []string) string {
 func WriteTextFile(text, file_name string) (err error) {
 	var f *os.File
 	if f, err = os.Create(file_name); err != nil {
-		logWriter.Printf("Error: could not create %s", file_name)
+		Logger.Printf(Normal, "Error: could not create %s", file_name)
 		quietClose(f)
 		return
 	}
 
 	if _, err = f.WriteString(text); err != nil {
 		quietClose(f)
-		logWriter.Printf("Error: Could not write text to %s", file_name)
+		Logger.Printf(Normal, "Error: Could not write text to %s", file_name)
 	} else {
 		err = f.Close()
 		if err != nil {
-			logWriter.Printf("Error: Could not sync text to %s", file_name)
+			Logger.Printf(Normal, "Error: Could not sync text to %s", file_name)
 		}
 	}
 
@@ -217,19 +218,19 @@ func CopyRecursiveDir(from, to string) (err error) {
 func ShowDirRecursive(dir, desc string) {
 	commandLine := fmt.Sprintf("ls -lR %s", dir)
 	cmd := exec.Command("bash", "-c", commandLine)
-	logWriter.Printf("")
-	logWriter.Printf("Directory Listing (%s)", desc)
-	logWriter.Printf("Executing %s", commandLine)
+	Logger.Printf(Normal, "")
+	Logger.Printf(Normal, "Directory Listing (%s)", desc)
+	Logger.Printf(Normal, "Executing %s", commandLine)
 	allOutput, err := cmd.CombinedOutput()
 	allText := strings.TrimSpace(string(allOutput))
 	lines := strings.Split(allText, "\n")
 	for _, line := range lines {
 		if len(line) > 0 {
-			logWriter.Printf("ls: %s", line)
+			Logger.Printf(Normal, "ls: %s", line)
 		}
 	}
 	if err != nil {
-		logWriter.Printf("ls completed with %+v", err)
+		Logger.Printf(Normal, "ls completed with %+v", err)
 	}
 }
 
@@ -242,19 +243,19 @@ func AddDependencies(customerInputDirectory, customerOutputDirectory, instrument
 	commandLine := fmt.Sprintf("(%s; %s)", cmd1, cmd2)
 
 	cmd := exec.Command("bash", "-c", commandLine)
-	logWriter.Printf("Adding Antithesis module as a dependency to %s", customerOutputDirectory)
-	logWriter.Printf("Executing %s", commandLine)
+	Logger.Printf(Normal, "Adding Antithesis module as a dependency to %s", customerOutputDirectory)
+	Logger.Printf(Normal, "Executing %s", commandLine)
 	allOutput, err := cmd.CombinedOutput()
 	allText := strings.TrimSpace(string(allOutput))
 	if len(allText) > 0 {
 		lines := strings.Split(allText, "\n")
 		for _, line := range lines {
-			logWriter.Printf("go mod edit: %s", line)
+			Logger.Printf(Normal, "go mod edit: %s", line)
 		}
 	}
 	if err != nil {
 		// Errors here are pretty mysterious.
-		logWriter.Fatalf("%v", err)
+		Logger.Fatalf("%v", err)
 	}
 }
 
@@ -262,20 +263,20 @@ func FetchDependencies(customerOutputDirectory string) {
 	commandLine := fmt.Sprintf("(cd %s; go mod tidy)", customerOutputDirectory)
 
 	cmd := exec.Command("bash", "-c", commandLine)
-	logWriter.Printf("")
-	logWriter.Printf("Fetching Dependencies (go mod tidy)")
-	logWriter.Printf("Executing %s", commandLine)
+	Logger.Printf(Normal, "")
+	Logger.Printf(Normal, "Fetching Dependencies (go mod tidy)")
+	Logger.Printf(Normal, "Executing %s", commandLine)
 	allOutput, err := cmd.CombinedOutput()
 	allText := strings.TrimSpace(string(allOutput))
 	if len(allText) > 0 {
 		lines := strings.Split(allText, "\n")
 		for _, line := range lines {
-			logWriter.Printf("go mod tidy: %s", line)
+			Logger.Printf(Normal, "go mod tidy: %s", line)
 		}
 	}
 	if err != nil {
 		// Errors here are pretty mysterious.
-		logWriter.Fatalf("%v", err)
+		Logger.Fatalf("%v", err)
 	}
 }
 
@@ -289,26 +290,27 @@ func NotifierDependencies(notifierOutputDirectory, notifierModuleName, instrumen
 			ANTITHESIS_SDK_MODULE, ANTITHESIS_SDK_MODULE, localSDKPath)
 	}
 
-	commandLine := fmt.Sprintf("(cd %s; go mod init %s; %s; go mod tidy)",
+	commandLine := fmt.Sprintf("(cd %s; go mod init %s; go mod edit -go=%s; go mod edit -toolchain=none; %s; go mod tidy; go mod edit -toolchain=none)",
 		notifierOutputDirectory,
 		notifierModuleName,
+		NotifierMinimumGoVersion,
 		dependencyRef)
 
 	cmd := exec.Command("bash", "-c", commandLine)
-	logWriter.Printf("")
-	logWriter.Printf("Creating Notifier Module")
-	logWriter.Printf("Executing %s", commandLine)
+	Logger.Printf(Normal, "")
+	Logger.Printf(Normal, "Creating Notifier Module")
+	Logger.Printf(Normal, "Executing %s", commandLine)
 	allOutput, err := cmd.CombinedOutput()
 	allText := strings.TrimSpace(string(allOutput))
 	if len(allText) > 0 {
 		lines := strings.Split(allText, "\n")
 		for _, line := range lines {
-			logWriter.Printf("go mod (notifier): %s", line)
+			Logger.Printf(Normal, "go mod (notifier): %s", line)
 		}
 	}
 	if err != nil {
 		// Errors here are pretty mysterious.
-		logWriter.Fatalf("%v", err)
+		Logger.Fatalf("%v", err)
 	}
 }
 
@@ -316,13 +318,13 @@ func NotifierDependencies(notifierOutputDirectory, notifierModuleName, instrumen
 // a relative path, into an absolute path.
 func GetAbsoluteDirectory(path string) string {
 	if absolute, e := filepath.Abs(path); e != nil {
-		logWriter.Fatalf("Could not evaluate %s as an absolute path: %v", path, e)
+		Logger.Fatalf("Could not evaluate %s as an absolute path: %v", path, e)
 	} else {
 		if s, err := os.Stat(absolute); err != nil {
-			logWriter.Fatalf("%v", err)
+			Logger.Fatalf("%v", err)
 		} else {
 			if !s.IsDir() {
-				logWriter.Fatalf("%s is not a directory", absolute)
+				Logger.Fatalf("%s is not a directory", absolute)
 			}
 			return absolute
 		}
@@ -334,12 +336,12 @@ func GetAbsoluteDirectory(path string) string {
 func CanonicalizeDirectory(d string) string {
 	target, e := filepath.EvalSymlinks(d)
 	if e != nil {
-		logWriter.Fatalf("filepath.EvalSymlinks(%s) failed: %v", d, e)
+		Logger.Fatalf("filepath.EvalSymlinks(%s) failed: %v", d, e)
 	}
 
 	a, e := filepath.Abs(target)
 	if e != nil {
-		logWriter.Fatalf("filepath.Abs(%s) failed: %v", target, e)
+		Logger.Fatalf("filepath.Abs(%s) failed: %v", target, e)
 	}
 	return a
 }
@@ -347,12 +349,12 @@ func CanonicalizeDirectory(d string) string {
 func confirmEmptyOutputDirectory(output string) {
 	d, e := os.Open(output)
 	if e != nil {
-		logWriter.Fatalf("Could not open %s: %v", output, e)
+		Logger.Fatalf("Could not open %s: %v", output, e)
 	}
 	defer d.Close()
 	// See the documentation on File.Readdirnames().
 	if names, _ := d.Readdirnames(1); len(names) > 0 {
-		logWriter.Fatalf("Output directory %s must be empty.", output)
+		Logger.Fatalf("Output directory %s must be empty.", output)
 	}
 }
 
@@ -373,11 +375,14 @@ func ValidateDirectories(input, output string) (err error) {
 	return
 }
 
-// PathFromBaseDirectory gets the path of someDir relative to baseDir
+// PathFromBaseDirectory returns the path of someDir relative to baseDir.
+// Returns "" when baseDir == someDir, or when someDir is not under baseDir
+// (the caller in scanners/coverage/config uses an empty result to skip a
+// dependent module — see ENG-3940 for the history).
 //
 // Example:
-// PathFromBaseDirectory("/home/ricky/etcd", "/home/ricky/etcd/server/test")
 //
+//	PathFromBaseDirectory("/home/ricky/etcd", "/home/ricky/etcd/server/test")
 //	==> "server/test"
 func PathFromBaseDirectory(baseDir, someDir string) string {
 	baseNorm := CanonicalizeDirectory(baseDir)
@@ -385,14 +390,9 @@ func PathFromBaseDirectory(baseDir, someDir string) string {
 	if baseNorm == someNorm {
 		return ""
 	}
-	someOffset := someNorm
-	pattern := filepath.Join(baseNorm, "*")
-	if didMatch, _ := filepath.Match(pattern, someNorm); didMatch {
-		lx := len(baseNorm)
-		idx := lx + 1
-		if idx < len(someNorm) {
-			someOffset = someNorm[idx:]
-		}
+	rel, err := filepath.Rel(baseNorm, someNorm)
+	if err != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
+		return ""
 	}
-	return someOffset
+	return rel
 }
