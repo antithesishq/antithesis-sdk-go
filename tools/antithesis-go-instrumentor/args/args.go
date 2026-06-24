@@ -13,20 +13,20 @@ import (
 
 // Args holds the parsed command-line arguments.
 type Args struct {
-	ExcludeFile       string
-	SymPrefix         string
-	InputDir          string
-	OutputDir         string
+	ExcludeFile         string
+	SymPrefix           string
+	InputDir            string
+	OutputDir           string
 	InstrumentorVersion string
-	LocalSDKPath      string
-	VersionText       string
-	LogFile           string
-	VerbosityLevel    common.Verbosity
-	ShowVersion       bool
-	InvalidArgs       bool
-	WantsInstrumentor bool
-	SkipTestFiles     bool
-	SkipProtoBufFiles bool
+	LocalSDKPath        string
+	VersionText         string
+	LogFile             string
+	VerbosityLevel      common.Verbosity
+	ShowVersion         bool
+	InvalidArgs         bool
+	WantsInstrumentor   bool
+	SkipTestFiles       bool
+	SkipProtoBufFiles   bool
 }
 
 func ParseArgs(versionText string, thisVersion string) *Args {

@@ -1,5 +1,24 @@
 # Changelog
 
+## 0.7.2 - 2026-05-13
+
+Fix `PathFromBaseDirectory` mispathing multi-level submodules. Its
+`filepath.Match` pattern was `baseDir/*`, which does not cross path
+separators — so any customer submodule nested two or more levels deep
+had its modified `go.mod` written to `customer/<input-abspath>/...`
+instead of `customer/<rel-path>/...`. Now uses `filepath.Rel`. Affected
+any non-trivial Go monorepo (etcd, k8s, etc.) since the instrumented
+output of deep submodules was non-functional. (ENG-3940)
+
+## 0.7.1 - 2026-05-13
+
+Fix the instrumentor leaking the host's Go version into the notifier
+module's `go.mod`, which caused `go mod tidy` to bump every customer
+module's `go` directive (and drop `toolchain`) just because it now
+required the notifier. The notifier's `go` directive is now pinned to
+the minimum across the customer modules the instrumentor touches, and
+`toolchain` is omitted.
+
 ## 0.7.0 - 2026-03-20
 
 Fix assertion cataloging for Go modules that produce multiple binaries.
@@ -57,4 +76,3 @@ Improvements to assertion cataloging and to documentation.
 ## 0.3.5 - 2024-05-02
 
 Fixing a bug where instrumentor `cp` didn't work on MacOS.
-

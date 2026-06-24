@@ -20,9 +20,9 @@ type Verbosity int
 
 const (
 	Normal Verbosity = 0
-	Info  Verbosity = 1
-	Debug Verbosity = 2
-	Trace Verbosity = 3
+	Info   Verbosity = 1
+	Debug  Verbosity = 2
+	Trace  Verbosity = 3
 )
 
 type LogWriter struct {

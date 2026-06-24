@@ -1,8 +1,6 @@
-module example.com/e2e-test
+module example.com/deep-test
 
-go 1.24.5
-
-toolchain go1.24.7
+go 1.24.0
 
 require github.com/antithesishq/antithesis-sdk-go v0.0.0
 
