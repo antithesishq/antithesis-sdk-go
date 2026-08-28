@@ -1,0 +1,22 @@
+package sample
+
+import __antithesis_instrumentation__ "antithesis.notifier/instrumentation"
+
+
+//line input.go:3
+var ready bool
+
+
+//line input.go:7
+func init() {
+	ready = true
+}
+
+
+//line input.go:11
+func Ready() bool {
+	__antithesis_instrumentation__.Notify(1)
+	
+//line input.go:12
+	return ready
+}

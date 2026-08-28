@@ -23,63 +23,74 @@ func TestE2E(t *testing.T) {
 	sdkRoot, err := filepath.Abs(filepath.Join("..", ".."))
 	qt.Assert(t, qt.IsNil(err))
 
-	// Copy input fixture to a temp dir so we don't modify testdata, and
-	// rewrite the replace directive to use an absolute SDK path (the
-	// relative path in the checked-in go.mod won't resolve from a temp dir).
-	inputDir := filepath.Join(t.TempDir(), "input")
-	copyDir(t, "testdata/input", inputDir)
-	rewriteReplace(t, filepath.Join(inputDir, "go.mod"), sdkRoot)
-
-	// Run the instrumentor with -local_sdk_path so it works in
-	// sandboxed builds (e.g. Nix) where GOPROXY=off.
-	outputDir := filepath.Join(t.TempDir(), "output")
-	err = os.MkdirAll(outputDir, 0755)
-	qt.Assert(t, qt.IsNil(err))
-	runCmd(t, ".", instrumentorBin, "-local_sdk_path", sdkRoot, inputDir, outputDir)
-
-	expectedDir := "testdata/expected_output"
-
-	// Compare files that should match after normalization.
-	for _, relPath := range []string{
-		"customer/main.go",
-		"customer/go.mod",
-		"notifier/notifier.go",
-		"notifier/go.mod",
+	for _, be := range []struct {
+		name       string
+		args       []string
+		mainGolden string
+	}{
+		{"ast_rewriting", nil, "customer/main.go"},
+		{"source_editing", []string{"-source_editing"}, "customer/main.source_editing.go"},
 	} {
-		t.Run(relPath, func(t *testing.T) {
-			expected, err := os.ReadFile(filepath.Join(expectedDir, relPath))
-			qt.Assert(t, qt.IsNil(err))
-			actual, err := os.ReadFile(filepath.Join(outputDir, relPath))
-			qt.Assert(t, qt.IsNil(err))
-			qt.Check(t, qt.Equals(
-				normalizeContent(string(actual)),
-				normalizeContent(string(expected)),
-			))
+		t.Run(be.name, func(t *testing.T) {
+			// Copy input fixture to a temp dir so we don't modify testdata, and
+			// rewrite the replace directive to use an absolute SDK path (the
+			// relative path in the checked-in go.mod won't resolve from a temp dir).
+			inputDir := filepath.Join(t.TempDir(), "input")
+			copyDir(t, "testdata/input", inputDir)
+			rewriteReplace(t, filepath.Join(inputDir, "go.mod"), sdkRoot)
+
+			// Run the instrumentor with -local_sdk_path so it works in
+			// sandboxed builds (e.g. Nix) where GOPROXY=off.
+			outputDir := filepath.Join(t.TempDir(), "output")
+			qt.Assert(t, qt.IsNil(os.MkdirAll(outputDir, 0755)))
+			args := append(append([]string{}, be.args...), "-local_sdk_path", sdkRoot, inputDir, outputDir)
+			runCmd(t, ".", instrumentorBin, args...)
+
+			expectedDir := "testdata/expected_output"
+
+			// Compare files that should match after normalization.
+			for _, f := range []struct{ actual, golden string }{
+				{"customer/main.go", be.mainGolden},
+				{"customer/go.mod", "customer/go.mod"},
+				{"notifier/notifier.go", "notifier/notifier.go"},
+				{"notifier/go.mod", "notifier/go.mod"},
+			} {
+				t.Run(f.actual, func(t *testing.T) {
+					expected, err := os.ReadFile(filepath.Join(expectedDir, f.golden))
+					qt.Assert(t, qt.IsNil(err))
+					actual, err := os.ReadFile(filepath.Join(outputDir, f.actual))
+					qt.Assert(t, qt.IsNil(err))
+					qt.Check(t, qt.Equals(
+						normalizeContent(string(actual)),
+						normalizeContent(string(expected)),
+					))
+				})
+			}
+
+			// notifier/go.sum won't exist because we use the local sdk
+
+			// Compare symbol table (filename contains a content hash, so glob for it).
+			t.Run("symbols", func(t *testing.T) {
+				expectedFiles, err := filepath.Glob(filepath.Join(expectedDir, "symbols", "*.sym.tsv"))
+				qt.Assert(t, qt.IsNil(err))
+				qt.Assert(t, qt.HasLen(expectedFiles, 1))
+
+				actualFiles, err := filepath.Glob(filepath.Join(outputDir, "symbols", "*.sym.tsv"))
+				qt.Assert(t, qt.IsNil(err))
+				qt.Assert(t, qt.HasLen(actualFiles, 1))
+
+				expected, err := os.ReadFile(expectedFiles[0])
+				qt.Assert(t, qt.IsNil(err))
+				actual, err := os.ReadFile(actualFiles[0])
+				qt.Assert(t, qt.IsNil(err))
+
+				qt.Check(t, qt.Equals(
+					normalizeContent(string(actual)),
+					normalizeContent(string(expected)),
+				))
+			})
 		})
 	}
-
-	// notifier/go.sum won't exist because we use the local sdk
-
-	// Compare symbol table (filename contains a content hash, so glob for it).
-	t.Run("symbols", func(t *testing.T) {
-		expectedFiles, err := filepath.Glob(filepath.Join(expectedDir, "symbols", "*.sym.tsv"))
-		qt.Assert(t, qt.IsNil(err))
-		qt.Assert(t, qt.HasLen(expectedFiles, 1))
-
-		actualFiles, err := filepath.Glob(filepath.Join(outputDir, "symbols", "*.sym.tsv"))
-		qt.Assert(t, qt.IsNil(err))
-		qt.Assert(t, qt.HasLen(actualFiles, 1))
-
-		expected, err := os.ReadFile(expectedFiles[0])
-		qt.Assert(t, qt.IsNil(err))
-		actual, err := os.ReadFile(actualFiles[0])
-		qt.Assert(t, qt.IsNil(err))
-
-		qt.Check(t, qt.Equals(
-			normalizeContent(string(actual)),
-			normalizeContent(string(expected)),
-		))
-	})
 }
 
 func TestE2EMultiModule(t *testing.T) {

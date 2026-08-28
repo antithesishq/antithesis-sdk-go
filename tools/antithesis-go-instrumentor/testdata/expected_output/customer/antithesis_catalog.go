@@ -27,10 +27,10 @@ func init() {
   var noDetails map[string]any = nil
 
   // Reachable(message, details)
-  assert.AssertRaw(condTrue, "reached the else branch", noDetails, "example.com/e2e-test", "foo", "main.go", 14, notHit, mustBeHit, reachabilityTest, "Reachable", "reached the else branch")
+  assert.AssertRaw(condTrue, "reached the else branch", noDetails, "example.com/e2e-test", "foo", "main.go", 14, 0, notHit, mustBeHit, reachabilityTest, "Reachable", "reached the else branch")
 
   // Always(cond, message, details)
-  assert.AssertRaw(condFalse, "always in main", noDetails, "example.com/e2e-test", "main", "main.go", 20, notHit, mustBeHit, universalTest, "Always", "always in main")
+  assert.AssertRaw(condFalse, "always in main", noDetails, "example.com/e2e-test", "main", "main.go", 20, 0, notHit, mustBeHit, universalTest, "Always", "always in main")
 }
 
 

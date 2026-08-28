@@ -1,0 +1,10 @@
+//line input.go:1:1
+package sample; import __antithesis_instrumentation__ "antithesis.notifier/instrumentation"
+
+func Sum(xs []int) int {__antithesis_instrumentation__.Notify(1)
+	total := 0
+	for i := 0; i < len(xs); i++ {__antithesis_instrumentation__.Notify(3)
+		total += xs[i]
+	}
+	__antithesis_instrumentation__.Notify(2); return total
+}

@@ -1,0 +1,12 @@
+package sample
+
+import (
+	__antithesis_instrumentation__ "antithesis.notifier/instrumentation"
+	"runtime"
+)
+
+func Where() string {
+	__antithesis_instrumentation__.Notify(1)
+	_, file, _, _ := runtime.Caller(0)
+	return file
+}

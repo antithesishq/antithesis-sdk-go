@@ -1,0 +1,19 @@
+//line input.go:1:1
+//go:build !antithesis_ignore
+// +build !antithesis_ignore
+
+package sample; import __antithesis_instrumentation__ "antithesis.notifier/instrumentation"
+
+// Classify has a body to instrument. The point of this case is the build
+// constraints above: the instrumentor must keep both the //go:build and the
+// legacy // +build lines verbatim, and must place its own leading //line
+// directive ABOVE them. A //line is itself a line comment, which the build-tag
+// scanner skips over, so the constraints still gate compilation. The
+// antithesis_ignore tag is never set, so the constraints are always satisfied
+// and the file always compiles.
+func Classify(n int) string {__antithesis_instrumentation__.Notify(1)
+	if n < 0 {__antithesis_instrumentation__.Notify(3)
+		return "negative"
+	} else {__antithesis_instrumentation__.Notify(4)}
+	__antithesis_instrumentation__.Notify(2); return "nonneg"
+}

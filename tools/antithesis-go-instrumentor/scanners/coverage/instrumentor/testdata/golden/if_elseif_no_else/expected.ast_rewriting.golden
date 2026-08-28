@@ -1,0 +1,37 @@
+package sample
+
+import __antithesis_instrumentation__ "antithesis.notifier/instrumentation"
+
+
+//line input.go:6
+func Grade(n int) string {
+	__antithesis_instrumentation__.Notify(1)
+	
+//line input.go:7
+	if n >= 90 {
+		__antithesis_instrumentation__.Notify(3)
+		
+//line input.go:8
+		return "A"
+		
+//line input.go:9
+	} else {
+		__antithesis_instrumentation__.Notify(4)
+		
+//line input.go:9
+		if n >= 80 {
+			__antithesis_instrumentation__.Notify(5)
+			
+//line input.go:10
+			return "B"
+			
+//line input.go:11
+		} else {
+			__antithesis_instrumentation__.Notify(6)
+		}
+	}
+	__antithesis_instrumentation__.Notify(2)
+	
+//line input.go:12
+	return "C"
+}

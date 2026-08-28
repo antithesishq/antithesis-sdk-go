@@ -1,6 +1,6 @@
 package random
 
-import "math/rand"
+import "math"
 
 // RandomChoice returns a randomly chosen item from a list of options. You should not store this value, but should use it immediately.
 //
@@ -11,7 +11,15 @@ func RandomChoice[T any](things []T) T {
 		var nullThing T
 		return nullThing
 	}
+	if numThings == 1 {
+		return things[0]
+	}
 
-	index := rand.New(Source()).Intn(numThings)
-	return things[index]
+	n := uint64(numThings)
+	ceiling := (math.MaxUint64 / n) * n
+	v := GetRandom()
+	for v >= ceiling {
+		v = GetRandom()
+	}
+	return things[v%n]
 }

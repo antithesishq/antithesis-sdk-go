@@ -27,6 +27,7 @@ type Args struct {
 	WantsInstrumentor   bool
 	SkipTestFiles       bool
 	SkipProtoBufFiles   bool
+	SourceEditing       bool
 }
 
 func ParseArgs(versionText string, thisVersion string) *Args {
@@ -41,6 +42,7 @@ func ParseArgs(versionText string, thisVersion string) *Args {
 	localSDKPathPtr := flag.String("local_sdk_path", "", "path to the local Antithesis SDK")
 	skipTestFilesPtr := flag.Bool("skip_test_files", false, "Skip instrumentation and cataloging for '*_test.go' files (default to false)")
 	skipProtoBufFilesPtr := flag.Bool("skip_protobuf_files", false, "Skip instrumentation and cataloging for '*.pb.go' files (default to false)")
+	sourceEditingPtr := flag.Bool("source_editing", false, "use the source-editing (edit-buffer) coverage instrumentor instead of the AST-rewriting one; preserves comments and source line numbers (experimental, default to false)")
 	flag.Parse()
 
 	args := Args{
@@ -62,6 +64,7 @@ func ParseArgs(versionText string, thisVersion string) *Args {
 	args.VersionText = versionText
 	args.SkipTestFiles = *skipTestFilesPtr
 	args.SkipProtoBufFiles = *skipProtoBufFilesPtr
+	args.SourceEditing = *sourceEditingPtr
 
 	// Verify we have the expected number of positional arguments
 	numArgsRequired := 1
@@ -142,6 +145,9 @@ func (args *Args) ShowArguments() {
 	}
 	if args.SkipProtoBufFiles {
 		logger.Printf(common.Normal, "skipProtoBufFiles: %t", args.SkipProtoBufFiles)
+	}
+	if args.SourceEditing {
+		logger.Printf(common.Normal, "sourceEditing: %t", args.SourceEditing)
 	}
 }
 

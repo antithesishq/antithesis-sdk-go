@@ -1,0 +1,9 @@
+# language = Go
+# instrumentor = INSTRUMENTOR
+# module = testmodule
+file	function	begin_line	begin_column	end_line	end_column	address
+program.go	classify	20	29	21	11	1
+program.go	classify	24	2	24	17	2
+program.go	classify	21	11	23	3	3
+program.go	classify	23	3	24	1	4
+program.go	main	27	13	30	2	5

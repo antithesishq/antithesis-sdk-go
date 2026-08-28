@@ -1,0 +1,30 @@
+//line input.go:1:1
+package sample; import __antithesis_instrumentation__ "antithesis.notifier/instrumentation"
+
+import _ "embed"
+
+// before sits ahead of the //go:embed var, mirroring the old ticket's repro
+// (a function precedes the directive). The instrumentor rewrites this
+// function; we then check that the embed below still populates the var.
+func before() {__antithesis_instrumentation__.Notify(1)
+	println("before")
+}
+
+//go:embed hello.txt
+var hello string
+
+// Sum ranges over the embedded string (as the ticket did with `range hello`)
+// and returns the byte sum, exercising instrumentation right after the embed.
+func Sum() int {__antithesis_instrumentation__.Notify(2)
+	total := 0
+	for _, b := range hello {__antithesis_instrumentation__.Notify(4)
+		total += int(b)
+	}
+	__antithesis_instrumentation__.Notify(3); return total
+}
+
+// Hello returns the embedded contents so a test can confirm the embed
+// actually happened -- not just that the file compiled.
+func Hello() string {__antithesis_instrumentation__.Notify(5)
+	return hello
+}

@@ -1,0 +1,9 @@
+# language = Go
+# instrumentor = INSTRUMENTOR
+# module = testmodule
+file	function	begin_line	begin_column	end_line	end_column	address
+program.go	chain	12	34	14	2	1
+program.go	chain	13	14	13	22	2
+program.go	chain	13	20	13	21	3
+program.go	chain	13	26	13	27	4
+program.go	main	16	13	18	2	5

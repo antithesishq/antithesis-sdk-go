@@ -1,0 +1,10 @@
+# language = Go
+# instrumentor = INSTRUMENTOR
+# module = testmodule
+file	function	begin_line	begin_column	end_line	end_column	address
+input.go	Grid	3	22	5	25	1
+input.go	Grid	12	2	12	12	2
+input.go	Grid	5	25	6	26	3
+input.go	Grid	6	26	7	20	4
+input.go	Grid	7	20	9	5	5
+input.go	Grid	9	5	10	1	6

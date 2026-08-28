@@ -1,5 +1,24 @@
 # Changelog
 
+## 0.8.0 - 2026-08-28
+
+Adds a new -source_editing flag to the `antithesis-go-instrumentor` tool that
+is designed to maintain compiler directives such as `//go:emed` with higher 
+fidelity to the original source. 
+
+Significant performance improvements for
+assertions.
+
+Clean up some inconsistencies between the initialization messages emitted by
+the Go SDK vs. others.
+
+Upgrade to instrumentation ABI v2 -- Go now supports coverage leases.
+
+When used in local debug mode, the output file (`ANTITHESIS_SDK_LOCAL_OUTPUT`) 
+will no longer be truncated at initialization.
+
+`assert.AssertRaw` takes a `column` parameter after `line`, like the raw assertion entry points of the other SDKs. The high-level assertion functions and the instrumentor's generated registrations still record column 0.
+
 ## 0.7.2 - 2026-05-13
 
 Fix `PathFromBaseDirectory` mispathing multi-level submodules. Its

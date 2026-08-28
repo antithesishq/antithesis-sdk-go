@@ -1,0 +1,14 @@
+# language = Go
+# instrumentor = INSTRUMENTOR
+# module = main
+file	function	begin_line	begin_column	end_line	end_column	address
+main.go	run	14	38	15	17	1
+main.go	run	27	2	27	18	2
+main.go	run	16	2	19	27	3
+main.go	run	20	2	23	35	4
+main.go	run	24	2	25	22	5
+main.go	run	26	2	26	3	6
+main.go	main	30	13	32	22	7
+main.go	main	35	2	36	10	8
+main.go	main	32	22	34	3	9
+main.go	main	34	3	35	1	10

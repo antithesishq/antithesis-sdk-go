@@ -1,14 +1,13 @@
-diff --git a/internal/html/tmpl/package.html b/internal/html/tmpl/package.html
-index b081d51c30..551076b084 100644
 --- a/internal/html/tmpl/package.html
 +++ b/internal/html/tmpl/package.html
-@@ -8,14 +8,14 @@
+@@ -6,15 +6,15 @@
  {{ define "NavbarExtra" }} | <a href="#pkg-index">Index</a>{{ end -}}
  
  {{ define "Body" -}}
 -<h2 id="pkg-overview" {{- if pagefind }} data-pagefind-meta="Import path:{{ .ImportPath }}"{{end }}>
 +<h1 id="pkg-overview" {{- if pagefind }} data-pagefind-meta="Import path:{{ .ImportPath }}"{{end }}>
-   {{- with .BinName }}{{ . }}{{ else }}package {{ .Name }}{{ end -}}
+   {{- /**/ -}}
+   package {{ .Name -}}
 -</h2>
 +</h1>
  {{ .Import | code }}
@@ -20,7 +19,7 @@ index b081d51c30..551076b084 100644
  {{ if or .Constants .Variables .Functions .Types -}}
  <ul {{- pagefindIgnore -}}>
    {{ if .Constants }}<li><a href="#pkg-constants">Constants</a></li>{{ end -}}
-@@ -42,7 +42,7 @@
+@@ -41,7 +41,7 @@
  {{- end }}
  
  {{- with .AllExamples -}}
@@ -29,7 +28,7 @@ index b081d51c30..551076b084 100644
  <ul>
    {{ range . -}}
      {{- $id := printf "example-%s" .Parent.String -}}
-@@ -55,20 +55,20 @@
+@@ -54,20 +54,20 @@
  {{- end -}}
  
  {{ with .Constants -}}
@@ -54,7 +53,7 @@ index b081d51c30..551076b084 100644
      {{- if .Deprecated }}</summary>{{ end }}
      {{ .Decl | code }}
      {{ .Doc | doc 4 -}}
-@@ -78,10 +78,10 @@
+@@ -77,10 +77,10 @@
  {{ end -}}
  
  {{ with .Types -}}
@@ -67,7 +66,7 @@ index b081d51c30..551076b084 100644
      {{- if .Deprecated }}</summary>{{ end }}
      {{ .Decl | code }}
      {{ .Doc | doc 4 -}}
-@@ -120,7 +120,7 @@
+@@ -119,7 +119,7 @@
    {{ $id := .Name -}}
    {{ with .RecvType }}{{ $id = printf "%s.%s" . $id }}{{ end -}}
    {{ if .Deprecated }}<details class="deprecated"><summary>{{ end -}}

@@ -1,0 +1,38 @@
+// The right operand of && is a func literal with control flow of its own.
+// The short-circuit rewrite must instrument inside the literal's body (the
+// AST-rewriting backend does), not copy it verbatim.
+package sample
+
+import __antithesis_instrumentation__ "antithesis.notifier/instrumentation"
+
+
+//line input.go:6
+func hasBig(a bool, n int) bool {
+	__antithesis_instrumentation__.Notify(1)
+	
+//line input.go:7
+	return a && func() bool {
+		__antithesis_instrumentation__.Notify(2)
+		
+//line input.go:7
+		return func() bool {
+			__antithesis_instrumentation__.Notify(3)
+			
+//line input.go:8
+			if n > 1 {
+				__antithesis_instrumentation__.Notify(5)
+				
+//line input.go:9
+				return true
+				
+//line input.go:10
+			} else {
+				__antithesis_instrumentation__.Notify(6)
+			}
+			__antithesis_instrumentation__.Notify(4)
+			
+//line input.go:11
+			return false
+		}() == true
+	}() == true
+}

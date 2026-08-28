@@ -47,6 +47,7 @@ func TestCatalogContents(t *testing.T) {
 	}
 
 	genInfo := GenInfo{
+		PackageName:         "main",
 		ExpectedVals:        expects,
 		NumericGuidanceVals: nil,
 		BooleanGuidanceVals: nil,
@@ -60,7 +61,7 @@ func TestCatalogContents(t *testing.T) {
 	}
 
 	common.NewLogWriter("", common.Normal)
-	GenerateAssertionsCatalog(outputDir, &genInfo)
+	qt.Assert(t, qt.IsNil(GenerateAssertionsCatalog(outputDir, &genInfo)))
 
 	// Verify the file was created
 	outputPath := filepath.Join(outputDir, common.GENERATED_CATALOG_FILE)
@@ -102,6 +103,7 @@ func TestCatalogNumericGuidance(t *testing.T) {
 	}
 
 	genInfo := GenInfo{
+		PackageName:         "main",
 		ExpectedVals:        nil,
 		NumericGuidanceVals: numericGuidance,
 		BooleanGuidanceVals: nil,
@@ -114,7 +116,7 @@ func TestCatalogNumericGuidance(t *testing.T) {
 		ConstMap:            make(map[string]bool),
 	}
 
-	GenerateAssertionsCatalog(outputDir, &genInfo)
+	qt.Assert(t, qt.IsNil(GenerateAssertionsCatalog(outputDir, &genInfo)))
 
 	outputPath := filepath.Join(outputDir, common.GENERATED_CATALOG_FILE)
 	content, err := os.ReadFile(outputPath)

@@ -1,0 +1,9 @@
+# language = Go
+# instrumentor = INSTRUMENTOR
+# module = beta
+file	function	begin_line	begin_column	end_line	end_column	address
+beta/beta.go	Total	5	23	7	25	1
+beta/beta.go	Total	12	2	12	14	2
+beta/beta.go	Total	7	25	8	15	3
+beta/beta.go	Total	8	15	10	4	4
+beta/beta.go	Total	10	4	11	1	5

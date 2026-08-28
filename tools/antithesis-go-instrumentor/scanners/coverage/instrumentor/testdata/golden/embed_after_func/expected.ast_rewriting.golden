@@ -1,0 +1,48 @@
+package sample
+
+import (
+	__antithesis_instrumentation__ "antithesis.notifier/instrumentation"
+	_ "embed"
+)
+
+//line input.go:8
+func before() {
+	__antithesis_instrumentation__.
+
+		//go:embed hello.txt
+		Notify(1)
+
+//line input.go:9
+	println("before")
+}
+
+//line input.go:13
+var hello string
+
+//line input.go:17
+func Sum() int {
+	__antithesis_instrumentation__.Notify(2)
+
+//line input.go:18
+	total := 0
+
+//line input.go:19
+	for _, b := range hello {
+		__antithesis_instrumentation__.Notify(4)
+
+//line input.go:20
+		total += int(b)
+	}
+	__antithesis_instrumentation__.Notify(3)
+
+//line input.go:22
+	return total
+}
+
+//line input.go:27
+func Hello() string {
+	__antithesis_instrumentation__.Notify(5)
+
+//line input.go:28
+	return hello
+}

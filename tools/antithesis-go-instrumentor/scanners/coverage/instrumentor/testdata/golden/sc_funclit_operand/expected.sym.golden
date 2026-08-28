@@ -1,0 +1,10 @@
+# language = Go
+# instrumentor = INSTRUMENTOR
+# module = testmodule
+file	function	begin_line	begin_column	end_line	end_column	address
+input.go	hasBig	6	33	7	26	1
+input.go	hasBig	7	14	7	26	2
+input.go	hasBig	7	26	8	12	3
+input.go	hasBig	11	3	11	15	4
+input.go	hasBig	8	12	10	4	5
+input.go	hasBig	10	4	11	1	6

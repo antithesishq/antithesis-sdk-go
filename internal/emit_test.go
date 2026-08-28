@@ -8,10 +8,8 @@ import (
 	"testing"
 )
 
-var test_result bool
-
 func TestLocalHandlerFileOutput(t *testing.T) {
-	path := os.TempDir() + string(os.PathSeparator) + "antithesis-test.log"
+	path := t.TempDir() + string(os.PathSeparator) + "antithesis-test.log"
 	os.Setenv(localOutputEnvVar, path)
 	defer os.Unsetenv(localOutputEnvVar)
 	handler = openLocalHandler()
@@ -45,26 +43,5 @@ func TestLocalHandlerNop(t *testing.T) {
 	}
 	if h.outputFile != nil {
 		panic("Should not be outputting to file")
-	}
-}
-
-func TestVoidstarHandlerErr1(t *testing.T) {
-	_, err := openSharedLib("path-not-exists")
-	if err == nil {
-		panic("Should failed to load library")
-	}
-}
-
-func TestVoidstarHandlerErr2(t *testing.T) {
-	_, err := openSharedLib(os.Args[0])
-	if err == nil {
-		panic("Should failed to load library")
-	}
-}
-
-func TestVoidstarHandlerErr3(t *testing.T) {
-	_, err := openSharedLib("libc.so.6")
-	if err == nil {
-		panic("Should failed to load library")
 	}
 }

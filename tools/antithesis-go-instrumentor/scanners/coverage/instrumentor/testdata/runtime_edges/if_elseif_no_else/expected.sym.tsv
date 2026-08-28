@@ -1,0 +1,11 @@
+# language = Go
+# instrumentor = INSTRUMENTOR
+# module = testmodule
+file	function	begin_line	begin_column	end_line	end_column	address
+program.go	grade	14	26	15	13	1
+program.go	grade	20	2	20	12	2
+program.go	grade	15	13	17	3	3
+program.go	grade	17	3	17	20	4
+program.go	grade	17	20	19	3	5
+program.go	grade	19	3	20	1	6
+program.go	main	23	13	26	2	7
