@@ -1,0 +1,8 @@
+# language = Go
+# instrumentor = INSTRUMENTOR
+# module = alpha
+file	function	begin_line	begin_column	end_line	end_column	address
+alpha/alpha.go	Describe	5	29	6	11	1
+alpha/alpha.go	Describe	9	2	9	41	2
+alpha/alpha.go	Describe	6	11	8	3	3
+alpha/alpha.go	Describe	8	3	9	1	4

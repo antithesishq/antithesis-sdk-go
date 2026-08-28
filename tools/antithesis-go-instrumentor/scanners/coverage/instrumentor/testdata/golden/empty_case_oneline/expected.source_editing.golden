@@ -1,0 +1,12 @@
+//line input.go:1:1
+// An empty case clause written on the same line as the following clause:
+// `case 0: case 1: ...`. The instrumentor inserts a Notify after every
+// `case:`; for the empty clause it must keep a separator, or the result fuses
+// into `Notify(e) case 1:`, which does not parse (automatic semicolon
+// insertion only fires at line ends). Deliberately not gofmt-formatted.
+package sample; import __antithesis_instrumentation__ "antithesis.notifier/instrumentation"
+
+func pick(n int) int {__antithesis_instrumentation__.Notify(1)
+	switch n { case 0:__antithesis_instrumentation__.Notify(3); case 1:__antithesis_instrumentation__.Notify(4); return 1 ; default: __antithesis_instrumentation__.Notify(5);}
+	__antithesis_instrumentation__.Notify(2); return 0
+}

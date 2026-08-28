@@ -1,0 +1,12 @@
+//line input.go:1:1
+package sample; import __antithesis_instrumentation__ "antithesis.notifier/instrumentation"
+
+// Both/Either exercise the && and || rewrite: the right operand is wrapped
+// in an instrumented closure compared against the intrinsic true.
+func Both(a, b bool) bool {__antithesis_instrumentation__.Notify(1)
+	return a && func() bool { __antithesis_instrumentation__.Notify(2); return (b) == true }() == true
+}
+
+func Either(a, b bool) bool {__antithesis_instrumentation__.Notify(3)
+	return a || func() bool { __antithesis_instrumentation__.Notify(4); return (b) == true }() == true
+}

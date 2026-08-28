@@ -49,6 +49,12 @@ type CoverageConfig struct {
 	// created and written to during instrumentation.
 	// Will contain the antithesis notifier module (go.mod) and source (notifier.go)
 	notifierDirectory string
+
+	// UseSourceEditing selects the source-editing (edit-buffer) instrumentor
+	// instead of the default AST-rewriting one. Opt-in for now; the default is
+	// expected to flip once the source-editing path has proven itself, after
+	// which the AST-rewriting implementation will be removed.
+	UseSourceEditing bool
 }
 
 func NewCoverageConfig(args *args.Args) (*CoverageConfig, error) {
@@ -77,6 +83,7 @@ func NewCoverageConfig(args *args.Args) (*CoverageConfig, error) {
 		instrumentorVersion: args.InstrumentorVersion,
 		localSDKPath:        args.LocalSDKPath,
 		notifierDirectory:   notifierDirectory,
+		UseSourceEditing:    args.SourceEditing,
 	}, nil
 }
 

@@ -1,0 +1,25 @@
+package sample
+
+import __antithesis_instrumentation__ "antithesis.notifier/instrumentation"
+
+
+//line input.go:5
+func Sign(n int) int {
+	__antithesis_instrumentation__.Notify(1)
+	
+//line input.go:6
+	if n > 0 {
+		__antithesis_instrumentation__.Notify(3)
+		
+//line input.go:7
+		return 1
+		
+//line input.go:8
+	} else {
+		__antithesis_instrumentation__.Notify(4)
+	}
+	__antithesis_instrumentation__.Notify(2)
+	
+//line input.go:9
+	return 0
+}

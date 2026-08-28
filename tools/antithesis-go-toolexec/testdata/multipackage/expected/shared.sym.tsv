@@ -1,0 +1,15 @@
+# language = Go
+# instrumentor = INSTRUMENTOR
+# module = shared
+file	function	begin_line	begin_column	end_line	end_column	address
+shared/shared.go	Classify	5	29	6	11	1
+shared/shared.go	Classify	9	2	9	11	2
+shared/shared.go	Classify	12	2	12	15	3
+shared/shared.go	Classify	6	11	8	3	4
+shared/shared.go	Classify	8	3	9	1	5
+shared/shared.go	Classify	9	11	11	3	6
+shared/shared.go	Classify	11	3	12	1	7
+shared/shared.go	Scale	15	23	16	14	8
+shared/shared.go	Scale	19	2	19	14	9
+shared/shared.go	Scale	16	14	18	3	10
+shared/shared.go	Scale	18	3	19	1	11

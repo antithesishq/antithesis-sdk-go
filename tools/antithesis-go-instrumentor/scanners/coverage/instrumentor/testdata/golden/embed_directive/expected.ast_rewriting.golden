@@ -1,0 +1,19 @@
+package sample
+
+import (
+	__antithesis_instrumentation__ "antithesis.notifier/instrumentation"
+	_ "embed"
+)
+
+//go:embed input.go
+
+//line input.go:9
+var data string
+
+//line input.go:11
+func Data() string {
+	__antithesis_instrumentation__.Notify(1)
+
+//line input.go:12
+	return data
+}

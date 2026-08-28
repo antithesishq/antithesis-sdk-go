@@ -1,0 +1,11 @@
+//line input.go:1:1
+package sample; import __antithesis_instrumentation__ "antithesis.notifier/instrumentation"
+
+func Name(n int) string {__antithesis_instrumentation__.Notify(1)
+	switch n {
+	case 1:__antithesis_instrumentation__.Notify(2)
+		return "one"
+	default:__antithesis_instrumentation__.Notify(3)
+		return "many"
+	}
+}

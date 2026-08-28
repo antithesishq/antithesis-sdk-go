@@ -1,0 +1,14 @@
+//line input.go:1:1
+package sample; import __antithesis_instrumentation__ "antithesis.notifier/instrumentation"
+
+func Grid(n int) int {__antithesis_instrumentation__.Notify(1)
+	sum := 0
+	for i := 0; i < n; i++ {__antithesis_instrumentation__.Notify(3)
+		for j := 0; j < n; j++ {__antithesis_instrumentation__.Notify(4)
+			if (i+j)%2 == 0 {__antithesis_instrumentation__.Notify(5)
+				sum += i * j
+			} else {__antithesis_instrumentation__.Notify(6)}
+		}
+	}
+	__antithesis_instrumentation__.Notify(2); return sum
+}

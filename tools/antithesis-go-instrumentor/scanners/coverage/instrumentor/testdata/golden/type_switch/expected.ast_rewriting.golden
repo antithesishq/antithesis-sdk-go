@@ -1,0 +1,31 @@
+package sample
+
+import __antithesis_instrumentation__ "antithesis.notifier/instrumentation"
+
+
+//line input.go:3
+func Kind(x any) string {
+	__antithesis_instrumentation__.Notify(1)
+	
+//line input.go:4
+	switch x.(type) {
+	
+//line input.go:5
+	case int:
+		__antithesis_instrumentation__.Notify(3)
+		
+//line input.go:6
+		return "int"
+		
+//line input.go:7
+	case string:
+		__antithesis_instrumentation__.Notify(4)
+		
+//line input.go:8
+		return "string"
+	}
+	__antithesis_instrumentation__.Notify(2)
+	
+//line input.go:10
+	return "other"
+}

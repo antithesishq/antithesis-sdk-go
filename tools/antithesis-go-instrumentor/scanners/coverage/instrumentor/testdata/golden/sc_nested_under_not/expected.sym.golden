@@ -1,0 +1,7 @@
+# language = Go
+# instrumentor = INSTRUMENTOR
+# module = testmodule
+file	function	begin_line	begin_column	end_line	end_column	address
+input.go	neither	6	33	8	2	1
+input.go	neither	7	14	7	23	2
+input.go	neither	7	21	7	22	3

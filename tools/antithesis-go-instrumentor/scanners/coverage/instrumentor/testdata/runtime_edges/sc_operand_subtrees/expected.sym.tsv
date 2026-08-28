@@ -1,0 +1,14 @@
+# language = Go
+# instrumentor = INSTRUMENTOR
+# module = testmodule
+file	function	begin_line	begin_column	end_line	end_column	address
+program.go	funcLitOperand	22	41	23	26	1
+program.go	funcLitOperand	23	14	23	26	2
+program.go	funcLitOperand	23	26	24	12	3
+program.go	funcLitOperand	27	3	27	15	4
+program.go	funcLitOperand	24	12	26	4	5
+program.go	funcLitOperand	26	4	27	1	6
+program.go	nestedUnderNot	31	40	33	2	7
+program.go	nestedUnderNot	32	14	32	23	8
+program.go	nestedUnderNot	32	21	32	22	9
+program.go	main	35	13	38	2	10

@@ -1,0 +1,14 @@
+//line input.go:1:1
+package sample; import __antithesis_instrumentation__ "antithesis.notifier/instrumentation"
+
+// Name's switch has no default; the instrumentor appends an empty default
+// case to capture the fall-through path.
+func Name(n int) string {__antithesis_instrumentation__.Notify(1)
+	switch n {
+	case 1:__antithesis_instrumentation__.Notify(3)
+		return "one"
+	case 2:__antithesis_instrumentation__.Notify(4)
+		return "two"
+	default: __antithesis_instrumentation__.Notify(5);}
+	__antithesis_instrumentation__.Notify(2); return "many"
+}

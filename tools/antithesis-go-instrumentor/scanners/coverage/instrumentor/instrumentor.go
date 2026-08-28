@@ -703,7 +703,7 @@ func (instrumentor *Instrumentor) VisitAndInstrument(node ast.Node) ast.Visitor 
 		}
 		if !hasDefault {
 			// Add default case to get additional coverage.
-			n.Body.List = append(n.Body.List, &ast.CaseClause{})
+			n.Body.List = append(n.Body.List, &ast.CaseClause{Case: n.Body.Rbrace, Colon: n.Body.Rbrace})
 		}
 
 		// Don't annotate an empty switch - creates a syntax error.
@@ -725,7 +725,7 @@ func (instrumentor *Instrumentor) VisitAndInstrument(node ast.Node) ast.Visitor 
 			// Wrap this comparison in a closure.
 			closureWithInstrumentation := &ast.FuncLit{
 				Type: &ast.FuncType{Results: &ast.FieldList{List: []*ast.Field{{Type: ast.NewIdent("bool")}}}},
-				Body: &ast.BlockStmt{Lbrace: n.Y.End(), List: []ast.Stmt{&ast.ReturnStmt{Results: []ast.Expr{compareYToTrue}}}, Rbrace: n.OpPos},
+				Body: &ast.BlockStmt{Lbrace: n.Y.Pos(), List: []ast.Stmt{&ast.ReturnStmt{Results: []ast.Expr{compareYToTrue}}}, Rbrace: n.Y.End() - 1},
 			}
 			closureCallExpression := &ast.CallExpr{
 				Lparen: n.Y.End(),

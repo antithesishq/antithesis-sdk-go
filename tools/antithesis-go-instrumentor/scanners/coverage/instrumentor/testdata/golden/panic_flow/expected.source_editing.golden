@@ -1,0 +1,9 @@
+//line input.go:1:1
+package sample; import __antithesis_instrumentation__ "antithesis.notifier/instrumentation"
+
+// A call to panic ends a basic block, so the statements before and after it
+// land in separate edges.
+func Do() {__antithesis_instrumentation__.Notify(1)
+	println("before")
+	panic("boom")
+}

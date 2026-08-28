@@ -1,0 +1,9 @@
+//line input.go:1:1
+// A || chain nested under a unary ! is not reachable through the outer
+// &&/|| chain that rewriteBool recurses over; the operand's subtree must
+// still be instrumented rather than copied verbatim.
+package sample; import __antithesis_instrumentation__ "antithesis.notifier/instrumentation"
+
+func neither(a, b, c bool) bool {__antithesis_instrumentation__.Notify(1)
+	return a && func() bool { __antithesis_instrumentation__.Notify(2); return (!(b || func() bool { __antithesis_instrumentation__.Notify(3); return (c) == true }() == true)) == true }() == true
+}

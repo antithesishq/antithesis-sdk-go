@@ -1,0 +1,17 @@
+//line input.go:1:1
+package sample; import __antithesis_instrumentation__ "antithesis.notifier/instrumentation"
+
+// The loop body splits into multiple edges: the branch statement (break)
+// ends a basic block, so the statements before and after it are counted
+// separately.
+func Scan(xs []int) int {__antithesis_instrumentation__.Notify(1)
+	count := 0
+	for _, x := range xs {__antithesis_instrumentation__.Notify(3)
+		count++
+		if x < 0 {__antithesis_instrumentation__.Notify(5)
+			break
+		} else {__antithesis_instrumentation__.Notify(6)}
+		__antithesis_instrumentation__.Notify(4); count++
+	}
+	__antithesis_instrumentation__.Notify(2); return count
+}

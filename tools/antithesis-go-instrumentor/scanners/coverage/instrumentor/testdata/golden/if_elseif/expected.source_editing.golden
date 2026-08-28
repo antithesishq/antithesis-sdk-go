@@ -1,0 +1,12 @@
+//line input.go:1:1
+package sample; import __antithesis_instrumentation__ "antithesis.notifier/instrumentation"
+
+func Classify(n int) string {__antithesis_instrumentation__.Notify(1)
+	if n < 0 {__antithesis_instrumentation__.Notify(2)
+		return "neg"
+	} else {__antithesis_instrumentation__.Notify(3); if n == 0 {__antithesis_instrumentation__.Notify(4)
+		return "zero"
+	} else {__antithesis_instrumentation__.Notify(5)
+		return "pos"
+	}}
+}

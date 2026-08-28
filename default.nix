@@ -76,7 +76,7 @@ let
 
       ${lib.concatMapStringsSep "\n" ({ name, value }:
       let
-        title = if value ? title then value.title else "package ${name}";
+        title = value.title or "package ${name}";
       in
       ''
         substituteInPlace $out/docs/${name}/index.html --replace-fail "%META_DESCRIPTION%" "${value.desc}"
@@ -107,8 +107,14 @@ let
     pname = "antithesis-go-sdk-no-antithesis";
     checkFlags = (old.checkFlags or []) ++ ["-tags=no_antithesis_sdk"];
   });
+
+  # Builds and tests the SDK with cgo disabled (a frequently encountered misconfiguration)
+  go_sdk_no_cgo = go_sdk.overrideAttrs (old: {
+    pname = "antithesis-go-sdk-no-cgo";
+    env = old.env // { CGO_ENABLED = "0"; };
+  });
 in
 
 {
-  inherit docs go_sdk go_sdk_no_antithesis;
+  inherit docs go_sdk go_sdk_no_antithesis go_sdk_no_cgo;
 }

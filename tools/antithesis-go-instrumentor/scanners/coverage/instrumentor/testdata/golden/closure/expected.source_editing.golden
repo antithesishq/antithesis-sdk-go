@@ -1,0 +1,10 @@
+//line input.go:1:1
+package sample; import __antithesis_instrumentation__ "antithesis.notifier/instrumentation"
+
+func Make() func() int {__antithesis_instrumentation__.Notify(1)
+	n := 0
+	return func() int {__antithesis_instrumentation__.Notify(2)
+		n++
+		return n
+	}
+}

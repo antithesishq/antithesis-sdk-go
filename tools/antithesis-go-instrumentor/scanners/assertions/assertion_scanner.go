@@ -3,6 +3,7 @@ package assertions
 import (
 	"fmt"
 	"go/ast"
+	"go/token"
 	"go/types"
 	"path/filepath"
 	"strconv"
@@ -60,11 +61,35 @@ func (bc *binaryCatalog) hasAssertions() bool {
 	return len(bc.expects) > 0 || len(bc.guidance) > 0
 }
 
-// packageResult caches the scan result for a single package.
-type packageResult struct {
-	expects  []*AntExpect
-	guidance []*AntGuidance
+// PackageSyntax is everything cataloguing needs to know about one package: its
+// import path, position information, and resolved type information. Assertion
+// calls can only be identified with types
+type PackageSyntax struct {
+	PkgPath   string
+	Fset      *token.FileSet
+	TypesInfo *types.Info
+	Files     []*ast.File
 }
+
+// PackageResult is the catalog data found in a single package.
+type PackageResult struct {
+	Expects  []*AntExpect
+	Guidance []*AntGuidance
+}
+
+// HasAssertions reports whether anything was found worth cataloguing.
+func (pr *PackageResult) HasAssertions() bool {
+	return len(pr.Expects) > 0 || len(pr.Guidance) > 0
+}
+
+// NumericGuidance filters guidance entries to the numeric kind.
+func NumericGuidance(guidance []*AntGuidance) []*AntGuidance { return numericGuidance(guidance) }
+
+// BooleanGuidance filters guidance entries to the boolean kind.
+func BooleanGuidance(guidance []*AntGuidance) []*AntGuidance { return booleanGuidance(guidance) }
+
+// ConstMap reports which template constants a set of assertions needs declared.
+func ConstMap(expects []*AntExpect) map[string]bool { return getConstMap(expects) }
 
 // filter Guidance to just numeric
 func numericGuidance(guidance []*AntGuidance) []*AntGuidance {
@@ -132,16 +157,20 @@ func (aScanner *AssertionScanner) WriteAssertionCatalogs(versionText string) {
 			NumericGuidanceVals: numericGuidance,
 			BooleanGuidanceVals: booleanGuidance,
 			AssertPackageName:   common.AssertPackageName(),
-			VersionText:         versionText,
-			CreateDate:          createDate,
-			HasAssertions:       len(expects) > 0,
-			HasNumericGuidance:  len(numericGuidance) > 0,
-			HasBooleanGuidance:  len(booleanGuidance) > 0,
-			ConstMap:            getConstMap(expects),
+			// The antithesis-go-instrumentor tool operates on a whole program and writes into the `main package`
+			PackageName:        "main",
+			VersionText:        versionText,
+			CreateDate:         createDate,
+			HasAssertions:      len(expects) > 0,
+			HasNumericGuidance: len(numericGuidance) > 0,
+			HasBooleanGuidance: len(booleanGuidance) > 0,
+			ConstMap:           getConstMap(expects),
 		}
 
 		outputDir := filepath.Join(aScanner.baseTargetDir, bc.relDir)
-		GenerateAssertionsCatalog(outputDir, &genInfo)
+		if err := GenerateAssertionsCatalog(outputDir, &genInfo); err != nil {
+			panic(err)
+		}
 	}
 }
 
@@ -213,8 +242,7 @@ func (aScanner *AssertionScanner) ScanAll() error {
 
 	// For each main package, compute reachable packages and scan.
 	// Cache per-package results so shared dependencies are only scanned once.
-	assertPkgPath := common.AssertPackageName()
-	pkgCache := make(map[string]*packageResult)
+	pkgCache := make(map[string]*PackageResult)
 
 	for _, mainPkg := range mainPkgs {
 		common.Logger.Printf(common.Normal, "Cataloging %s", mainPkg.PkgPath)
@@ -227,21 +255,17 @@ func (aScanner *AssertionScanner) ScanAll() error {
 		for _, pkg := range reachable {
 			pr, ok := pkgCache[pkg.ID]
 			if !ok {
-				pr = &packageResult{}
 				common.Logger.Printf(common.Info, "Scanning %s", pkg.PkgPath)
-				for _, file := range pkg.Syntax {
-					aScanner.filesCataloged++
-					funcName := ""
-					receiver := ""
-					ast.Inspect(file, func(x ast.Node) bool {
-						funcName, receiver = aScanner.node_inspector(x, pkg, assertPkgPath, pr, funcName, receiver)
-						return true
-					})
-				}
+				pr = aScanner.ScanPackage(PackageSyntax{
+					PkgPath:   pkg.PkgPath,
+					Fset:      pkg.Fset,
+					TypesInfo: pkg.TypesInfo,
+					Files:     pkg.Syntax,
+				})
 				pkgCache[pkg.ID] = pr
 			}
-			bc.expects = append(bc.expects, pr.expects...)
-			bc.guidance = append(bc.guidance, pr.guidance...)
+			bc.expects = append(bc.expects, pr.Expects...)
+			bc.guidance = append(bc.guidance, pr.Guidance...)
 		}
 		aScanner.binaries = append(aScanner.binaries, bc)
 
@@ -252,7 +276,22 @@ func (aScanner *AssertionScanner) ScanAll() error {
 	return nil
 }
 
-func (aScanner *AssertionScanner) node_inspector(x ast.Node, pkg *packages.Package, assertPkgPath string, data *packageResult, funcName string, receiver string) (string, string) {
+// ScanPackage catalogs one already-parsed, already-type-checked package
+func (aScanner *AssertionScanner) ScanPackage(pkg PackageSyntax) *PackageResult {
+	result := &PackageResult{}
+	for _, file := range pkg.Files {
+		aScanner.filesCataloged++
+		funcName := ""
+		receiver := ""
+		ast.Inspect(file, func(x ast.Node) bool {
+			funcName, receiver = aScanner.node_inspector(x, pkg, common.AssertPackageName(), result, funcName, receiver)
+			return true
+		})
+	}
+	return result
+}
+
+func (aScanner *AssertionScanner) node_inspector(x ast.Node, pkg PackageSyntax, assertPkgPath string, data *PackageResult, funcName string, receiver string) (string, string) {
 	var func_decl *ast.FuncDecl
 	var call_expr *ast.CallExpr
 	var ok bool
@@ -316,7 +355,7 @@ func (aScanner *AssertionScanner) node_inspector(x ast.Node, pkg *packages.Packa
 					Line:              full_position.Line,
 					AssertionFuncInfo: func_hints,
 				}
-				data.expects = append(data.expects, &expect)
+				data.Expects = append(data.Expects, &expect)
 			}
 
 			if guidance_func_hints := aScanner.guidanceHintMap.GuidanceHintsForName(target_func); guidance_func_hints != nil {
@@ -336,7 +375,7 @@ func (aScanner *AssertionScanner) node_inspector(x ast.Node, pkg *packages.Packa
 					Line:             full_position.Line,
 					GuidanceFuncInfo: guidance_func_hints,
 				}
-				data.guidance = append(data.guidance, &guidance_expect)
+				data.Guidance = append(data.Guidance, &guidance_expect)
 
 				// The Related Assertion derived from target_func("AlwaysGreaterThan") => derived_target_func("Always")
 				expect := AntExpect{
@@ -355,7 +394,7 @@ func (aScanner *AssertionScanner) node_inspector(x ast.Node, pkg *packages.Packa
 					// from the guidance func here.
 					AssertionFuncInfo: &guidance_func_hints.AssertionFuncInfo,
 				}
-				data.expects = append(data.expects, &expect)
+				data.Expects = append(data.Expects, &expect)
 			} // assertionHint
 		}
 	}

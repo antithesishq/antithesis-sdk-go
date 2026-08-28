@@ -1,0 +1,15 @@
+package sample
+
+import __antithesis_instrumentation__ "antithesis.notifier/instrumentation"
+
+
+//line input.go:5
+func Do() {
+	__antithesis_instrumentation__.Notify(1)
+	
+//line input.go:6
+	println("before")
+	
+//line input.go:7
+	panic("boom")
+}

@@ -1,0 +1,7 @@
+# language = Go
+# instrumentor = INSTRUMENTOR
+# module = testmodule
+file	function	begin_line	begin_column	end_line	end_column	address
+input.go	Recv	3	30	4	9	1
+input.go	Recv	5	2	6	11	2
+input.go	Recv	7	2	8	11	3

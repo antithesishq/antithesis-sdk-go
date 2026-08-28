@@ -12,9 +12,22 @@ import (
 	"github.com/antithesishq/antithesis-sdk-go/tools/antithesis-go-instrumentor/scanners/coverage/symboltable"
 )
 
+type goInstrumentor interface {
+	// Rewrite the file at path, returning the instrumented source (or "" if it should be skipped)
+	Instrument(path string) (string, error)
+	// The running total of coverage edges recorded so far.
+	Edges() int
+}
+
+type astRewritingInstrumentor struct {
+	*instrumentor.Instrumentor
+}
+
+func (l astRewritingInstrumentor) Edges() int { return l.CurrentEdge }
+
 // Capitalized struct items are accessed outside this file
 type CoverageInstrumentor struct {
-	GoInstrumentor    *instrumentor.Instrumentor
+	GoInstrumentor    goInstrumentor
 	SymTable          *symboltable.SymbolTable
 	UsingSymbols      string
 	NotifierPackage   string
@@ -45,7 +58,7 @@ func (cI *CoverageInstrumentor) InstrumentFile(file_name string) string {
 	var err error
 	instrumented := ""
 	common.Logger.Printf(common.Normal, "Instrumenting %s", file_name)
-	cI.PreviousEdge = cI.GoInstrumentor.CurrentEdge
+	cI.PreviousEdge = cI.GoInstrumentor.Edges()
 	if instrumented, err = cI.GoInstrumentor.Instrument(file_name); err != nil {
 		common.Logger.Printf(common.Normal, "Error: File %s produced error %s; simply copying source", file_name, err)
 		return ""
@@ -59,13 +72,13 @@ func (cI *CoverageInstrumentor) WrapUp() (edge_count int) {
 		common.Logger.Printf(common.Normal, "Error Could not close symbol table %s: %s", cI.SymTable.Path, err)
 	}
 	common.Logger.Printf(common.Normal, "Symbol table: %s", cI.SymTable.Path)
-	edge_count = cI.GoInstrumentor.CurrentEdge
+	edge_count = cI.GoInstrumentor.Edges()
 	return
 }
 
 func (cI *CoverageInstrumentor) SummarizeWork(numFiles int) {
 	numFilesSkipped := (numFiles - cI.FilesInstrumented) + cI.FilesSkipped
-	numEdges := cI.GoInstrumentor.CurrentEdge
+	numEdges := cI.GoInstrumentor.Edges()
 	common.Logger.Printf(common.Normal, "%d '.go' %s instrumented, %d %s skipped, %d %s identified",
 		numFiles, common.Pluralize(numFiles, "file"),
 		numFilesSkipped, common.Pluralize(numFilesSkipped, "file"),
@@ -85,10 +98,18 @@ func NewCoverageInstrumentor(cc *commonconfig.CommonConfig, cov *covconfig.Cover
 		common.Logger.Fatalf("Could not write symbol table header: %s", err.Error())
 	}
 
-	goInstrumentor := instrumentor.CreateInstrumentor(cc.InputDirectory, notifierModuleName, symTable)
+	// Default to the proven AST-rewriting instrumentor; opt into the
+	// source-editing (edit-buffer) implementation with -source_editing.
+	var goInst goInstrumentor
+	if cov.UseSourceEditing {
+		common.Logger.Printf(common.Normal, "Using the source-editing (edit-buffer) instrumentor")
+		goInst = instrumentor.CreateSourceEditingInstrumentor(cc.InputDirectory, notifierModuleName, symTable)
+	} else {
+		goInst = astRewritingInstrumentor{instrumentor.CreateInstrumentor(cc.InputDirectory, notifierModuleName, symTable)}
+	}
 
 	cI := CoverageInstrumentor{
-		GoInstrumentor:    goInstrumentor,
+		GoInstrumentor:    goInst,
 		SymTable:          symTable,
 		UsingSymbols:      symbolTableFilename,
 		PreviousEdge:      0,
@@ -107,7 +128,7 @@ func (cI *CoverageInstrumentor) WriteInstrumentedOutput(cc *commonconfig.CommonC
 	outputSubdirectory := filepath.Dir(outputPath)
 	os.MkdirAll(outputSubdirectory, 0755)
 
-	common.Logger.Printf(common.Info, "Writing instrumented file %s with edges %d–%d", outputPath, cI.PreviousEdge, cI.GoInstrumentor.CurrentEdge)
+	common.Logger.Printf(common.Info, "Writing instrumented file %s with edges %d–%d", outputPath, cI.PreviousEdge, cI.GoInstrumentor.Edges())
 
 	if err := common.WriteTextFile(instrumentedSource, outputPath); err == nil {
 		cI.FilesInstrumented++

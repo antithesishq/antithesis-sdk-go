@@ -1,0 +1,33 @@
+// name's switch has no default and its case body ends on the same line as
+// the switch's closing brace. The synthesized "default:" clause needs a
+// leading separator or it fuses with the preceding statement (`return "one"
+// default:` does not parse -- auto-semicolon insertion only fires at line
+// ends). Deliberately not gofmt-formatted; the one-line switch is the point.
+package sample
+
+import __antithesis_instrumentation__ "antithesis.notifier/instrumentation"
+
+
+//line input.go:8
+func name(n int) string {
+	__antithesis_instrumentation__.Notify(1)
+	
+//line input.go:9
+	switch n {
+	
+//line input.go:9
+	case 1:
+		__antithesis_instrumentation__.Notify(3)
+		
+//line input.go:9
+		return "one"
+		
+//line input.go:9
+	default:
+		__antithesis_instrumentation__.Notify(4)
+	}
+	__antithesis_instrumentation__.Notify(2)
+	
+//line input.go:10
+	return "many"
+}

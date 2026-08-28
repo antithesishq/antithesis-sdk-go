@@ -1,0 +1,118 @@
+{
+  "modules": {
+    "alpha": 4,
+    "beta": 5,
+    "main": 10,
+    "shared": 11
+  },
+  "cases": [
+    {
+      "args": [
+        "describe",
+        "-3"
+      ],
+      "fired": [
+        "shared 1",
+        "shared 4",
+        "main 7",
+        "main 9",
+        "main 8",
+        "main 1",
+        "main 3",
+        "alpha 1",
+        "alpha 3",
+        "shared 1",
+        "shared 5",
+        "shared 2",
+        "shared 6"
+      ]
+    },
+    {
+      "args": [
+        "describe",
+        "9"
+      ],
+      "fired": [
+        "shared 1",
+        "shared 4",
+        "main 7",
+        "main 9",
+        "main 8",
+        "main 1",
+        "main 3",
+        "alpha 1",
+        "alpha 4",
+        "alpha 2",
+        "shared 1",
+        "shared 4"
+      ]
+    },
+    {
+      "args": [
+        "total",
+        "7"
+      ],
+      "fired": [
+        "shared 1",
+        "shared 4",
+        "main 7",
+        "main 9",
+        "main 8",
+        "main 1",
+        "main 4",
+        "beta 1",
+        "beta 3",
+        "beta 4",
+        "shared 8",
+        "shared 10",
+        "beta 3",
+        "beta 5",
+        "beta 3",
+        "beta 5",
+        "beta 3",
+        "beta 4",
+        "shared 8",
+        "shared 11",
+        "shared 9",
+        "beta 3",
+        "beta 5",
+        "beta 3",
+        "beta 5",
+        "beta 3",
+        "beta 4",
+        "shared 8",
+        "shared 10",
+        "beta 2"
+      ]
+    },
+    {
+      "args": [
+        "eager"
+      ],
+      "fired": [
+        "shared 1",
+        "shared 4",
+        "main 7",
+        "main 10",
+        "main 8",
+        "main 1",
+        "main 5"
+      ]
+    },
+    {
+      "args": [
+        "unknown"
+      ],
+      "fired": [
+        "shared 1",
+        "shared 4",
+        "main 7",
+        "main 10",
+        "main 8",
+        "main 1",
+        "main 6",
+        "main 2"
+      ]
+    }
+  ]
+}
