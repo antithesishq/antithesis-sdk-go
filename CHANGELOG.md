@@ -3,12 +3,12 @@
 ## Unreleased
 
 Adds `assert.Enabled`, a constant reporting whether the SDK was compiled in
-(that is, whether the `no_antithesis_sdk` build tag was absent).
+(that is, whether the `enable_antithesis_sdk` build tag was set).
 
-Assertions compile to empty functions under the tag, but they are still
+Assertions compile to empty functions without the tag, but they are still
 ordinary calls, so their arguments are evaluated at the call site: work done
 only to produce a condition or a `details` map was still paid for in a build
-that had compiled the SDK out. Because `Enabled` is a constant, guarding that
+that had no SDK compiled in. Because `Enabled` is a constant, guarding that
 work with `if assert.Enabled { ... }` lets the compiler discard it entirely.
 Assertions inside the guard are still cataloged, so no test property is lost.
 

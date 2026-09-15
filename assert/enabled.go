@@ -1,9 +1,9 @@
-//go:build !no_antithesis_sdk
+//go:build enable_antithesis_sdk
 
 package assert
 
 // Enabled reports whether the Antithesis SDK was compiled into this program,
-// that is, whether the program was built without the no_antithesis_sdk build
+// that is, whether the program was built with the enable_antithesis_sdk build
 // tag.
 //
 // It says nothing about where the program is running. An enabled build outside
@@ -13,13 +13,13 @@ package assert
 //
 // # Why it exists
 //
-// Building with -tags=no_antithesis_sdk replaces every assertion with an empty
-// function, but those functions are still ordinary Go calls, so their arguments
-// are evaluated at the call site. Work done solely to produce a condition or a
-// details map is therefore still paid for in a build that was supposed to have
-// compiled the SDK out:
+// Building without -tags=enable_antithesis_sdk leaves every assertion as an
+// empty function, but those functions are still ordinary Go calls, so their
+// arguments are evaluated at the call site. Work done solely to produce a
+// condition or a details map is therefore still paid for in a build that has no
+// SDK compiled in:
 //
-//	// snapshots twice and allocates the map, even under no_antithesis_sdk
+//	// snapshots twice and allocates the map, even without the SDK
 //	assert.Always(svc.SnapshotState().Valid(), "state is valid",
 //		map[string]any{"state": svc.SnapshotState()})
 //

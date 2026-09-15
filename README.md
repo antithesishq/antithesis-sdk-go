@@ -5,11 +5,12 @@ This library provides methods for Go programs to configure the [Antithesis](http
 
 For general usage guidance see the [Antithesis Go SDK Documentation](https://antithesis.com/docs/using_antithesis/sdk/go/)
 
-## Compiling the SDK out
+## Compiling the SDK in
 
-The SDK is compiled in by default. Building with `-tags=no_antithesis_sdk`
-replaces every assertion, lifecycle and coverage entry point with an empty
-function, and `random.GetRandom` with a `crypto/rand` fallback.
+On this branch the SDK is compiled out by default. Building without
+`-tags=enable_antithesis_sdk` leaves every assertion, lifecycle and coverage
+entry point as an empty function, and `random.GetRandom` backed by
+`crypto/rand`.
 
 Those empty functions are still ordinary Go calls, so their arguments are
 evaluated at the call site. Work done only to produce a condition or a
