@@ -103,18 +103,25 @@ let
     };
   };
 
-  go_sdk_no_antithesis = go_sdk.overrideAttrs (old: {
-    pname = "antithesis-go-sdk-no-antithesis";
-    checkFlags = (old.checkFlags or []) ++ ["-tags=no_antithesis_sdk"];
+  # On this branch nothing is compiled in unless enable_antithesis_sdk is set,
+  # so go_sdk above already covers the no-op polarity and this covers the other
+  # one. Both are needed: a mis-tagged implementation file and a mis-tagged test
+  # file agree with each other, so a single polarity cannot catch the mistake.
+  go_sdk_antithesis = go_sdk.overrideAttrs (old: {
+    pname = "antithesis-go-sdk-antithesis";
+    checkFlags = (old.checkFlags or []) ++ ["-tags=enable_antithesis_sdk"];
   });
 
-  # Builds and tests the SDK with cgo disabled (a frequently encountered misconfiguration)
-  go_sdk_no_cgo = go_sdk.overrideAttrs (old: {
+  # Builds and tests the SDK with cgo disabled (a frequently encountered
+  # misconfiguration). This has to build on the enabled variant: every
+  # voidstar handler sits behind enable_antithesis_sdk, so without it the
+  # package holds no cgo at all and toggling CGO_ENABLED tests nothing.
+  go_sdk_no_cgo = go_sdk_antithesis.overrideAttrs (old: {
     pname = "antithesis-go-sdk-no-cgo";
     env = old.env // { CGO_ENABLED = "0"; };
   });
 in
 
 {
-  inherit docs go_sdk go_sdk_no_antithesis go_sdk_no_cgo;
+  inherit docs go_sdk go_sdk_antithesis go_sdk_no_cgo;
 }

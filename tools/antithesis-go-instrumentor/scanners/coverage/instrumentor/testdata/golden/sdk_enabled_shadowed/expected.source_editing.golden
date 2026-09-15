@@ -1,0 +1,26 @@
+//line input.go:1:1
+package sample; import __antithesis_instrumentation__ "antithesis.notifier/instrumentation"
+
+import "github.com/antithesishq/antithesis-sdk-go/assert"
+
+type toggles struct {
+	Enabled bool
+}
+
+// The parameter shadows the imported package name, so this is an ordinary
+// runtime condition and its "not taken" edge must still be recorded. Matching
+// the import alias as text alone would wrongly delete it.
+func Shadowed(assert toggles, n int) int {__antithesis_instrumentation__.Notify(1)
+	if assert.Enabled {__antithesis_instrumentation__.Notify(3)
+		n++
+	} else {__antithesis_instrumentation__.Notify(4)}
+	__antithesis_instrumentation__.Notify(2); return n
+}
+
+// At file scope the same spelling really is the SDK constant.
+func NotShadowed(n int) int {__antithesis_instrumentation__.Notify(5)
+	if assert.Enabled {__antithesis_instrumentation__.Notify(7)
+		n++
+	}
+	__antithesis_instrumentation__.Notify(6); return n
+}

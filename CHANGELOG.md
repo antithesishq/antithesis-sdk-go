@@ -1,5 +1,25 @@
 # Changelog
 
+## Unreleased
+
+Adds `assert.Enabled`, a constant reporting whether the SDK was compiled in
+(that is, whether the `enable_antithesis_sdk` build tag was set).
+
+Assertions compile to empty functions without the tag, but they are still
+ordinary calls, so their arguments are evaluated at the call site: work done
+only to produce a condition or a `details` map was still paid for in a build
+that had no SDK compiled in. Because `Enabled` is a constant, guarding that
+work with `if assert.Enabled { ... }` lets the compiler discard it entirely.
+Assertions inside the guard are still cataloged, so no test property is lost.
+
+The coverage instrumentor now recognizes a plain `if assert.Enabled { ... }`
+with no `else` and skips the "not taken" branch it would otherwise synthesize
+for it. That branch can never be taken -- the condition is a constant -- so
+instrumenting it left a row in the symbol table that could never be notified.
+Only that exact shape is recognized; negated guards, guards with an explicit
+`else`, and conditions where the qualifier is shadowed are instrumented as
+before.
+
 ## 0.8.0 - 2026-08-28
 
 Adds a new -source_editing flag to the `antithesis-go-instrumentor` tool that

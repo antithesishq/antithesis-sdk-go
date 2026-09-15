@@ -22,11 +22,15 @@ type SourceEditingInstrumentor struct {
 	shimPkg     string
 	// the identifier the emitted calls are made on
 	callbackName string
-	funcStack    Stack
-	nodeStack    Stack
-	CurrentEdge  int
-	src          []byte
-	buf          *editBuffer
+	// assertAliases holds every identifier the file currently being instrumented
+	// binds the SDK's assert package to, or nil if it does not import it. Reset per
+	// file, since one instrumentor walks a whole tree.
+	assertAliases map[string]bool
+	funcStack     Stack
+	nodeStack     Stack
+	CurrentEdge   int
+	src           []byte
+	buf           *editBuffer
 }
 
 // CreateSourceEditingInstrumentor is the factory method.
@@ -87,6 +91,7 @@ func (instrumentor *SourceEditingInstrumentor) Instrument(path string) (string, 
 		return "", nil
 	}
 
+	instrumentor.assertAliases = assertPackageAliases(f)
 	instrumentor.src = bytes
 	instrumentor.buf = &editBuffer{src: bytes}
 	ast.Walk(instrumentor, f)
@@ -158,6 +163,12 @@ func (instrumentor *SourceEditingInstrumentor) Visit(node ast.Node) ast.Visitor 
 		ast.Walk(instrumentor, n.Body)
 		switch els := n.Else.(type) {
 		case nil:
+			if isSDKEnabledGuard(n.Cond, instrumentor.assertAliases) {
+				// The condition is a compile-time constant, so a synthesized
+				// else could never be taken. Recording an edge for it would
+				// leave a row in the symbol table that can never be notified.
+				break
+			}
 			// Add else because we want coverage for "not taken".
 			edge := instrumentor.recordEdge(n.Body.End(), n.Body.End()+1)
 			instrumentor.buf.insert(instrumentor.offAt(n.Body.End()), " else {"+instrumentor.notifyCall(edge)+"}")
