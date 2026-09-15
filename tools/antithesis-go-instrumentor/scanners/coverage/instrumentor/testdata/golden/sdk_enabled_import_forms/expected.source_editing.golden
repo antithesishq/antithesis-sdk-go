@@ -1,0 +1,37 @@
+//line input.go:1:1
+package sample; import __antithesis_instrumentation__ "antithesis.notifier/instrumentation"
+
+import (
+	// A dot import cannot qualify a selector, but it must not stop the search
+	// for a usable alias further down the list.
+	. "github.com/antithesishq/antithesis-sdk-go/assert"
+	// A raw-string import path spells the same package.
+	raw `github.com/antithesishq/antithesis-sdk-go/assert`
+	// The same package may be bound to more than one name.
+	second "github.com/antithesishq/antithesis-sdk-go/assert"
+)
+
+// Recognized through a raw-string import path.
+func Raw(n int) int {__antithesis_instrumentation__.Notify(1)
+	if raw.Enabled {__antithesis_instrumentation__.Notify(3)
+		n++
+	}
+	__antithesis_instrumentation__.Notify(2); return n
+}
+
+// Recognized through a second alias for the same package.
+func Second(n int) int {__antithesis_instrumentation__.Notify(4)
+	if second.Enabled {__antithesis_instrumentation__.Notify(6)
+		n++
+	}
+	__antithesis_instrumentation__.Notify(5); return n
+}
+
+// The dot-imported name is not attributable in an AST-only pass, so this keeps
+// its "not taken" edge.
+func Dotted(n int) int {__antithesis_instrumentation__.Notify(7)
+	if Enabled {__antithesis_instrumentation__.Notify(9)
+		n++
+	} else {__antithesis_instrumentation__.Notify(10)}
+	__antithesis_instrumentation__.Notify(8); return n
+}

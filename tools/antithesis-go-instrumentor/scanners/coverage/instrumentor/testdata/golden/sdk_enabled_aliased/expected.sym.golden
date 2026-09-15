@@ -1,0 +1,15 @@
+# language = Go
+# instrumentor = INSTRUMENTOR
+# module = testmodule
+file	function	begin_line	begin_column	end_line	end_column	address
+input.go	Aliased	12	25	13	17	1
+input.go	Aliased	16	2	16	10	2
+input.go	Aliased	13	17	15	3	3
+input.go	Other	21	23	22	21	4
+input.go	Other	25	2	25	10	5
+input.go	Other	22	21	24	3	6
+input.go	Other	24	3	25	1	7
+input.go	Unrelated	29	27	30	11	8
+input.go	Unrelated	33	2	33	10	9
+input.go	Unrelated	30	11	32	3	10
+input.go	Unrelated	32	3	33	1	11

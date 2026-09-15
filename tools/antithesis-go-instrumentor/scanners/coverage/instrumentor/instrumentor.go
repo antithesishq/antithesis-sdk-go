@@ -362,12 +362,16 @@ type Instrumentor struct {
 	shortName   string
 	basePath    string
 	shimPkg     string
-	funcStack   Stack
-	currPos     []string
-	comments    []*ast.CommentGroup
-	nodeStack   Stack
-	CurrentEdge int
-	addLines    bool
+	// assertAliases holds every identifier the file currently being instrumented
+	// binds the SDK's assert package to, or nil if it does not import it. Reset per
+	// file, since one Instrumentor walks a whole tree.
+	assertAliases map[string]bool
+	funcStack     Stack
+	currPos       []string
+	comments      []*ast.CommentGroup
+	nodeStack     Stack
+	CurrentEdge   int
+	addLines      bool
 }
 
 // CreateInstrumentor is the factory method.
@@ -440,6 +444,8 @@ func (instrumentor *Instrumentor) Instrument(path string) (string, error) {
 		common.Logger.Printf(common.Normal, "File %s exports linknames, and will not be instrumented", path)
 		return "", nil
 	}
+
+	instrumentor.assertAliases = assertPackageAliases(f)
 
 	instrumentor.TrimComments(path, f)
 
@@ -659,6 +665,14 @@ func (instrumentor *Instrumentor) VisitAndInstrument(node ast.Node) ast.Visitor 
 			ast.Walk(instrumentor, n.Cond)
 		}
 		ast.Walk(instrumentor, n.Body)
+		if n.Else == nil && isSDKEnabledGuard(n.Cond, instrumentor.assertAliases) {
+			// The condition is a compile-time constant, so a synthesized else
+			// could never be taken. Recording an edge for it would leave a row
+			// in the symbol table that can never be notified. Leave the if
+			// without an else; the second pass tolerates a nil Else.
+			instrumentor.popType()
+			return nil
+		}
 		if n.Else == nil {
 			// Add else because we want coverage for "not taken".
 			n.Else = &ast.BlockStmt{

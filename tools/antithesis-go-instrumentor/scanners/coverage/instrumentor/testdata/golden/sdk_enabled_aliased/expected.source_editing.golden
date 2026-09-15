@@ -1,0 +1,35 @@
+//line input.go:1:1
+package sample; import __antithesis_instrumentation__ "antithesis.notifier/instrumentation"
+
+import ant "github.com/antithesishq/antithesis-sdk-go/assert"
+
+type toggles struct {
+	Enabled bool
+}
+
+var feature toggles
+
+// An explicit import alias is honored.
+func Aliased(n int) int {__antithesis_instrumentation__.Notify(1)
+	if ant.Enabled {__antithesis_instrumentation__.Notify(3)
+		n++
+	}
+	__antithesis_instrumentation__.Notify(2); return n
+}
+
+// A selector on something else that merely spells the same way is not the SDK
+// constant, and keeps its "not taken" edge.
+func Other(n int) int {__antithesis_instrumentation__.Notify(4)
+	if feature.Enabled {__antithesis_instrumentation__.Notify(6)
+		n++
+	} else {__antithesis_instrumentation__.Notify(7)}
+	__antithesis_instrumentation__.Notify(5); return n
+}
+
+// The undotted name is not bound to the assert package here at all.
+func Unrelated(n int) int {__antithesis_instrumentation__.Notify(8)
+	if n > 0 {__antithesis_instrumentation__.Notify(10)
+		ant.Reachable("positive", nil)
+	} else {__antithesis_instrumentation__.Notify(11)}
+	__antithesis_instrumentation__.Notify(9); return n
+}
