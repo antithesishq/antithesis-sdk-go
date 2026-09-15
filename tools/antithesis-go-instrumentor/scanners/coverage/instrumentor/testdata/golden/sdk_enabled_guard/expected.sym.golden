@@ -1,0 +1,22 @@
+# language = Go
+# instrumentor = INSTRUMENTOR
+# module = testmodule
+file	function	begin_line	begin_column	end_line	end_column	address
+input.go	Guarded	8	21	9	20	1
+input.go	Guarded	9	20	11	3	2
+input.go	Ordinary	15	29	16	11	3
+input.go	Ordinary	19	2	19	16	4
+input.go	Ordinary	16	11	18	3	5
+input.go	Ordinary	18	3	19	1	6
+input.go	ExplicitElse	23	33	24	20	7
+input.go	ExplicitElse	24	20	27	3	8
+input.go	ExplicitElse	27	3	29	3	9
+input.go	Negated	35	28	36	21	10
+input.go	Negated	39	2	40	18	11
+input.go	Negated	36	21	38	3	12
+input.go	Negated	38	3	39	1	13
+input.go	ElseIf	45	27	46	11	14
+input.go	ElseIf	52	2	52	16	15
+input.go	ElseIf	46	11	48	3	16
+input.go	ElseIf	48	3	48	27	17
+input.go	ElseIf	48	27	51	3	18

@@ -1,0 +1,119 @@
+package sample
+
+import (
+	__antithesis_instrumentation__ "antithesis.notifier/instrumentation"
+	"github.com/antithesishq/antithesis-sdk-go/assert"
+)
+
+//line input.go:8
+func Guarded(n int) {
+	__antithesis_instrumentation__.Notify(1)
+
+//line input.go:9
+	if assert.Enabled {
+		__antithesis_instrumentation__.Notify(2)
+
+//line input.go:10
+		assert.Always(n >= 0, "n is not negative", nil)
+	}
+}
+
+//line input.go:15
+func Ordinary(n int) string {
+	__antithesis_instrumentation__.Notify(3)
+
+//line input.go:16
+	if n > 0 {
+		__antithesis_instrumentation__.Notify(5)
+
+//line input.go:17
+		return "pos"
+
+//line input.go:18
+	} else {
+		__antithesis_instrumentation__.Notify(6)
+	}
+	__antithesis_instrumentation__.Notify(4)
+
+//line input.go:19
+	return "other"
+}
+
+//line input.go:23
+func ExplicitElse(n int) string {
+	__antithesis_instrumentation__.Notify(7)
+
+//line input.go:24
+	if assert.Enabled {
+		__antithesis_instrumentation__.Notify(8)
+
+//line input.go:25
+		assert.Reachable("checked", nil)
+
+//line input.go:26
+		return "checked"
+
+//line input.go:27
+	} else {
+		__antithesis_instrumentation__.Notify(9)
+
+//line input.go:28
+		return "unchecked"
+	}
+}
+
+//line input.go:35
+func Negated(n int) string {
+	__antithesis_instrumentation__.Notify(10)
+
+//line input.go:36
+	if !assert.Enabled {
+		__antithesis_instrumentation__.Notify(12)
+
+//line input.go:37
+		return "disabled"
+
+//line input.go:38
+	} else {
+		__antithesis_instrumentation__.Notify(13)
+	}
+	__antithesis_instrumentation__.Notify(11)
+
+//line input.go:39
+	assert.Sometimes(n == 0, "n is zero", nil)
+
+//line input.go:40
+	return "enabled"
+}
+
+//line input.go:45
+func ElseIf(n int) string {
+	__antithesis_instrumentation__.Notify(14)
+
+//line input.go:46
+	if n < 0 {
+		__antithesis_instrumentation__.Notify(16)
+
+//line input.go:47
+		return "neg"
+
+//line input.go:48
+	} else {
+		__antithesis_instrumentation__.Notify(17)
+
+//line input.go:48
+		if assert.Enabled {
+			__antithesis_instrumentation__.Notify(18)
+
+//line input.go:49
+			assert.Always(n >= 0, "n is not negative in else-if", nil)
+
+//line input.go:50
+			return "nonneg"
+		}
+	}
+	__antithesis_instrumentation__.Notify(15)
+
+//line input.go:52
+	return "quiet"
+}
