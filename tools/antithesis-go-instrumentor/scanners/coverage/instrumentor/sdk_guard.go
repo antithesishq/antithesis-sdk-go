@@ -8,9 +8,10 @@ import (
 )
 
 // sdkEnabledConst is the name of the SDK constant that reports whether the SDK
-// was compiled in. It is true in every build that does not set the
-// no_antithesis_sdk build tag, so an "if assert.Enabled" guard has a condition
-// the Go compiler folds away.
+// was compiled in. However the SDK's own build tags are arranged, it resolves
+// to a constant, so an "if assert.Enabled" guard has a condition the Go
+// compiler folds away. Keep this description tag-neutral: the instrumentor is
+// shared by SDK branches whose tag polarity is opposite.
 const sdkEnabledConst = "Enabled"
 
 // assertPackageAliases returns every identifier a file binds the SDK's assert
