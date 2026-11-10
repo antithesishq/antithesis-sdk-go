@@ -4,19 +4,21 @@ import (
 	"bufio"
 	"fmt"
 	"os"
+
+	"github.com/antithesishq/antithesis-sdk-go/internal"
 )
 
 // SymbolTable is the serialization of the
 // edges that the instrumentor finds and
 // instruments.
 type SymbolTable struct {
-	Path       string
-	writer     *fileSymbolTableWriter
-	executable string
+	Path   string
+	writer *fileSymbolTableWriter
 }
 
 type SymbolTablePosition struct {
 	Path        string
+	Class       string // the receiver type of a method; "" for a plain function
 	Function    string
 	StartLine   int
 	StartColumn int
@@ -25,43 +27,45 @@ type SymbolTablePosition struct {
 	Edge        int
 }
 
-// CreateSymbolTableFile opens an Antithesis-standard .symbols.tsv file on disk.
-func CreateSymbolTableFile(symbolTablePath, instrumentedModule string) (symbolTable *SymbolTable, err error) {
+// CreateSymbolTableFile opens an Antithesis-standard .sym.tsv file on disk.
+// instrumentedModule is the key the runtime registers the file under;
+// displayName is the label shown to people (see the "# name" global in
+// instrumentation/symbol_file_format.md).
+func CreateSymbolTableFile(symbolTablePath, instrumentedModule, displayName string) (symbolTable *SymbolTable, err error) {
 	var w *fileSymbolTableWriter
 	if w, err = createFileSymbolTableWriter(symbolTablePath); err != nil {
 		return
 	}
 
-	// There can be an error if the file has been moved!
-	executable, _ := os.Executable()
 	symbolTable = &SymbolTable{
-		Path:       symbolTablePath,
-		writer:     w,
-		executable: executable,
+		Path:   symbolTablePath,
+		writer: w,
 	}
-	if err = symbolTable.writeHeader(instrumentedModule); err != nil {
+	if err = symbolTable.writeHeader(instrumentedModule, displayName); err != nil {
 		symbolTable = nil
 	}
 	return
 }
 
-// WriteHeader writes the Antithesis-standard symbol table header.
-func (t *SymbolTable) writeHeader(module string) error {
-	if err := t.writer.WriteLine("# language = Go"); err != nil {
-		return err
+// writeHeader writes the Antithesis-standard symbol table header.
+func (t *SymbolTable) writeHeader(module, displayName string) error {
+	for _, line := range []string{
+		"# language = Go",
+		"# instrumentor = antithesis-go-instrumentor " + internal.SDK_Version,
+		"# module = " + module,
+		"# name = " + displayName,
+		"file\tclass\tfunction\tbegin_line\tbegin_column\tend_line\tend_column\taddress",
+	} {
+		if err := t.writer.WriteLine(line); err != nil {
+			return err
+		}
 	}
-	if err := t.writer.WriteLine("# instrumentor = " + t.executable); err != nil {
-		return err
-	}
-	if err := t.writer.WriteLine("# module = " + module); err != nil {
-		return err
-	}
-	return t.writer.WriteLine("file\tfunction\tbegin_line\tbegin_column\tend_line\tend_column\taddress")
+	return nil
 }
 
 // WritePosition describes a callback to the Antithesis instrumentation.
 func (t *SymbolTable) WritePosition(p SymbolTablePosition) error {
-	line := fmt.Sprintf("%s\t%s\t%d\t%d\t%d\t%d\t%d", p.Path, p.Function, p.StartLine, p.StartColumn, p.EndLine, p.EndColumn, p.Edge)
+	line := fmt.Sprintf("%s\t%s\t%s\t%d\t%d\t%d\t%d\t%d", p.Path, p.Class, p.Function, p.StartLine, p.StartColumn, p.EndLine, p.EndColumn, p.Edge)
 	return t.writer.WriteLine(line)
 }
 

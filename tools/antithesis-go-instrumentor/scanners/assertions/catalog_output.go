@@ -238,7 +238,7 @@ func init() {
   {{- $guidanceFn := guidanceFnRepr .GuidanceFuncInfo.GuidanceFn}}
 
   // {{$guidanceName}}
-  assert.NumericGuidanceRaw(left, right, {{$message}}, {{$message}}, {{$classname}}, {{$funcname}}, {{$filename}}, {{.Line}}, {{$guidanceFn}}, notHit)
+  assert.NumericGuidanceRaw(left, right, {{$message}}, {{$message}}, {{$classname}}, {{$funcname}}, {{$filename}}, {{.Line}}, 0, {{$guidanceFn}}, notHit)
   {{- end}}
 }
 {{- end}}
@@ -265,7 +265,7 @@ func init() {
   {{- $guidanceFn := guidanceFnRepr .GuidanceFuncInfo.GuidanceFn}}
 
   // {{$guidanceName}}
-  assert.BooleanGuidanceRaw(named_bools, {{$message}}, {{$message}}, {{$classname}}, {{$funcname}}, {{$filename}}, {{.Line}}, {{$guidanceFn}}, notHit)
+  assert.BooleanGuidanceRaw(named_bools, {{$message}}, {{$message}}, {{$classname}}, {{$funcname}}, {{$filename}}, {{.Line}}, 0, {{$guidanceFn}}, notHit)
   {{- end}}
 }
 {{- end}}

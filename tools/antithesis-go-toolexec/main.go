@@ -153,6 +153,8 @@ argument list:
   ANTITHESIS_EXCLUDE          path to an exclusions file, as accepted by
                               antithesis-go-instrumentor -exclude.
   ANTITHESIS_SYMBOL_PREFIX    prefix for symbol table file names.
+  ANTITHESIS_DISPLAY_NAME     display name written to the symbol tables' "# name"
+                              header. Defaults to each package's import path.
   ANTITHESIS_SDK_MODULE_DIR   directory of an antithesis-sdk-go checkout, used to
                               supply the SDK when the module being built does not
                               depend on it.

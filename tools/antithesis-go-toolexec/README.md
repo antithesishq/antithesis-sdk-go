@@ -59,6 +59,7 @@ Configuration is via environment variables:
 | `ANTITHESIS_SYMBOLS_DIR` | Where symbol tables are collected. Default `/symbols`. |
 | `ANTITHESIS_EXCLUDE` | Exclusions file, in the format `antithesis-go-instrumentor -exclude` accepts. |
 | `ANTITHESIS_SYMBOL_PREFIX` | Prefix for symbol table file names, matching `-prefix`. |
+| `ANTITHESIS_DISPLAY_NAME` | Display name written to every symbol table's `# name` header, matching `-name`. Defaults to each package's import path. |
 | `ANTITHESIS_SDK_MODULE_DIR` | An `antithesis-sdk-go` checkout, used to supply the SDK to a module that does not depend on it. See below. |
 | `ANTITHESIS_SKIP_TEST_FILES` | Set to `1` to leave `_test.go` files uninstrumented. |
 | `ANTITHESIS_SKIP_CATALOG` | Set to `1` to skip assertion cataloguing. |

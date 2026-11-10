@@ -55,13 +55,22 @@ type CommonConfig struct {
 	// Indicates that '*.pb.go' files should be skipped (not instrumented)
 	// default is false
 	SkipProtoBufFiles bool
+
+	// What a person calls the instrumented thing, written to the symbol
+	// table's "# name" global: the go.mod module path unless -name overrides it.
+	DisplayName string
 }
 
 func NewCommonConfig(args *args.Args) (*CommonConfig, error) {
 	customerInputDirectory := common.GetAbsoluteDirectory(args.InputDir)
 
-	if _, err := getModuleName(customerInputDirectory); err != nil {
-		return nil, fmt.Errorf("unable to obtain go module name from %q", customerInputDirectory)
+	modulePath, err := getModuleName(customerInputDirectory)
+	if err != nil {
+		return nil, fmt.Errorf("unable to obtain go module name from %q: %w", customerInputDirectory, err)
+	}
+	displayName := args.Name
+	if displayName == "" {
+		displayName = modulePath
 	}
 
 	customerDirectory := ""
@@ -76,6 +85,7 @@ func NewCommonConfig(args *args.Args) (*CommonConfig, error) {
 		ExcludeFile:       args.ExcludeFile,
 		SkipTestFiles:     args.SkipTestFiles,
 		SkipProtoBufFiles: args.SkipProtoBufFiles,
+		DisplayName:       displayName,
 	}, nil
 }
 
@@ -101,17 +111,18 @@ func (cc *CommonConfig) ParseExclusionsFile() (err error) {
 
 // Private helpers
 
-func getModuleName(inputDir string) (moduleName string, err error) {
-	var moduleData []byte
-	moduleName = ""
+func getModuleName(inputDir string) (string, error) {
 	moduleFilenamePath := filepath.Join(inputDir, "go.mod")
-	if moduleData, err = os.ReadFile(moduleFilenamePath); err != nil {
-		return
+	moduleData, err := os.ReadFile(moduleFilenamePath)
+	if err != nil {
+		return "", err
 	}
-
-	var f *modfile.File
-	if f, err = modfile.ParseLax("go.mod", moduleData, nil); err == nil {
-		moduleName = f.Module.Mod.Path
+	f, err := modfile.ParseLax("go.mod", moduleData, nil)
+	if err != nil {
+		return "", err
 	}
-	return
+	if f.Module == nil {
+		return "", fmt.Errorf("%s has no module directive", moduleFilenamePath)
+	}
+	return f.Module.Mod.Path, nil
 }

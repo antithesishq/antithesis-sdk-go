@@ -1,8 +1,9 @@
 # language = Go
-# instrumentor = INSTRUMENTOR
+# instrumentor = antithesis-go-instrumentor X.Y.Z
 # module = testmodule
-file	function	begin_line	begin_column	end_line	end_column	address
-program.go	chain	11	31	13	2	1
-program.go	chain	12	14	12	15	2
-program.go	chain	12	19	12	20	3
-program.go	main	15	13	17	2	4
+# name = edgetest
+file	class	function	begin_line	begin_column	end_line	end_column	address
+program.go		chain	11	31	13	2	1
+program.go		chain	12	14	12	15	2
+program.go		chain	12	19	12	20	3
+program.go		main	15	13	17	2	4

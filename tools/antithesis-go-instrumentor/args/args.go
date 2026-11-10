@@ -15,6 +15,7 @@ import (
 type Args struct {
 	ExcludeFile         string
 	SymPrefix           string
+	Name                string
 	InputDir            string
 	OutputDir           string
 	InstrumentorVersion string
@@ -34,6 +35,7 @@ func ParseArgs(versionText string, thisVersion string) *Args {
 	versionPtr := flag.Bool("version", false, "the current version of this application")
 	exclusionsPtr := flag.String("exclude", "", "the path to a file listing files and directories to exclude from instrumentation (optional)")
 	prefixPtr := flag.String("prefix", "", "a string to prepend to the symbol table (optional)")
+	namePtr := flag.String("name", "", "display name recorded in the symbol table's '# name' header (default: the go.mod module path)")
 	logfilePtr := flag.String("logfile", "", "file path to log into (default=stderr)")
 	verbosePtr := flag.Int("V", 0, "verbosity level (default to 0)")
 	assertOnlyPtr := flag.Bool("assert_only", false, "generate assertion catalog ONLY - no coverage instrumentation (default to false)")
@@ -58,6 +60,7 @@ func ParseArgs(versionText string, thisVersion string) *Args {
 	args.VerbosityLevel = common.Verbosity(*verbosePtr)
 	args.WantsInstrumentor = !*assertOnlyPtr
 	args.SymPrefix = strings.TrimSpace(*prefixPtr)
+	args.Name = strings.TrimSpace(*namePtr)
 	args.ExcludeFile = strings.TrimSpace(*exclusionsPtr)
 	args.InstrumentorVersion = strings.TrimSpace(*instrVersionPtr)
 	args.LocalSDKPath = strings.TrimSpace(*localSDKPathPtr)
@@ -110,6 +113,13 @@ func ParseArgs(versionText string, thisVersion string) *Args {
 		}
 	}
 
+	// The symbol table has no escaping, so a name must fit on its header line.
+	if isFlagSet("name") && (args.Name == "" || strings.ContainsAny(args.Name, "\t\n\r")) {
+		fmt.Fprint(os.Stderr, "A name must be non-empty and contain no tabs or newlines.\n")
+		args.InvalidArgs = true
+		return &args
+	}
+
 	args.InputDir = flag.Arg(0)
 	if args.WantsInstrumentor {
 		args.OutputDir = flag.Arg(1)
@@ -137,6 +147,9 @@ func (args *Args) ShowArguments() {
 		if args.SymPrefix != "" {
 			logger.Printf(common.Normal, "symPrefix: %q", args.SymPrefix)
 		}
+		if args.Name != "" {
+			logger.Printf(common.Normal, "name: %q", args.Name)
+		}
 	}
 
 	// Intentional: no need to show anything if not skipping
@@ -149,6 +162,18 @@ func (args *Args) ShowArguments() {
 	if args.SourceEditing {
 		logger.Printf(common.Normal, "sourceEditing: %t", args.SourceEditing)
 	}
+}
+
+// isFlagSet reports whether the flag was given on the command line, which
+// flag.String alone can't tell apart from an explicit empty value.
+func isFlagSet(name string) bool {
+	set := false
+	flag.Visit(func(f *flag.Flag) {
+		if f.Name == name {
+			set = true
+		}
+	})
+	return set
 }
 
 func isGoAvailable() bool {

@@ -104,7 +104,7 @@ func instrumentAndRun(t *testing.T, caseDir, progPath, name string, create func(
 	progTmp := filepath.Join(dir, "program.go")
 	write(t, progTmp, read(t, progPath))
 	symPath := filepath.Join(dir, "edges.sym.tsv")
-	sym, err := symboltable.CreateSymbolTableFile(symPath, "testmodule")
+	sym, err := symboltable.CreateSymbolTableFile(symPath, "testmodule", "edgetest")
 	qt.Assert(t, qt.IsNil(err))
 	out, err := create(dir, "edgetest/rec", sym).Instrument(progTmp)
 	qt.Assert(t, qt.IsNil(err))
@@ -113,7 +113,7 @@ func instrumentAndRun(t *testing.T, caseDir, progPath, name string, create func(
 	qt.Assert(t, qt.IsNil(sym.Close()))
 
 	symNorm := strings.ReplaceAll(read(t, symPath), progTmp, "program.go")
-	symNorm = instrumentorLineRe.ReplaceAllString(symNorm, "# instrumentor = INSTRUMENTOR")
+	symNorm = pinInstrumentorVersion(symNorm)
 
 	// Build once, then run every argv case against the recorder.
 	bin := filepath.Join(dir, "prog")

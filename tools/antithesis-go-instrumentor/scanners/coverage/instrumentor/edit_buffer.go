@@ -85,15 +85,11 @@ func (instrumentor *SourceEditingInstrumentor) recordEdge(start, end token.Pos) 
 
 	s := instrumentor.fset.Position(start)
 	e := instrumentor.fset.Position(end)
-	fname := ""
-	if maybeDecl, ok := instrumentor.funcStack.Peek(); ok {
-		if decl, isDecl := maybeDecl.(*ast.FuncDecl); isDecl {
-			fname = decl.Name.Name
-		}
-	}
+	class, fname := instrumentor.scopes.current()
 
 	if err := instrumentor.symbolTable.WritePosition(symboltable.SymbolTablePosition{
 		Path:        instrumentor.fullName,
+		Class:       class,
 		Function:    fname,
 		StartLine:   s.Line,
 		StartColumn: s.Column,

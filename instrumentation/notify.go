@@ -18,43 +18,29 @@ const (
 	leaseEpochMask    = 0xFFFFFF
 )
 
-var (
-	moduleInitialized = false
-	moduleOffset      uint64
-	// Per-edge cached lease words (coverage leases, linkage ABI v2). A
-	// zeroed word is always safe: `remaining` is 0, so the next hit calls
-	// in. Nil when the loaded library predates leases; then every hit calls
-	// in — the v1 return value's "never call again" is not revocable, so
-	// caching it would go deaf to coverage-seen resets.
-	leases []uint64
-)
+var defaultModule atomic.Pointer[Module]
 
 const instrumentor_tag = "github.com/antithesishq/antithesis-sdk-go/instrumentation"
 
 // InitializeModule should be called only once from a program.
 func InitializeModule(symbolTable string, edgeCount int) uint64 {
-	if moduleInitialized {
-		// We cannot support incorrect workflows.
+	modulesMu.Lock()
+	defer modulesMu.Unlock()
+	if defaultModule.Load() != nil {
 		panic("InitializeModule() has already been called!")
 	}
-
-	// WARN Re: integer type conversion, see https://github.com/golang/go/issues/29878
-	offset := internal.InitCoverage(uint64(edgeCount), symbolTable)
-	moduleOffset = uint64(offset)
-	leases = newLeaseCache(edgeCount)
-	moduleInitialized = true
-	return moduleOffset
+	module := registerModuleLocked(symbolTable, edgeCount)
+	defaultModule.Store(module)
+	return module.offset
 }
 
-// Notify will be called from instrumented code. Repeat hits are counted locally
-// under a coverage lease and reported when the lease runs out or is revoked; see
-// notifyEdge, which this shares with the per-module handles in module.go.
+// Notify reports a hit through the module selected by InitializeModule.
 func Notify(edge int) {
-	if !moduleInitialized {
-		// We cannot support incorrect workflows.
+	module := defaultModule.Load()
+	if module == nil {
 		panic(fmt.Sprintf("%s.Notify() called before InitializeModule()", instrumentor_tag))
 	}
-	notifyEdge(edge, moduleOffset, leases)
+	module.Notify(edge)
 }
 
 // newLeaseCache allocates per-edge lease storage for one coverage module, or

@@ -1,7 +1,8 @@
 # language = Go
-# instrumentor = INSTRUMENTOR
+# instrumentor = antithesis-go-instrumentor X.Y.Z
 # module = testmodule
-file	function	begin_line	begin_column	end_line	end_column	address
-input.go	Sum	3	24	5	31	1
-input.go	Sum	8	2	8	14	2
-input.go	Sum	5	31	7	3	3
+# name = example.com/testmodule
+file	class	function	begin_line	begin_column	end_line	end_column	address
+input.go		Sum	3	24	5	31	1
+input.go		Sum	8	2	8	14	2
+input.go		Sum	5	31	7	3	3

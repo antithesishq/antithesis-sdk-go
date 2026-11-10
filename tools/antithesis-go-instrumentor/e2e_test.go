@@ -9,6 +9,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/antithesishq/antithesis-sdk-go/internal"
 	qt "github.com/go-quicktest/qt"
 )
 
@@ -143,6 +144,39 @@ func TestE2EMultiModule(t *testing.T) {
 		runCmdEnv(t, filepath.Join(outputDir, "customer"), []string{"GOFLAGS="}, "go", "build", "./...")
 		runCmdEnv(t, filepath.Join(outputDir, "customer", "sub"), []string{"GOFLAGS="}, "go", "build", "./...")
 	})
+}
+
+// TestE2ENameFlag covers the -name override of the "# name" symbol table
+// global, and that values the unescaped header can't hold are rejected.
+func TestE2ENameFlag(t *testing.T) {
+	t.Setenv("CGO_ENABLED", "0")
+
+	instrumentorBin := filepath.Join(t.TempDir(), "instrumentor")
+	runCmd(t, ".", "go", "build", "-o", instrumentorBin, ".")
+
+	sdkRoot, err := filepath.Abs(filepath.Join("..", ".."))
+	qt.Assert(t, qt.IsNil(err))
+
+	inputDir := filepath.Join(t.TempDir(), "input")
+	copyDir(t, "testdata/input", inputDir)
+	rewriteReplace(t, filepath.Join(inputDir, "go.mod"), sdkRoot)
+
+	outputDir := filepath.Join(t.TempDir(), "output")
+	qt.Assert(t, qt.IsNil(os.MkdirAll(outputDir, 0755)))
+
+	for _, bad := range []string{"", " ", "a\tb", "a\nb"} {
+		cmd := exec.Command(instrumentorBin, "-name", bad, "-local_sdk_path", sdkRoot, inputDir, outputDir)
+		out, err := cmd.CombinedOutput()
+		qt.Check(t, qt.Not(qt.IsNil(err)), qt.Commentf("-name %q should be rejected; output:\n%s", bad, out))
+	}
+
+	runCmd(t, ".", instrumentorBin, "-name", "payments", "-local_sdk_path", sdkRoot, inputDir, outputDir)
+	symFiles, err := filepath.Glob(filepath.Join(outputDir, "symbols", "*.sym.tsv"))
+	qt.Assert(t, qt.IsNil(err))
+	qt.Assert(t, qt.HasLen(symFiles, 1))
+	sym, err := os.ReadFile(symFiles[0])
+	qt.Assert(t, qt.IsNil(err))
+	qt.Check(t, qt.StringContains(string(sym), "\n# name = payments\n"))
 }
 
 // readGoDirective returns the value of the `go` directive in a go.mod file,
@@ -333,8 +367,11 @@ var (
 	symbolHashRe   = regexp.MustCompile(`go-[0-9a-f]{12}\b`)
 	sdkVersionRe   = regexp.MustCompile(`antithesis-sdk-go v[\d.]+`)
 	absPathRe      = regexp.MustCompile(`/[^\t\n]*/input/`)
-	instrumentorRe = regexp.MustCompile(`# instrumentor = .+`)
 	sdkReplaceRe   = regexp.MustCompile(`(?m)^replace github\.com/antithesishq/antithesis-sdk-go => .+$`)
+
+	// Pinned so the fixture survives SDK version bumps; only the exact
+	// expected line is replaced, so a wrong value still fails the diff.
+	instrumentorLine = "# instrumentor = antithesis-go-instrumentor " + internal.SDK_Version
 )
 
 func normalizeContent(s string) string {
@@ -342,7 +379,7 @@ func normalizeContent(s string) string {
 	s = symbolHashRe.ReplaceAllString(s, "go-HASH")
 	s = sdkVersionRe.ReplaceAllString(s, "antithesis-sdk-go vX.Y.Z")
 	s = absPathRe.ReplaceAllString(s, "INPUT_DIR/")
-	s = instrumentorRe.ReplaceAllString(s, "# instrumentor = INSTRUMENTOR")
+	s = strings.ReplaceAll(s, instrumentorLine, "# instrumentor = antithesis-go-instrumentor X.Y.Z")
 	s = sdkReplaceRe.ReplaceAllString(s, "replace github.com/antithesishq/antithesis-sdk-go => SDK_ROOT")
 	return s
 }

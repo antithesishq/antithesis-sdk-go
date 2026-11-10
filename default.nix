@@ -95,6 +95,10 @@ let
 
     vendorHash = "sha256-K/4hq42VooKVwHydh+SWB8YAzumkONpglfHyRvr82z8=";
 
+    preCheck = ''
+      sh internal/json/generate.sh --check-upstream
+    '';
+
     meta = {
       description = "Antithesis go sdk.";
       homepage = "https://github.com/antithesishq/antithesis-sdk-go";
