@@ -4,12 +4,19 @@
 //
 // Both functions take the parameter details: Optional additional information provided by the user to add context for assertion failures. The information that is logged will appear in the logs section of a [triage report]. Normally the values passed to details are evaluated at runtime.
 //
+// Nil details (including values serialized as JSON null) are omitted for SetupComplete and become an empty object for SendEvent. Explicit empty objects are preserved; other JSON values are wrapped as {"value": v}.
+//
+// For example, SendEvent("progress", 42) emits {"progress": {"value": 42}}.
+//
+// Argument expressions always run. Existing maps are read synchronously and are not modified by the SDK. Serialization failures emit an antithesis_error containing the context and error message.
+//
 // [Antithesis Go SDK]: https://antithesis.com/docs/using_antithesis/sdk/go/
 // [Antithesis platform]: https://antithesis.com
 // [triage report]: https://antithesis.com/docs/reports/
 package lifecycle
 
 import (
+	"encoding/json"
 	"github.com/antithesishq/antithesis-sdk-go/internal"
 )
 
@@ -19,11 +26,15 @@ import (
 //
 // [injecting faults]: https://antithesis.com/docs/environment/fault_injection/
 func SetupComplete(details any) {
-	statusBlock := map[string]any{
-		"status":  "complete",
-		"details": details,
+	var event struct {
+		Setup struct {
+			Status  string          `json:"status"`
+			Details json.RawMessage `json:"details,omitempty"`
+		} `json:"antithesis_setup"`
 	}
-	internal.Json_data(map[string]any{"antithesis_setup": statusBlock})
+	event.Setup.Status = "complete"
+	event.Setup.Details = internal.Details(details, "setup_complete")
+	internal.Json_data(event)
 }
 
 // SendEvent indicates to Antithesis that a certain event has been reached. It provides greater information about the ordering of events during the course of testing in Antithesis.
@@ -32,5 +43,9 @@ func SetupComplete(details any) {
 //
 // [triage report]: https://antithesis.com/docs/reports/
 func SendEvent(eventName string, details any) {
-	internal.Json_data(map[string]any{eventName: details})
+	data := internal.Details(details, eventName)
+	if data == nil {
+		data = json.RawMessage(`{}`)
+	}
+	internal.Json_data(map[string]json.RawMessage{eventName: data})
 }

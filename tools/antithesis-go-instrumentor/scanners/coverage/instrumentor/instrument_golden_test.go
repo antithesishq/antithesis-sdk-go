@@ -25,10 +25,10 @@ import (
 	"flag"
 	"os"
 	"path/filepath"
-	"regexp"
 	"strings"
 	"testing"
 
+	"github.com/antithesishq/antithesis-sdk-go/internal"
 	"github.com/antithesishq/antithesis-sdk-go/tools/antithesis-go-instrumentor/common"
 	"github.com/antithesishq/antithesis-sdk-go/tools/antithesis-go-instrumentor/scanners/coverage/instrumentor"
 	"github.com/antithesishq/antithesis-sdk-go/tools/antithesis-go-instrumentor/scanners/coverage/symboltable"
@@ -113,7 +113,7 @@ func runInstrument(t *testing.T, inputPath string, create func(basePath, shimPkg
 	qt.Assert(t, qt.IsNil(os.WriteFile(tmpInput, src, 0644)))
 
 	symPath := filepath.Join(dir, "test.sym.tsv")
-	sym, err := symboltable.CreateSymbolTableFile(symPath, "testmodule")
+	sym, err := symboltable.CreateSymbolTableFile(symPath, "testmodule", "example.com/testmodule")
 	qt.Assert(t, qt.IsNil(err))
 
 	out, err := create(dir, testShimPkg, sym).Instrument(tmpInput)
@@ -130,12 +130,18 @@ func runInstrument(t *testing.T, inputPath string, create func(basePath, shimPkg
 	}
 }
 
-var instrumentorLineRe = regexp.MustCompile(`(?m)^# instrumentor = .*$`)
-
 func normalizeSymbols(s, tmpInput string) string {
 	s = strings.ReplaceAll(s, tmpInput, "input.go")
-	s = instrumentorLineRe.ReplaceAllString(s, "# instrumentor = INSTRUMENTOR")
-	return s
+	return pinInstrumentorVersion(s)
+}
+
+// pinInstrumentorVersion swaps the SDK version out of the "# instrumentor"
+// global so the fixtures survive version bumps. Only the exact expected line
+// is replaced, so a wrong tool name or version still shows up in the diff.
+func pinInstrumentorVersion(s string) string {
+	return strings.ReplaceAll(s,
+		"# instrumentor = antithesis-go-instrumentor "+internal.SDK_Version,
+		"# instrumentor = antithesis-go-instrumentor X.Y.Z")
 }
 
 // checkGolden compares got against the golden file, or (with -update) writes

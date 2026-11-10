@@ -3,6 +3,9 @@
 package instrumentation
 
 import (
+	"fmt"
+	"sync"
+
 	"github.com/antithesishq/antithesis-sdk-go/internal"
 )
 
@@ -11,7 +14,8 @@ import (
 type Module struct {
 	// offset is what init_coverage_module() returned: the value that must be
 	// added to this module's edge ids before they are passed to notify_coverage().
-	offset uint64
+	offset    uint64
+	edgeCount int
 
 	// leases caches one coverage-lease word per edge, letting repeat hits be
 	// counted locally without calling into the library; see notifyEdge. It is
@@ -23,14 +27,39 @@ type Module struct {
 	leases []uint64
 }
 
-// RegisterModule registers symbolTable as a new coverage module holding
-// edgeCount edges, and returns a handle for reporting them.
+var (
+	modulesMu        sync.Mutex
+	modulesByCatalog = make(map[string]*Module)
+)
+
+// RegisterModule returns the shared coverage module for symbolTable. Repeated
+// registrations must agree on edgeCount.
 func RegisterModule(symbolTable string, edgeCount int) *Module {
-	// WARN Re: integer type conversion, see https://github.com/golang/go/issues/29878
-	return &Module{
-		offset: internal.InitCoverage(uint64(edgeCount), symbolTable),
-		leases: newLeaseCache(edgeCount),
+	modulesMu.Lock()
+	defer modulesMu.Unlock()
+	return registerModuleLocked(symbolTable, edgeCount)
+}
+
+func registerModuleLocked(symbolTable string, edgeCount int) *Module {
+	if edgeCount < 0 {
+		panic("RegisterModule() requires a nonnegative edge count")
 	}
+	if module := modulesByCatalog[symbolTable]; module != nil {
+		if module.edgeCount != edgeCount {
+			panic(fmt.Sprintf("module %q registered with %d edges; previously registered with %d",
+				symbolTable, edgeCount, module.edgeCount))
+		}
+		return module
+	}
+	// Copies of a catalog share native pause counters, so they must also share
+	// the leases that allow hits to bypass those counters.
+	module := &Module{
+		offset:    internal.InitCoverage(uint64(edgeCount), symbolTable),
+		edgeCount: edgeCount,
+		leases:    newLeaseCache(edgeCount),
+	}
+	modulesByCatalog[symbolTable] = module
+	return module
 }
 
 // Notify reports that edge was reached. edge is relative to this module and

@@ -40,6 +40,10 @@ type Config struct {
 	// SymbolPrefix is prepended to symbol table file names.
 	SymbolPrefix string
 
+	// DisplayName is written to every symbol table's "# name" header. Empty
+	// means each package's import path.
+	DisplayName string
+
 	// Exclusions are paths the instrumentor must leave alone.
 	Exclusions map[string]bool
 
@@ -59,9 +63,14 @@ func loadConfig() (*Config, error) {
 		SymbolsDir:    envOr("ANTITHESIS_SYMBOLS_DIR", symbolsDirDefault),
 		SDKModuleDir:  strings.TrimSpace(os.Getenv("ANTITHESIS_SDK_MODULE_DIR")),
 		SymbolPrefix:  strings.TrimSpace(os.Getenv("ANTITHESIS_SYMBOL_PREFIX")),
+		DisplayName:   strings.TrimSpace(os.Getenv("ANTITHESIS_DISPLAY_NAME")),
 		Coverage:      !isTrue(os.Getenv("ANTITHESIS_SKIP_COVERAGE")),
 		Catalog:       !isTrue(os.Getenv("ANTITHESIS_SKIP_CATALOG")),
 		SkipTestFiles: isTrue(os.Getenv("ANTITHESIS_SKIP_TEST_FILES")),
+	}
+	// The symbol table has no escaping, so the name must fit on its header line.
+	if strings.ContainsAny(cfg.DisplayName, "\t\n\r") {
+		return nil, fmt.Errorf("ANTITHESIS_DISPLAY_NAME may not contain tabs or newlines")
 	}
 
 	if v := strings.TrimSpace(os.Getenv("ANTITHESIS_VERBOSE")); v != "" {
@@ -110,6 +119,7 @@ func (c *Config) ToolIDSuffix() (string, error) {
 		"sdk=" + internal.SDK_Version,
 		"instrumentor=" + identity,
 		"prefix=" + c.SymbolPrefix,
+		"name=" + c.DisplayName,
 		"instrument=" + strings.Join(c.Instrument, ","),
 		"skiptests=" + strconv.FormatBool(c.SkipTestFiles),
 		"coverage=" + strconv.FormatBool(c.Coverage),

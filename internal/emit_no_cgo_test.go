@@ -40,7 +40,7 @@ func TestNoCgoInitWritesToSdkJsonl(t *testing.T) {
 		t.Fatalf("expected *inAntithesisWithoutCgoHandler, got %T", h)
 	}
 
-	h.output(`{"antithesis_sdk":"first"}`)
+	h.output([]byte(`{"antithesis_sdk":"first"}`))
 	h.(*inAntithesisWithoutCgoHandler).outputFile.Close()
 
 	path := filepath.Join(dir, fallbackOutputFilename)

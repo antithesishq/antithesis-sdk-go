@@ -93,7 +93,7 @@ func NewCoverageInstrumentor(cc *commonconfig.CommonConfig, cov *covconfig.Cover
 	symbolTableFileBasename := fmt.Sprintf("%s%s-%s", cov.SymtablePrefix, common.SYMBOLS_FILE_HASH_PREFIX, cc.FilesHash)
 	symbolTableFilename := symbolTableFileBasename + common.SYMBOLS_FILE_SUFFIX
 	symbolsPath := filepath.Join(cov.SymbolsDirectory, symbolTableFilename)
-	symTable, err := symboltable.CreateSymbolTableFile(symbolsPath, symbolTableFileBasename)
+	symTable, err := symboltable.CreateSymbolTableFile(symbolsPath, symbolTableFileBasename, cc.DisplayName)
 	if err != nil {
 		common.Logger.Fatalf("Could not write symbol table header: %s", err.Error())
 	}

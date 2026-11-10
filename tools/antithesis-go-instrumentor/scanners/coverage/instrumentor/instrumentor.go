@@ -362,7 +362,8 @@ type Instrumentor struct {
 	shortName   string
 	basePath    string
 	shimPkg     string
-	funcStack   Stack
+	scopes      funcScopes
+	synthetic   map[*ast.FuncLit]bool
 	currPos     []string
 	comments    []*ast.CommentGroup
 	nodeStack   Stack
@@ -384,6 +385,8 @@ func CreateInstrumentor(basePath string, shimPkg string, table *symboltable.Symb
 		nodeLines:   map[string]int{},
 		currPos:     make([]string, 0),
 		posLines:    map[token.Pos]bool{},
+		scopes:      newFuncScopes(),
+		synthetic:   map[*ast.FuncLit]bool{},
 	}
 	return result
 }
@@ -448,6 +451,7 @@ func (instrumentor *Instrumentor) Instrument(path string) (string, error) {
 	instrumentor.addLines = false
 	instrumentor.comments = f.Comments
 	instrumentor.resetTypeCounts(true)
+	instrumentor.scopes = newFuncScopes()
 	ast.Walk(instrumentor, f)
 	f.Comments = instrumentor.comments
 
@@ -486,6 +490,7 @@ func (instrumentor *Instrumentor) Instrument(path string) (string, error) {
 	instrumentor.addLines = true
 	instrumentor.comments = f.Comments
 	instrumentor.resetTypeCounts(false)
+	instrumentor.scopes = newFuncScopes()
 	ast.Walk(instrumentor, f)
 	sortComments(instrumentor.comments)
 	f.Comments = instrumentor.comments
@@ -598,13 +603,7 @@ func (instrumentor *Instrumentor) getOriginalLine() int {
 func (instrumentor *Instrumentor) VisitAndInstrument(node ast.Node) ast.Visitor {
 	if node == nil {
 		instrumentor.popType()
-		top, _ := instrumentor.nodeStack.Pop()
-		if decl, isDecl := top.(*ast.FuncDecl); isDecl {
-			common.Logger.Printf(common.Debug, "AddCallbacks Popping function %s", decl.Name.Name)
-			instrumentor.funcStack.Pop()
-		} else {
-			common.Logger.Printf(common.Debug, "AddCallbacks Popping node: %v (%T)", top, top)
-		}
+		instrumentor.leaveNode()
 		return instrumentor
 	}
 
@@ -727,6 +726,7 @@ func (instrumentor *Instrumentor) VisitAndInstrument(node ast.Node) ast.Visitor 
 				Type: &ast.FuncType{Results: &ast.FieldList{List: []*ast.Field{{Type: ast.NewIdent("bool")}}}},
 				Body: &ast.BlockStmt{Lbrace: n.Y.Pos(), List: []ast.Stmt{&ast.ReturnStmt{Results: []ast.Expr{compareYToTrue}}}, Rbrace: n.Y.End() - 1},
 			}
+			instrumentor.synthetic[closureWithInstrumentation] = true
 			closureCallExpression := &ast.CallExpr{
 				Lparen: n.Y.End(),
 				Fun:    closureWithInstrumentation,
@@ -744,26 +744,40 @@ func (instrumentor *Instrumentor) VisitAndInstrument(node ast.Node) ast.Visitor 
 		common.Logger.Fatalf("Invalid input: %v (%T)", node, node)
 	}
 	// If nil is returned, the children of the current node will not be visited. Now push the node so we can pop it later.
-	if decl, isDecl := node.(*ast.FuncDecl); isDecl {
-		common.Logger.Printf(common.Debug, "AddCallbacks Entering function %s", decl.Name.Name)
-		instrumentor.funcStack.Push(node)
-	} else {
-		common.Logger.Printf(common.Debug, "AddCallbacks Pushing node: %v (%T)", node, node)
+	instrumentor.enterNode(node)
+	return instrumentor
+}
+
+// enterNode and leaveNode keep nodeStack and the function scopes in step:
+// every node pushed here is popped by the matching nil visit.
+func (instrumentor *Instrumentor) enterNode(node ast.Node) {
+	switch n := node.(type) {
+	case *ast.FuncDecl:
+		instrumentor.scopes.enterDecl(n)
+	case *ast.FuncLit:
+		if !instrumentor.synthetic[n] {
+			instrumentor.scopes.enterLit()
+		}
 	}
 	instrumentor.nodeStack.Push(node)
-	return instrumentor
+}
+
+func (instrumentor *Instrumentor) leaveNode() {
+	top, _ := instrumentor.nodeStack.Pop()
+	switch n := top.(type) {
+	case *ast.FuncDecl:
+		instrumentor.scopes.leave()
+	case *ast.FuncLit:
+		if !instrumentor.synthetic[n] {
+			instrumentor.scopes.leave()
+		}
+	}
 }
 
 func (instrumentor *Instrumentor) VisitAndAddLines(node ast.Node) ast.Visitor {
 	if node == nil {
 		instrumentor.popType()
-		top, _ := instrumentor.nodeStack.Pop()
-		if decl, isDecl := top.(*ast.FuncDecl); isDecl {
-			common.Logger.Printf(common.Debug, "AddLines Popping function %s", decl.Name.Name)
-			instrumentor.funcStack.Pop()
-		} else {
-			common.Logger.Printf(common.Debug, "AddLines Popping node: %v (%T)", top, top)
-		}
+		instrumentor.leaveNode()
 		return instrumentor
 	}
 
@@ -830,13 +844,7 @@ func (instrumentor *Instrumentor) VisitAndAddLines(node ast.Node) ast.Visitor {
 		}
 	}
 	// If nil is returned, the children of the current node will not be visited. Now push the node so we can pop it later.
-	if decl, isDecl := node.(*ast.FuncDecl); isDecl {
-		common.Logger.Printf(common.Debug, "AddLines Entering function %s", decl.Name.Name)
-		instrumentor.funcStack.Push(node)
-	} else {
-		common.Logger.Printf(common.Debug, "AddLines Pushing node: %v (%T)", node, node)
-	}
-	instrumentor.nodeStack.Push(node)
+	instrumentor.enterNode(node)
 	return instrumentor
 }
 
@@ -996,15 +1004,11 @@ func (instrumentor *Instrumentor) newEdge(start, end token.Pos) ast.Stmt {
 
 	s := instrumentor.fset.Position(start)
 	e := instrumentor.fset.Position(end)
-	maybe_decl, _ := instrumentor.funcStack.Peek()
-	decl, isDecl := maybe_decl.(*ast.FuncDecl)
-	fname := ""
-	if isDecl {
-		fname = decl.Name.Name
-	}
+	class, fname := instrumentor.scopes.current()
 
 	err := instrumentor.symbolTable.WritePosition(symboltable.SymbolTablePosition{
 		Path:        instrumentor.fullName,
+		Class:       class,
 		Function:    fname,
 		StartLine:   s.Line,
 		StartColumn: s.Column,

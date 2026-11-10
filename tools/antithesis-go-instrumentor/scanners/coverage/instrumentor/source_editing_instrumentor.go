@@ -22,7 +22,7 @@ type SourceEditingInstrumentor struct {
 	shimPkg     string
 	// the identifier the emitted calls are made on
 	callbackName string
-	funcStack    Stack
+	scopes       funcScopes
 	nodeStack    Stack
 	CurrentEdge  int
 	src          []byte
@@ -40,6 +40,7 @@ func CreateSourceEditingInstrumentor(basePath string, shimPkg string, table *sym
 		shimPkg:      shimPkg,
 		symbolTable:  table,
 		callbackName: InstrumentationPackageAlias,
+		scopes:       newFuncScopes(),
 	}
 }
 
@@ -89,6 +90,7 @@ func (instrumentor *SourceEditingInstrumentor) Instrument(path string) (string, 
 
 	instrumentor.src = bytes
 	instrumentor.buf = &editBuffer{src: bytes}
+	instrumentor.scopes = newFuncScopes()
 	ast.Walk(instrumentor, f)
 
 	if instrumentor.CurrentEdge == startingEdge {
@@ -114,8 +116,8 @@ func (instrumentor *SourceEditingInstrumentor) Instrument(path string) (string, 
 
 func (instrumentor *SourceEditingInstrumentor) Visit(node ast.Node) ast.Visitor {
 	if node == nil {
-		if top, _ := instrumentor.nodeStack.Pop(); isFuncDecl(top) {
-			instrumentor.funcStack.Pop()
+		if top, _ := instrumentor.nodeStack.Pop(); isFuncDecl(top) || isFuncLit(top) {
+			instrumentor.scopes.leave()
 		}
 		return instrumentor
 	}
@@ -239,9 +241,12 @@ func (instrumentor *SourceEditingInstrumentor) Visit(node ast.Node) ast.Visitor 
 	}
 
 	// Returning a non-nil visitor lets ast.Walk descend into this node's
-	// children; push it so the matching nil visit can unwind funcStack.
-	if isFuncDecl(node) {
-		instrumentor.funcStack.Push(node)
+	// children; push it so the matching nil visit can unwind the scopes.
+	switch n := node.(type) {
+	case *ast.FuncDecl:
+		instrumentor.scopes.enterDecl(n)
+	case *ast.FuncLit:
+		instrumentor.scopes.enterLit()
 	}
 	instrumentor.nodeStack.Push(node)
 	return instrumentor

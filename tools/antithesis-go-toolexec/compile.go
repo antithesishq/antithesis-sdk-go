@@ -84,7 +84,13 @@ func instrumentCoverage(cfg *Config, pkg *Package, args []string, paths []string
 	if err != nil {
 		return nil, err
 	}
-	symbols, err := symboltable.CreateSymbolTableFile(filepath.Join(shardDir, symbolName), symbolBase)
+	// One table per package, so the package is what a person would call it
+	// unless the build names the whole thing.
+	name := cfg.DisplayName
+	if name == "" {
+		name = pkg.ImportPath
+	}
+	symbols, err := symboltable.CreateSymbolTableFile(filepath.Join(shardDir, symbolName), symbolBase, name)
 	if err != nil {
 		return nil, fmt.Errorf("creating symbol table: %w", err)
 	}
