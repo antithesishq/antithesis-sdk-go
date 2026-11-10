@@ -1,7 +1,7 @@
 --- a/encode.go
 +++ b/encode.go
 @@ -1,9 +1,9 @@
-+//go:build !no_antithesis_sdk
++//go:build enable_antithesis_sdk
 +
  // Copyright 2010 The Go Authors. All rights reserved.
  // Use of this source code is governed by a BSD-style
@@ -272,7 +272,7 @@
 --- a/fold.go
 +++ b/fold.go
 @@ -1,8 +1,10 @@
-+//go:build !no_antithesis_sdk
++//go:build enable_antithesis_sdk
 +
  // Copyright 2013 The Go Authors. All rights reserved.
  // Use of this source code is governed by a BSD-style
@@ -286,7 +286,7 @@
 --- a/indent.go
 +++ b/indent.go
 @@ -1,8 +1,10 @@
-+//go:build !no_antithesis_sdk
++//go:build enable_antithesis_sdk
 +
  // Copyright 2010 The Go Authors. All rights reserved.
  // Use of this source code is governed by a BSD-style
@@ -300,7 +300,7 @@
 --- a/scanner.go
 +++ b/scanner.go
 @@ -1,8 +1,10 @@
-+//go:build !no_antithesis_sdk
++//go:build enable_antithesis_sdk
 +
  // Copyright 2010 The Go Authors. All rights reserved.
  // Use of this source code is governed by a BSD-style
@@ -314,7 +314,7 @@
 --- a/tables.go
 +++ b/tables.go
 @@ -1,8 +1,10 @@
-+//go:build !no_antithesis_sdk
++//go:build enable_antithesis_sdk
 +
  // Copyright 2016 The Go Authors. All rights reserved.
  // Use of this source code is governed by a BSD-style
@@ -328,7 +328,7 @@
 --- a/tags.go
 +++ b/tags.go
 @@ -1,8 +1,10 @@
-+//go:build !no_antithesis_sdk
++//go:build enable_antithesis_sdk
 +
  // Copyright 2011 The Go Authors. All rights reserved.
  // Use of this source code is governed by a BSD-style
